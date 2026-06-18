@@ -14,6 +14,16 @@ test-screenshots/
 .env
 .env.*
 
+# Local Claude Code config (machine-specific permission allowlist, paths)
+.claude/
+
+# Stray dev artifacts / scratch / logs from prior sessions
+*.err
+scratch.txt
+explore-shots/
+/*-mobile.png
+testsprite_tests/tmp/
+
 # OS / editor noise
 .DS_Store
 Thumbs.db
