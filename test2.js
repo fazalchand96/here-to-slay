@@ -1,0 +1,1 @@
+const fs = require('fs'); const html = fs.readFileSync('public/index.html', 'utf8'); const js = fs.readFileSync('public/app.js', 'utf16le'); const lines = js.split('\n'); lines.forEach((line, i) => { const m = line.match(/getElementById\('([^']+)'\)/); if (m) { const id = m[1]; if (!html.includes(id)) { console.log('Line ' + (i+1) + ' uses ' + id); } } });

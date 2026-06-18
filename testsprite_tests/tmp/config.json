@@ -1,0 +1,17 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:3000",
+  "executionArgs": {
+    "projectName": "HeretoslayBestanden",
+    "projectPath": "C:\\Users\\c.fazal\\Desktop\\HeretoslayBestanden",
+    "testIds": [],
+    "additionalInstruction": "This is a real-time multiplayer card game served as a single-page PWA on port 3000. There is no login. The UI is landscape-only (use a wide viewport). Focus on lobby and party-leader selection flows, which a single browser session can reach; full gameplay requires multiple concurrent players.",
+    "serverMode": "production",
+    "envs": {
+      "API_KEY": "sk-user-2JE8-UggiVkMNo_OKsT3J50KykdStOIHB-o_bQH2GRjoXTLPsSY2jvlU0eIqXgGBUf9lp65CCg0cSTEUtD6z2j6WnnShlX1KY80_Ym3MtY1ufs0yBrJGVbM0vE5mRhzm1Gg"
+    }
+  },
+  "serverPort": 54834
+}

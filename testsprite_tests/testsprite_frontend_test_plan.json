@@ -1,0 +1,1237 @@
+[
+  {
+    "id": "TC001",
+    "title": "Start a valid match with seated players and locked leaders",
+    "description": "Verifies that the host can start the game once enough players are seated and all required Party Leaders are locked.",
+    "category": "Lobby and Party Leader Selection",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the hero name field with a valid unique name"
+      },
+      {
+        "type": "action",
+        "description": "Join the shared tavern lobby"
+      },
+      {
+        "type": "action",
+        "description": "Open a second browser session to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the hero name field with another valid unique name"
+      },
+      {
+        "type": "action",
+        "description": "Join the shared tavern lobby"
+      },
+      {
+        "type": "action",
+        "description": "Have each seated player lock a Party Leader"
+      },
+      {
+        "type": "action",
+        "description": "Start the game as the host"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the active game board is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify hands are dealt and monsters are revealed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Block host start until leaders are locked",
+    "description": "Verifies that the host cannot start a match before the seated players have locked their Party Leaders.",
+    "category": "Lobby and Party Leader Selection",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the hero name field with a valid unique name"
+      },
+      {
+        "type": "action",
+        "description": "Join the shared tavern lobby"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to start the game before any leaders are locked"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the match does not start"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a start-game gating message is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Start a valid match after all seated players lock leaders",
+    "description": "This verifies that the host can start the game only after at least two seated players have locked Party Leaders and the match transitions into active play.",
+    "category": "Starting the Game",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the host hero name field with a unique hero name"
+      },
+      {
+        "type": "action",
+        "description": "Click to join the shared tavern lobby"
+      },
+      {
+        "type": "action",
+        "description": "Click a Party Leader to roll one"
+      },
+      {
+        "type": "action",
+        "description": "Lock in the rolled Party Leader"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the second hero name field with a different unique hero name"
+      },
+      {
+        "type": "action",
+        "description": "Click to join the shared tavern lobby as another player"
+      },
+      {
+        "type": "action",
+        "description": "Roll and lock a Party Leader for the second player"
+      },
+      {
+        "type": "action",
+        "description": "Start the match as the host"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the game transitions out of the lobby"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify active play begins with players and monsters displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Join the tavern lobby with a hero name",
+    "description": "Verifies that a returning player can enter a hero name and join the shared tavern lobby successfully.",
+    "category": "Lobby and Party Leader Selection",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the hero name field with a valid unique name"
+      },
+      {
+        "type": "action",
+        "description": "Join the shared tavern lobby"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the lobby view is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the player appears seated in the lobby"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Join the lobby with a hero name and see yourself seated",
+    "description": "This verifies that a player can enter a hero name, join the shared tavern lobby, and appear on the board as a seated player.",
+    "category": "Lobby and Party Leader Selection",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the hero name field with a unique hero name"
+      },
+      {
+        "type": "action",
+        "description": "Click to join the shared tavern lobby"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the player appears on the tavern board"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the hero name is accepted and shown in the lobby"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Roll and lock a Party Leader",
+    "description": "Verifies that a seated player can roll for party leaders, choose one, and lock it successfully.",
+    "category": "Lobby and Party Leader Selection",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the hero name field with a valid unique name"
+      },
+      {
+        "type": "action",
+        "description": "Join the shared tavern lobby"
+      },
+      {
+        "type": "action",
+        "description": "Roll for a Party Leader"
+      },
+      {
+        "type": "action",
+        "description": "Choose one of the available Party Leaders"
+      },
+      {
+        "type": "action",
+        "description": "Lock the selected Party Leader"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected leader is locked in"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the leader selection is no longer editable"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Show the victory modal when a player wins",
+    "description": "This verifies that a completed win condition displays the game-over modal with the winner and winning reason.",
+    "category": "Game Over and Reset",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the victory modal is not shown before the game is won"
+      },
+      {
+        "type": "action",
+        "description": "Reach a winning game state"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a victory modal is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the winner and winning reason are shown"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "Return to the lobby after a win",
+    "description": "This verifies that a player can leave the game-over state and reset back to the lobby after a victory.",
+    "category": "Game Over and Reset",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Reach the victory modal"
+      },
+      {
+        "type": "action",
+        "description": "Choose to go back to the lobby"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the lobby is displayed again"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the game-over modal is no longer shown"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "Keep the match from starting until all seated players have leaders",
+    "description": "This verifies that the lobby stays gated when at least two players are present but one seated player has not locked a Party Leader.",
+    "category": "Starting the Game",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the first hero name field with a unique hero name"
+      },
+      {
+        "type": "action",
+        "description": "Click to join the shared tavern lobby"
+      },
+      {
+        "type": "action",
+        "description": "Click a Party Leader to roll one"
+      },
+      {
+        "type": "action",
+        "description": "Lock in the rolled Party Leader"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the second hero name field with a different unique hero name"
+      },
+      {
+        "type": "action",
+        "description": "Click to join the shared tavern lobby as another player"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the host start control is not available yet"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the match remains in the lobby state"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC010",
+    "title": "Resume the lobby after the game is reset",
+    "description": "This verifies that after the match is reset, the app returns to the lobby state so players can join again.",
+    "category": "Lobby and Party Leader Selection",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Reach a finished or reset game state"
+      },
+      {
+        "type": "action",
+        "description": "Return to the lobby"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the tavern lobby is visible again"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify players can rejoin from the lobby state"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC011",
+    "title": "Display the winning reason for monster victory",
+    "description": "This verifies that the game-over screen clearly identifies a monster-based win condition.",
+    "category": "Game Over and Reset",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Reach a winning game state"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a victory modal is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the monster victory reason is shown"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC012",
+    "title": "Prevent claiming an already locked leader",
+    "description": "Verifies that a claimed Party Leader becomes unavailable to other players after it is locked.",
+    "category": "Lobby and Party Leader Selection",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the hero name field with a valid unique name"
+      },
+      {
+        "type": "action",
+        "description": "Join the shared tavern lobby"
+      },
+      {
+        "type": "action",
+        "description": "Roll for a Party Leader"
+      },
+      {
+        "type": "action",
+        "description": "Choose one of the available Party Leaders"
+      },
+      {
+        "type": "action",
+        "description": "Lock the selected Party Leader"
+      },
+      {
+        "type": "action",
+        "description": "Open a second browser session to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the hero name field with another valid unique name"
+      },
+      {
+        "type": "action",
+        "description": "Join the shared tavern lobby"
+      },
+      {
+        "type": "action",
+        "description": "Roll for a Party Leader"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the locked leader is unavailable to the second player"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the second player can still choose from the remaining leaders"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC013",
+    "title": "Draw cards and end the turn while action points decrease",
+    "description": "This verifies that an active player can spend action points to draw cards and end the turn with the expected AP reduction visible.",
+    "category": "Turn Actions and Action Points",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Reach an active player turn"
+      },
+      {
+        "type": "action",
+        "description": "Draw a card"
+      },
+      {
+        "type": "action",
+        "description": "End the turn"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the action points decrease after drawing"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the turn ends for the active player"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC014",
+    "title": "Display the winning reason for class victory",
+    "description": "This verifies that the game-over screen clearly identifies a class-collection win condition.",
+    "category": "Game Over and Reset",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Reach a winning game state"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a victory modal is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the class victory reason is shown"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC015",
+    "title": "Reroll a Party Leader before locking it",
+    "description": "This verifies that a player can change their rolled Party Leader before confirming their final selection.",
+    "category": "Lobby and Party Leader Selection",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the hero name field with a unique hero name"
+      },
+      {
+        "type": "action",
+        "description": "Click to join the shared tavern lobby"
+      },
+      {
+        "type": "action",
+        "description": "Click a Party Leader to roll one"
+      },
+      {
+        "type": "action",
+        "description": "Reroll the Party Leader"
+      },
+      {
+        "type": "action",
+        "description": "Lock in the current Party Leader"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a Party Leader is locked"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the leader selection remains fixed after locking"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC016",
+    "title": "Reject an empty hero name",
+    "description": "Verifies that joining is blocked when the hero name is left empty and a validation message is shown.",
+    "category": "Lobby and Party Leader Selection",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Leave the hero name field empty"
+      },
+      {
+        "type": "action",
+        "description": "Join the shared tavern lobby"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a hero name validation error is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the player is not joined to the lobby"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC017",
+    "title": "Resolve a dice roll and final result",
+    "description": "Verifies that a roll-based action shows the dice breakdown and then resolves to a final result.",
+    "category": "Dice Roll and Modifier Phase",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Join the shared tavern lobby with an active game in progress"
+      },
+      {
+        "type": "action",
+        "description": "Trigger a roll-based action"
+      },
+      {
+        "type": "action",
+        "description": "Roll the dice manually"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the dice breakdown is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the final result is shown"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC018",
+    "title": "Reset the board state after returning to the lobby",
+    "description": "This verifies that returning to the lobby clears the finished match view and brings the app back to the pre-game state.",
+    "category": "Game Over and Reset",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Reach the victory modal"
+      },
+      {
+        "type": "action",
+        "description": "Choose to go back to the lobby"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the lobby state is displayed instead of the game board"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the finished match state is cleared"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC019",
+    "title": "Reject a duplicate hero name",
+    "description": "Verifies that a player cannot join with a name already in use and is shown a validation error.",
+    "category": "Lobby and Party Leader Selection",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the hero name field with a valid unique name"
+      },
+      {
+        "type": "action",
+        "description": "Join the shared tavern lobby"
+      },
+      {
+        "type": "action",
+        "description": "Refresh the page"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the hero name field with the same name"
+      },
+      {
+        "type": "action",
+        "description": "Join the shared tavern lobby"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a duplicate hero name validation error is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the second player is not joined to the lobby"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC020",
+    "title": "See claimed Party Leaders become unavailable to another player",
+    "description": "This verifies that when one player locks a Party Leader, a second player cannot claim that same leader and sees it as unavailable.",
+    "category": "Lobby and Party Leader Selection",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the first hero name field with a unique hero name"
+      },
+      {
+        "type": "action",
+        "description": "Click to join the shared tavern lobby"
+      },
+      {
+        "type": "action",
+        "description": "Click a Party Leader to roll one"
+      },
+      {
+        "type": "action",
+        "description": "Lock in the rolled Party Leader"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the second hero name field with a different unique hero name"
+      },
+      {
+        "type": "action",
+        "description": "Click to join the shared tavern lobby as another player"
+      },
+      {
+        "type": "action",
+        "description": "Open the leader grid for the second player"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the claimed Party Leader is unavailable to the second player"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the second player can still see the remaining leader choices"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC021",
+    "title": "Reload the hand and continue the turn",
+    "description": "This verifies that an active player can reload their hand, replacing the current hand with a fresh draw and continuing the turn state correctly.",
+    "category": "Turn Actions and Action Points",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Reach an active player turn"
+      },
+      {
+        "type": "action",
+        "description": "Reload the hand"
+      },
+      {
+        "type": "action",
+        "description": "End the turn"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the hand is refreshed after reloading"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the turn remains valid after the reload action"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC022",
+    "title": "Stage a modifier and pass in the roll window",
+    "description": "Verifies that a player can stage a modifier card during the modifier window and then pass on additional modifiers before the roll resolves.",
+    "category": "Dice Roll and Modifier Phase",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Join the shared tavern lobby with an active game in progress"
+      },
+      {
+        "type": "action",
+        "description": "Trigger a pending roll window"
+      },
+      {
+        "type": "action",
+        "description": "Stage a modifier card during the modifier window"
+      },
+      {
+        "type": "action",
+        "description": "Pass on additional modifiers"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the modified roll resolves"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the modifier action is reflected in the roll outcome"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC023",
+    "title": "Allow starting a new match after resetting to the lobby",
+    "description": "This verifies that after a reset, the app is ready to begin a fresh lobby flow without lingering game-over state.",
+    "category": "Game Over and Reset",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Reach the victory modal"
+      },
+      {
+        "type": "action",
+        "description": "Choose to go back to the lobby"
+      },
+      {
+        "type": "action",
+        "description": "Begin a new lobby flow"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the lobby accepts a fresh start"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no previous victory modal remains visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC024",
+    "title": "Show lobby updates when another player joins",
+    "description": "Verifies that the shared tavern lobby updates in real time when a new player seats themselves.",
+    "category": "Lobby and Party Leader Selection",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the hero name field with a valid unique name"
+      },
+      {
+        "type": "action",
+        "description": "Join the shared tavern lobby"
+      },
+      {
+        "type": "action",
+        "description": "Open a second browser session to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the hero name field with another valid unique name"
+      },
+      {
+        "type": "action",
+        "description": "Join the shared tavern lobby"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the lobby updates to show the additional seated player"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC025",
+    "title": "Prevent further actions after action points are exhausted",
+    "description": "This verifies that when an active player spends all action points, additional turn actions are blocked in the UI.",
+    "category": "Turn Actions and Action Points",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Reach an active player turn"
+      },
+      {
+        "type": "action",
+        "description": "Spend all available action points"
+      },
+      {
+        "type": "action",
+        "description": "Attempt another turn action"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no action points remain"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the extra action is blocked"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC026",
+    "title": "Challenge an opponent's card play",
+    "description": "Verifies that an opponent can challenge a played Hero, Item, or Magic card and see the challenge resolve through a roll-off.",
+    "category": "Challenge Phase",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Join the shared tavern lobby with an active game in progress"
+      },
+      {
+        "type": "action",
+        "description": "Reach an opponent's card play challenge window"
+      },
+      {
+        "type": "action",
+        "description": "Select a challenge card from hand"
+      },
+      {
+        "type": "action",
+        "description": "Play the challenge"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the challenge resolves through a roll-off"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the card play outcome is updated"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC027",
+    "title": "Reset back to the lobby after a disconnect",
+    "description": "Verifies that the game returns to the lobby state when a connected player disconnects.",
+    "category": "Lobby and Party Leader Selection",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the hero name field with a valid unique name"
+      },
+      {
+        "type": "action",
+        "description": "Join the shared tavern lobby"
+      },
+      {
+        "type": "action",
+        "description": "Open a second browser session to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the hero name field with another valid unique name"
+      },
+      {
+        "type": "action",
+        "description": "Join the shared tavern lobby"
+      },
+      {
+        "type": "action",
+        "description": "Disconnect the second browser session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the lobby is shown again"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the seated player list is reset"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC028",
+    "title": "Show the reset option after a win",
+    "description": "This verifies that the victory modal provides a way to return to the lobby after the match ends.",
+    "category": "Game Over and Reset",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Reach a winning game state"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a victory modal is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a reset option is available"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC029",
+    "title": "Use a hero skill on a chosen target",
+    "description": "Verifies that a player can accept a skill prompt, choose the required target, and see the skill resolve.",
+    "category": "Hero and Leader Skills, Targeting, and Penalties",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Join the shared tavern lobby with an active game in progress"
+      },
+      {
+        "type": "action",
+        "description": "Reach a skill prompt"
+      },
+      {
+        "type": "action",
+        "description": "Choose to use the skill"
+      },
+      {
+        "type": "action",
+        "description": "Select the required target"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the skill resolves"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the target selection is applied"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC030",
+    "title": "Resolve a penalty by discarding or sacrificing a card",
+    "description": "Verifies that a player can complete a forced penalty prompt by selecting a card to discard or sacrifice.",
+    "category": "Hero and Leader Skills, Targeting, and Penalties",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Join the shared tavern lobby with an active game in progress"
+      },
+      {
+        "type": "action",
+        "description": "Reach a penalty prompt"
+      },
+      {
+        "type": "action",
+        "description": "Select a card to discard or sacrifice"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the penalty resolves"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the card is removed from the relevant zone"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC031",
+    "title": "Use an item's action effect",
+    "description": "Verifies that a player can activate an item's action and see its effect apply in the game.",
+    "category": "Hero and Leader Skills, Targeting, and Penalties",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Join the shared tavern lobby with an active game in progress"
+      },
+      {
+        "type": "action",
+        "description": "Reach a play-item action"
+      },
+      {
+        "type": "action",
+        "description": "Use the item's action"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the item effect applies"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the item remains or is consumed according to the resolved effect"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC032",
+    "title": "Keep the lobby hidden once victory is reached until reset",
+    "description": "This verifies that the lobby does not reappear while the game-over screen is still active.",
+    "category": "Game Over and Reset",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Reach a winning game state"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a victory modal is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the lobby is not displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC033",
+    "title": "Skip modifiers and let the roll resolve",
+    "description": "Verifies that declining modifiers closes the modifier window and allows the roll to resolve normally.",
+    "category": "Dice Roll and Modifier Phase",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Join the shared tavern lobby with an active game in progress"
+      },
+      {
+        "type": "action",
+        "description": "Trigger a pending roll window"
+      },
+      {
+        "type": "action",
+        "description": "Decline to use any modifiers"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the modifier window closes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the roll resolves to a final result"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC034",
+    "title": "Pass on challenging a card play",
+    "description": "Verifies that an opponent can decline to challenge and allow the original card play to continue resolving.",
+    "category": "Challenge Phase",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Join the shared tavern lobby with an active game in progress"
+      },
+      {
+        "type": "action",
+        "description": "Reach an opponent's card play challenge window"
+      },
+      {
+        "type": "action",
+        "description": "Pass the challenge"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the challenge window closes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the original card continues resolving"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC035",
+    "title": "Decline a skill prompt",
+    "description": "Verifies that a player can skip a skill prompt and continue without activating the skill.",
+    "category": "Hero and Leader Skills, Targeting, and Penalties",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Join the shared tavern lobby with an active game in progress"
+      },
+      {
+        "type": "action",
+        "description": "Reach a skill prompt"
+      },
+      {
+        "type": "action",
+        "description": "Decline to use the skill"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the skill prompt is dismissed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify play continues without the skill resolving"
+      }
+    ],
+    "priority": "Low"
+  }
+]

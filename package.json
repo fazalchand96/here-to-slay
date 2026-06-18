@@ -1,0 +1,32 @@
+{
+  "name": "heretoslaybestanden",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\"",
+    "start": "node server.js",
+    "bot": "node bot.js",
+    "test:e2e": "playwright test",
+    "test:e2e:cards": "playwright test test/e2e/cards/",
+    "test:e2e:mobile": "playwright test test/e2e/mobile/",
+    "test:simulation": "concurrently --kill-others \"npm run start\" \"node -e setTimeout(Object,2000) && npm run bot\" \"node -e setTimeout(Object,4000) && npm run bot\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "jsdom": "^29.1.1",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "concurrently": "^10.0.3"
+  }
+}

@@ -1,0 +1,221 @@
+{
+  "implemented": [
+    {
+      "name": "Bad Axe",
+      "id": "DESTROY_HERO"
+    },
+    {
+      "name": "Heavy Bear",
+      "id": "SKILL_HEAVY_BEAR"
+    },
+    {
+      "name": "Dodgy Dealer",
+      "id": "TRADE_HANDS"
+    },
+    {
+      "name": "Lucky Bucky",
+      "id": "SKILL_LUCKY_BUCKY"
+    },
+    {
+      "name": "Tipsy Tootie",
+      "id": "SKILL_TIPSY_TOOTIE"
+    },
+    {
+      "name": "Guiding Light",
+      "id": "SKILL_GUIDING_LIGHT"
+    },
+    {
+      "name": "Holy Curselifter",
+      "id": "SKILL_HOLY_CURSELIFTER"
+    },
+    {
+      "name": "Radiant Horn",
+      "id": "SKILL_RADIANT_HORN"
+    },
+    {
+      "name": "Bullseye",
+      "id": "SKILL_BULLSEYE"
+    },
+    {
+      "name": "Lookie Rookie",
+      "id": "SKILL_LOOKIE_ROOKIE"
+    },
+    {
+      "name": "Serious Grey",
+      "id": "SKILL_SERIOUS_GREY"
+    },
+    {
+      "name": "Sharp Fox",
+      "id": "SKILL_SHARP_FOX"
+    },
+    {
+      "name": "Kit Napper",
+      "id": "STEAL_HERO"
+    },
+    {
+      "name": "Meowzio",
+      "id": "SKILL_MEOWZIO"
+    },
+    {
+      "name": "Plundering Puma",
+      "id": "SKILL_PLUNDERING_PUMA"
+    },
+    {
+      "name": "Shurikitty",
+      "id": "SKILL_SHURIKITTY"
+    },
+    {
+      "name": "Silent Shadow",
+      "id": "SKILL_SILENT_SHADOW"
+    },
+    {
+      "name": "Slippery Paws",
+      "id": "SKILL_SLIPPERY_PAWS"
+    },
+    {
+      "name": "Sly Pickings",
+      "id": "SKILL_SLY_PICKINGS"
+    },
+    {
+      "name": "Bun Bun",
+      "id": "SKILL_BUN_BUN"
+    },
+    {
+      "name": "Buttons",
+      "id": "SKILL_BUTTONS"
+    },
+    {
+      "name": "Fluffy",
+      "id": "SKILL_FLUFFY"
+    },
+    {
+      "name": "Hopper",
+      "id": "SKILL_HOPPER"
+    },
+    {
+      "name": "Whiskers",
+      "id": "SKILL_WHISKERS"
+    },
+    {
+      "name": "Wiggles",
+      "id": "SKILL_WIGGLES"
+    }
+  ],
+  "unimplemented": [
+    {
+      "name": "Bear Claw",
+      "id": "SKILL_BEAR_CLAW",
+      "effect": "Pull a card from another player's hand. If it is a Hero card, pull a second card from that player's hand."
+    },
+    {
+      "name": "Beary Wise",
+      "id": "SKILL_BEARY_WISE",
+      "effect": "Each other player must DISCARD a card. Choose one of the discarded cards and add it to your hand."
+    },
+    {
+      "name": "Fury Knuckle",
+      "id": "SKILL_FURY_KNUCKLE",
+      "effect": "Pull a card from another player's hand. If it is a Challenge card, pull a second card from that player's hand."
+    },
+    {
+      "name": "Pan Chucks",
+      "id": "SKILL_PAN_CHUCKS",
+      "effect": "DRAW 2 cards. If at least one of those cards is a Challenge card, you may reveal it, then DESTROY a Hero card."
+    },
+    {
+      "name": "Qi Bear",
+      "id": "SKILL_QI_BEAR",
+      "effect": "DISCARD up to 3 cards. For each card discarded, DESTROY a Hero card."
+    },
+    {
+      "name": "Tough Teddy",
+      "id": "SKILL_TOUGH_TEDDY",
+      "effect": "Each other player with a Fighter in their Party must DISCARD a card."
+    },
+    {
+      "name": "Fuzzy Cheeks",
+      "id": "SKILL_FUZZY_CHEEKS",
+      "effect": "DRAW a card and play a Hero card from your hand immediately."
+    },
+    {
+      "name": "Greedy Cheeks",
+      "id": "SKILL_GREEDY_CHEEKS",
+      "effect": "Each other player must give you a card from their hand."
+    },
+    {
+      "name": "Mellow Dee",
+      "id": "DRAW_AND_PLAY",
+      "effect": "DRAW a card. If that card is a Hero card, you may play it immediately."
+    },
+    {
+      "name": "Napping Nibbles",
+      "id": "SKILL_NAPPING_NIBBLES",
+      "effect": "Do nothing."
+    },
+    {
+      "name": "Peanut",
+      "id": "DRAW_2_CARDS",
+      "effect": "DRAW 2 cards."
+    },
+    {
+      "name": "Calming Voice",
+      "id": "SKILL_CALMING_VOICE",
+      "effect": "Hero cards in your Party cannot be stolen until your next turn."
+    },
+    {
+      "name": "Iron Resolve",
+      "id": "SKILL_IRON_RESOLVE",
+      "effect": "Cards you play cannot be challenged for the rest of your turn."
+    },
+    {
+      "name": "Mighty Blade",
+      "id": "SKILL_MIGHTY_BLADE",
+      "effect": "Hero cards in your Party cannot be destroyed until your next turn."
+    },
+    {
+      "name": "Vibrant Glow",
+      "id": "SKILL_VIBRANT_GLOW",
+      "effect": "+5 to all your rolls until the end of your turn."
+    },
+    {
+      "name": "Wise Shield",
+      "id": "SKILL_WISE_SHIELD",
+      "effect": "+3 to all your rolls until the end of your turn."
+    },
+    {
+      "name": "Hook",
+      "id": "SKILL_HOOK",
+      "effect": "Play an item card from your hand immediately and DRAW a card."
+    },
+    {
+      "name": "Quick Draw",
+      "id": "SKILL_QUICK_DRAW",
+      "effect": "DRAW 2 cards. If at least one of those cards is an item card, you may play one of them immediately."
+    },
+    {
+      "name": "Wildshot",
+      "id": "SKILL_WILDSHOT",
+      "effect": "DRAW 3 cards and DISCARD a card."
+    },
+    {
+      "name": "Wily Red",
+      "id": "SKILL_WILY_RED",
+      "effect": "DRAW cards until you have 7 cards in your hand."
+    },
+    {
+      "name": "Smooth Mimimeow",
+      "id": "SKILL_SMOOTH_MIMIMEOW",
+      "effect": "Pull a card from the hand of each other player with a Thief in their Party."
+    },
+    {
+      "name": "Snowball",
+      "id": "SKILL_SNOWBALL",
+      "effect": "DRAW a card. If it is a Magic card, you may play it immediately and DRAW a second card."
+    },
+    {
+      "name": "Spooky",
+      "id": "SKILL_SPOOKY",
+      "effect": "Each other player must SACRIFICE a Hero card."
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+testsprite_tests\tmp\config.json
+
+# Dependencies
+node_modules/
+
+# Playwright test artifacts
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+test-screenshots/
+
+# Local env / secrets
+.env
+.env.*
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*

@@ -1,0 +1,198 @@
+{
+  "implemented": [
+    {
+      "name": "Bad Axe",
+      "id": "DESTROY_HERO"
+    },
+    {
+      "name": "Bear Claw",
+      "id": "SKILL_BEAR_CLAW"
+    },
+    {
+      "name": "Beary Wise",
+      "id": "SKILL_BEARY_WISE"
+    },
+    {
+      "name": "Fury Knuckle",
+      "id": "SKILL_FURY_KNUCKLE"
+    },
+    {
+      "name": "Heavy Bear",
+      "id": "SKILL_HEAVY_BEAR"
+    },
+    {
+      "name": "Pan Chucks",
+      "id": "SKILL_PAN_CHUCKS"
+    },
+    {
+      "name": "Qi Bear",
+      "id": "SKILL_QI_BEAR"
+    },
+    {
+      "name": "Tough Teddy",
+      "id": "SKILL_TOUGH_TEDDY"
+    },
+    {
+      "name": "Dodgy Dealer",
+      "id": "TRADE_HANDS"
+    },
+    {
+      "name": "Mellow Dee",
+      "id": "DRAW_AND_PLAY"
+    },
+    {
+      "name": "Napping Nibbles",
+      "id": "SKILL_NAPPING_NIBBLES"
+    },
+    {
+      "name": "Peanut",
+      "id": "DRAW_2_CARDS"
+    },
+    {
+      "name": "Tipsy Tootie",
+      "id": "SKILL_TIPSY_TOOTIE"
+    },
+    {
+      "name": "Calming Voice",
+      "id": "SKILL_CALMING_VOICE"
+    },
+    {
+      "name": "Guiding Light",
+      "id": "SKILL_GUIDING_LIGHT"
+    },
+    {
+      "name": "Holy Curselifter",
+      "id": "SKILL_HOLY_CURSELIFTER"
+    },
+    {
+      "name": "Iron Resolve",
+      "id": "SKILL_IRON_RESOLVE"
+    },
+    {
+      "name": "Mighty Blade",
+      "id": "SKILL_MIGHTY_BLADE"
+    },
+    {
+      "name": "Radiant Horn",
+      "id": "SKILL_RADIANT_HORN"
+    },
+    {
+      "name": "Vibrant Glow",
+      "id": "SKILL_VIBRANT_GLOW"
+    },
+    {
+      "name": "Wise Shield",
+      "id": "SKILL_WISE_SHIELD"
+    },
+    {
+      "name": "Bullseye",
+      "id": "SKILL_BULLSEYE"
+    },
+    {
+      "name": "Lookie Rookie",
+      "id": "SKILL_LOOKIE_ROOKIE"
+    },
+    {
+      "name": "Sharp Fox",
+      "id": "SKILL_SHARP_FOX"
+    },
+    {
+      "name": "Wily Red",
+      "id": "SKILL_WILY_RED"
+    },
+    {
+      "name": "Kit Napper",
+      "id": "STEAL_HERO"
+    },
+    {
+      "name": "Silent Shadow",
+      "id": "SKILL_SILENT_SHADOW"
+    },
+    {
+      "name": "Slippery Paws",
+      "id": "SKILL_SLIPPERY_PAWS"
+    },
+    {
+      "name": "Smooth Mimimeow",
+      "id": "SKILL_SMOOTH_MIMIMEOW"
+    },
+    {
+      "name": "Bun Bun",
+      "id": "SKILL_BUN_BUN"
+    },
+    {
+      "name": "Fluffy",
+      "id": "SKILL_FLUFFY"
+    },
+    {
+      "name": "Hopper",
+      "id": "SKILL_HOPPER"
+    }
+  ],
+  "unimplemented": [
+    {
+      "name": "Fuzzy Cheeks",
+      "id": "SKILL_FUZZY_CHEEKS"
+    },
+    {
+      "name": "Greedy Cheeks",
+      "id": "SKILL_GREEDY_CHEEKS"
+    },
+    {
+      "name": "Lucky Bucky",
+      "id": "SKILL_LUCKY_BUCKY"
+    },
+    {
+      "name": "Hook",
+      "id": "SKILL_HOOK"
+    },
+    {
+      "name": "Quick Draw",
+      "id": "SKILL_QUICK_DRAW"
+    },
+    {
+      "name": "Serious Grey",
+      "id": "SKILL_SERIOUS_GREY"
+    },
+    {
+      "name": "Wildshot",
+      "id": "SKILL_WILDSHOT"
+    },
+    {
+      "name": "Meowzio",
+      "id": "SKILL_MEOWZIO"
+    },
+    {
+      "name": "Plundering Puma",
+      "id": "SKILL_PLUNDERING_PUMA"
+    },
+    {
+      "name": "Shurikitty",
+      "id": "SKILL_SHURIKITTY"
+    },
+    {
+      "name": "Sly Pickings",
+      "id": "SKILL_SLY_PICKINGS"
+    },
+    {
+      "name": "Buttons",
+      "id": "SKILL_BUTTONS"
+    },
+    {
+      "name": "Snowball",
+      "id": "SKILL_SNOWBALL"
+    },
+    {
+      "name": "Spooky",
+      "id": "SKILL_SPOOKY"
+    },
+    {
+      "name": "Whiskers",
+      "id": "SKILL_WHISKERS"
+    },
+    {
+      "name": "Wiggles",
+      "id": "SKILL_WIGGLES"
+    }
+  ]
+}

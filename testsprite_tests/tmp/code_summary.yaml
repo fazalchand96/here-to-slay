@@ -1,0 +1,163 @@
+version: "2"
+type: frontend
+tech_stack:
+  - JavaScript (vanilla ES, no framework, no build step)
+  - HTML5 / CSS3
+  - Socket.IO client (real-time websocket transport)
+  - Progressive Web App (service worker, manifest, installable, landscape-only)
+  - Node.js / Express / Socket.IO authoritative backend (server.js serves the client)
+routes:
+  - path: /
+    file: public/index.html
+    auth_required: false
+    description: Single-page application. All screens (lobby, game board, modals, game over) are overlays toggled client-side; there is no client-side router and no other navigable URL.
+features:
+  - name: Lobby and Party Leader Selection
+    description: Player enters a hero name, rolls/rerolls and locks in a Party Leader from a shared depleting pool, sees other seated players, and the host starts the match once everyone has a leader.
+    files:
+      - public/index.html
+      - public/app.js
+    entry_route: /
+    user_interactions:
+      - Type a hero name into the "Enter your hero's name..." input
+      - Click a Party Leader in the leader grid to roll one
+      - Reroll or lock-in the rolled leader
+      - See other players appear on the tavern board
+      - Click "ENTER THE DUNGEON" (host only) to start the game
+    api_calls:
+      - method: SOCKET
+        endpoint: set_player_name
+      - method: SOCKET
+        endpoint: request_lobby_data
+      - method: SOCKET
+        endpoint: roll_leader
+      - method: SOCKET
+        endpoint: reroll_leader
+      - method: SOCKET
+        endpoint: select_leader
+      - method: SOCKET
+        endpoint: start_game
+    auth_required: false
+  - name: Turn Actions
+    description: On the active player's turn, spend Action Points to draw a card, play a card from hand, reload (discard hand and draw five), attack a monster, or end the turn.
+    files:
+      - public/app.js
+      - public/index.html
+    entry_route: /
+    user_interactions:
+      - Click DRAW to draw a card (1 AP)
+      - Click RELOAD to discard hand and draw five (3 AP)
+      - Click a card in hand to inspect and play it
+      - Open the BOARD modal and attack a monster (2 AP)
+      - Click END to end the turn
+      - Watch the AP counter update
+    api_calls:
+      - method: SOCKET
+        endpoint: draw_card_action
+      - method: SOCKET
+        endpoint: discard_and_draw_five_action
+      - method: SOCKET
+        endpoint: playCard
+      - method: SOCKET
+        endpoint: play_from_hand
+      - method: SOCKET
+        endpoint: attackMonster
+      - method: SOCKET
+        endpoint: end_turn
+    auth_required: false
+  - name: Dice Roll and Modifier Phase
+    description: Skill and attack rolls trigger a 2d6 roll with passives; a timed window lets any player play Modifier cards or pass before the roll resolves.
+    files:
+      - public/app.js
+      - public/index.html
+    entry_route: /
+    user_interactions:
+      - Click ROLL DICE to execute a manual roll
+      - Drag or click a Modifier card to stage it during the modifier window
+      - Click PASS / NO MODIFIERS to decline
+      - See the dice breakdown and final result
+    api_calls:
+      - method: SOCKET
+        endpoint: execute_roll
+      - method: SOCKET
+        endpoint: submit_modifier_action
+    auth_required: false
+  - name: Challenge Phase
+    description: When a Hero, Item, or Magic card is played, opponents may play a Challenge card, triggering a roll-off before the card resolves.
+    files:
+      - public/app.js
+      - public/index.html
+    entry_route: /
+    user_interactions:
+      - Select a Challenge card from hand
+      - Click PLAY CHALLENGE or PASS
+    api_calls:
+      - method: SOCKET
+        endpoint: play_challenge
+      - method: SOCKET
+        endpoint: pass_challenge
+    auth_required: false
+  - name: Hero and Leader Skills and Targeting
+    description: Use Party Leader and Hero skills, choose targets (cards, players, discards), resolve immediate plays, and handle discard/sacrifice penalties.
+    files:
+      - public/app.js
+      - public/index.html
+    entry_route: /
+    user_interactions:
+      - Click YES / NO on the Use Skill prompt
+      - Select a target card or player when prompted by the target banner
+      - Pick a card from a deck-peek, discard-search, or global-resolution modal
+      - Choose Play Immediately or Keep in Hand
+      - Select a card for a mandatory discard or sacrifice
+    api_calls:
+      - method: SOCKET
+        endpoint: use_hero_skill
+      - method: SOCKET
+        endpoint: use_leader_skill
+      - method: SOCKET
+        endpoint: decline_hero_skill
+      - method: SOCKET
+        endpoint: submit_skill_target
+      - method: SOCKET
+        endpoint: target_selected
+      - method: SOCKET
+        endpoint: select_peek_card
+      - method: SOCKET
+        endpoint: submit_global_action
+      - method: SOCKET
+        endpoint: resolve_global_action
+      - method: SOCKET
+        endpoint: resolve_immediate_play
+      - method: SOCKET
+        endpoint: submit_penalty_discard
+      - method: SOCKET
+        endpoint: submit_penalty_sacrifice
+      - method: SOCKET
+        endpoint: play_item_action
+    auth_required: false
+  - name: Game Over and Reset
+    description: When a player slays 3 monsters or assembles 6 different classes, a victory modal shows the winner and reason; players can return to the lobby.
+    files:
+      - public/app.js
+      - public/index.html
+    entry_route: /
+    user_interactions:
+      - See the victory modal with winner name and reason
+      - Click "Back to Lobby" to reset
+    api_calls:
+      - method: SOCKET
+        endpoint: request_game_reset
+    auth_required: false
+known_limitations:
+  - issue: Game is real-time multiplayer requiring 2-6 connected clients; a single automated browser session can reach the lobby and roll a leader but cannot start or play a full match alone (the host can only start once all seated players have a leader, and turns alternate between players).
+    location: public/app.js, server.js
+    impact: Automated single-session frontend tests are limited mostly to lobby/leader-selection UI; full gameplay flows require multiple concurrent players.
+  - issue: There is no authentication or login; identity is just a typed name tied to a socket connection.
+    location: public/app.js
+    impact: needLogin should be false for the test plan.
+  - issue: UI is landscape-only and shows a rotation-lock overlay in portrait; mobile/portrait viewports block interaction.
+    location: public/index.html, public/style.css
+    impact: Tests must run in a landscape (wide) viewport.
+  - issue: On any player disconnect the server resets the entire game back to LOBBY (observers not supported).
+    location: server.js
+    impact: A flaky/closing test session can reset state for all connected players.

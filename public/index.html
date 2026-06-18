@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Here To Slay Mobile</title>
+    <meta name="description" content="A multiplayer online card game based on Here To Slay. Assemble your party, roll dice, and slay monsters with friends!">
+    
+    <!-- PWA Config & Standalone Web App Meta -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Here To Slay Mobile">
+    <link rel="apple-touch-icon" href="app_icon.png">
+    <meta name="theme-color" content="#1e1b4b">
+
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <!-- Thematic fantasy fonts for the game chat / parchment -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Rotation Lock Overlay -->
+    <div id="rotation-lock-overlay" class="overlay hidden" style="z-index: 10000; flex-direction: column;">
+        <div class="glass-panel" style="max-width: 400px; padding: 30px;">
+            <div style="font-size: 4.5rem; margin-bottom: 20px; animation: rotateDevice 2.5s infinite ease-in-out; display: inline-block;">🔄</div>
+            <h1 style="font-size: 2.2rem; margin-bottom: 10px;">Landscape Only</h1>
+            <p style="color: var(--text-muted); margin-bottom: 0;">Please rotate your device to Landscape orientation to play.</p>
+        </div>
+    </div>
+
+    <!-- Lobby Screen -->
+    <div id="lobby-modal" class="overlay">
+        <div class="glass-panel lobby-panel">
+            <div class="lobby-col lobby-col-left">
+                <h1 class="tavern-title">The Prancing Pony</h1>
+                <p class="tavern-subtitle">Take a seat, grab an ale, and prepare to slay.</p>
+                <div id="lobby-players" class="tavern-board"></div>
+                <input type="text" id="player-name-input" placeholder="Enter your hero's name..." class="tavern-input">
+            </div>
+            <div class="lobby-col lobby-col-right">
+                <div id="leader-selection-container" class="tavern-leader-grid"></div>
+                <div id="lobby-waiting-msg" style="margin-top:14px; color: #fbbf24; font-weight: bold; font-size: 1.1rem; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">Waiting for players...</div>
+                <button id="start-game-btn" class="action-btn hidden start-btn">ENTER THE DUNGEON</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Target Banner -->
+    <div id="target-banner" class="hidden">
+        <h2 id="target-banner-text">Waiting for opponent to select a target...</h2>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameover-screen" class="overlay hidden">
+        <div class="glass-panel">
+            <h1 id="victory-text">Game Over</h1>
+            <p>Refresh the page to play again.</p>
+        </div>
+    </div>
+
+    <!-- Notifications -->
+    <div id="notification-area"></div>
+
+    <!-- Opponent Modal Overlay -->
+    <div id="opponent-modal" class="overlay hidden" style="z-index: 10500;">
+        <div class="glass-panel large" style="position: relative; max-width: 800px; width: 90%; max-height: 85vh; display: flex; flex-direction: column;">
+            <button id="opponent-modal-close-btn" class="close-btn" onclick="closeOpponentModal()">&times;</button>
+            <h1 id="opponent-modal-title" style="margin-bottom: 20px;">Opponent Name</h1>
+            <div id="opponent-modal-content" class="card-container" style="flex: 1; overflow-y: auto; display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; padding: 10px;">
+                <!-- Opponent cards go here -->
+            </div>
+            <button class="action-btn" onclick="closeOpponentModal()" style="background: #ef4444; margin-top: 15px; width: 200px; align-self: center;">Close</button>
+        </div>
+    </div>
+
+    <!-- Victory Modal -->
+    <div id="victory-modal" class="overlay hidden" style="z-index: 9999; flex-direction: column; background: rgba(0,0,0,0.9);">
+        <div class="glass-panel" style="background: rgba(255, 215, 0, 0.1); border-color: rgba(255, 215, 0, 0.5); box-shadow: 0 0 50px rgba(255, 215, 0, 0.3);">
+            <h1 id="victory-winner-name" style="font-size: 4rem; color: #ffd700; text-shadow: 0 0 20px #ffd700; margin-bottom: 10px; text-transform: uppercase;">WINNER NAME</h1>
+            <h3 id="victory-reason" style="color: #fff; font-size: 1.5rem; margin-bottom: 30px;">Reason goes here</h3>
+            <button class="action-btn" onclick="requestGameReset()" style="background: linear-gradient(45deg, #ffd700, #ff8c00); color: #000; font-weight: bold; font-size: 1.2rem; padding: 15px 30px; border: none; border-radius: 8px; cursor: pointer;">Back to Lobby</button>
+        </div>
+    </div>
+
+    <!-- Discard Pile Search Modal -->
+    <div id="discard-search-modal" class="overlay hidden" style="z-index: 2000;">
+        <div class="glass-panel" style="max-width: 800px; width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
+            <h2 id="discard-search-title">Search Discard Pile</h2>
+            <div id="discard-search-cards" class="card-container" style="flex-wrap: wrap; overflow-y: auto; justify-content: center; margin: 20px 0; padding: 10px;">
+                <!-- Cards injected here -->
+            </div>
+            <button class="action-btn" onclick="cancelDiscardSearch()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Read-only viewer for the full discard pile (tap the discard pile to open) -->
+    <div id="discard-viewer-modal" class="overlay hidden" style="z-index: 10500;">
+        <div class="glass-panel large" style="position: relative; max-width: 800px; width: 90%; max-height: 85vh; display: flex; flex-direction: column;">
+            <button class="close-btn" onclick="closeDiscardViewer()">&times;</button>
+            <h1 id="discard-viewer-title" style="margin-bottom: 20px;">Discard Pile</h1>
+            <div id="discard-viewer-content" class="card-container" style="flex: 1; overflow-y: auto; display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; padding: 10px;">
+                <!-- Discard cards injected here (most recent first) -->
+            </div>
+            <button class="action-btn" onclick="closeDiscardViewer()" style="background: #ef4444; margin-top: 15px; width: 200px; align-self: center;">Close</button>
+        </div>
+    </div>
+
+    <!-- Deck Peeking Modal -->
+    <div id="deck-peek-modal" class="overlay hidden" style="z-index: 2000;">
+        <div class="glass-panel" style="max-width: 800px; width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
+            <h2 id="deck-peek-title">Look at Top Cards</h2>
+            <p style="text-align: center; margin-bottom: 15px;">Select a card to add to your hand.</p>
+            <div id="deck-peek-cards" class="card-container" style="justify-content: center; margin-bottom: 20px;">
+                <!-- Cards injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Mandatory Discard Modal -->
+    <div id="mandatory-discard-modal" class="overlay hidden" style="z-index: 2100;">
+        <div class="glass-panel" style="max-width: 800px; width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
+            <h2 id="mandatory-discard-title" style="color: #ef4444;">Mandatory Discard</h2>
+            <p id="mandatory-discard-message" style="text-align: center; margin-bottom: 15px;">You must discard a card from your hand.</p>
+            <div id="mandatory-discard-cards" class="card-container" style="flex-wrap: wrap; overflow-y: auto; justify-content: center; margin-bottom: 20px; padding: 10px;">
+                <!-- Cards injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Global Resolution Modal -->
+    <div id="global-resolution-modal" class="overlay hidden" style="z-index: 2100;">
+        <div class="glass-panel" style="max-width: 800px; width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
+            <h2 id="global-resolution-title" style="color: #10b981;">Choose a Discarded Card</h2>
+            <p style="text-align: center; margin-bottom: 15px;">Select one of the discarded cards to add to your hand.</p>
+            <div id="global-resolution-cards" class="card-container" style="flex-wrap: wrap; overflow-y: auto; justify-content: center; margin-bottom: 20px; padding: 10px;">
+                <!-- Cards injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Immediate Play Modal -->
+    <div id="immediate-play-modal" class="overlay hidden" style="z-index: 2200;">
+        <div class="glass-panel" style="max-width: 500px; text-align: center;">
+            <h2 style="color: #f59e0b;">Play Immediately?</h2>
+            <p style="margin-bottom: 20px;">You drew this card. Because of your slain monster's effect, you may play it right now without spending Action Points.</p>
+            <div id="immediate-play-card" style="display: flex; justify-content: center; margin-bottom: 20px;"></div>
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button class="action-btn" onclick="resolveImmediatePlay('PLAY')" style="background: #10b981; flex: 1;">Play Immediately (0 AP)</button>
+                <button class="action-btn primary" onclick="resolveImmediatePlay('KEEP')" style="flex: 1;">Keep in Hand</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="app-container" class="app-container hidden">
+    <!-- Game Board -->
+    <div id="game-board" class="game-board">
+        <!-- TOP ROW: Opponents Bar -->
+        <div id="opponents-bar"></div>
+
+        <!-- ROW 3: Action Bar -->
+        <div class="action-bar" id="player-controls">
+            <div id="waiting-overlay" class="hidden">
+                <h2>Waiting for Opponent...</h2>
+            </div>
+            <div id="turn-indicator" class="hidden">YOUR TURN</div>
+            <div class="player-profile-box" style="display: none;">
+                <div class="ap-display">AP: <span id="player-ap">0</span>/3</div>
+            </div>
+
+            <div class="btn-group">
+                <button id="view-board-btn" class="action-btn" onclick="document.getElementById('board-modal').classList.remove('hidden')" style="background: var(--accent);"><div class="action-icon">BOARD<br><span>(Monsters)</span></div></button>
+                <button id="draw-card-btn" class="action-btn" disabled title="Draw Card (1 AP)"><div class="action-icon">DRAW<br><span>-1 AP</span></div></button>
+                <button id="discard-draw-btn" class="action-btn" disabled title="Discard Hand & Draw 5 (3 AP)"><div class="action-icon">RELOAD<br><span>-3 AP</span></div></button>
+                <button id="end-turn-btn" class="action-btn primary" disabled title="End Turn"><div class="action-icon">END<br><span> </span></div></button>
+            </div>
+        </div>
+
+        <!-- ROW 4: Player Area -->
+        <div id="player-zone">
+
+            <div id="player-assets" style="flex: 1; display: flex; flex-direction: column; gap: 10px;">
+
+                <!-- Party Zone -->
+
+                <div class="row party-zone" id="party-zone">
+
+                    <div class="area-label">Your Party</div>
+
+                    <div class="card-container" id="player-party">
+
+                        <!-- Player party cards -->
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- Hand Zone -->
+
+                <div class="row hand-zone" id="hand-zone">
+
+                    <div class="area-label">Your Hand</div>
+
+                    <div class="card-container hand-container" id="player-hand">
+
+                        <!-- Player hand cards -->
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <div id="event-console" style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.4); border-radius: 12px; border: 1px solid var(--glass-border); padding: 15px; position: relative; overflow: hidden;">
+
+                
+
+                <!-- Skill Prompt Panel -->
+
+                <div id="skill-prompt-modal" class="hidden" style="width: 100%; text-align: center; overflow-y: auto;">
+
+                    <h1>Use Skill?</h1>
+
+                    <p id="skill-prompt-text">Would you like to use [Hero Name]'s skill now for 0 AP?</p>
+
+                    <div style="display: flex; gap: 20px; justify-content: center; margin-top: 20px;">
+
+                        <button id="skill-prompt-yes" class="action-btn">YES (0 AP)</button>
+
+                        <button id="skill-prompt-no" class="action-btn" style="background: #ef4444;">NO / PASS</button>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- Modifier Panel -->
+
+                <div id="modifier-modal" class="hidden" style="width: 100%; text-align: center; overflow-y: auto; max-height: 100%;">
+
+                    <h1 id="modifier-title">Dice Roll Pending...</h1>
+
+                    <p id="modifier-text" style="font-size: 1.2rem; color: var(--success); font-weight: bold; margin-bottom: 10px;">Player rolled 0</p>
+
+                    <div id="dice-breakdown-container"></div>
+
+                    <div class="area-label" style="position: relative; margin-bottom: 10px; display: inline-block;">Play a Modifier or Pass</div>
+
+                    <div id="modifier-cards" class="card-container" style="min-height: 150px; margin-bottom: 20px; flex-wrap: wrap;">
+
+                        <!-- Modifier cards populated here -->
+
+                    </div>
+
+                    <button id="modifier-pass-btn" class="action-btn" style="background: #ef4444; width: 200px;">PASS</button>
+
+                </div>
+
+
+
+                <!-- Challenge Panel -->
+
+                <div id="challenge-modal" class="hidden" style="width: 100%; text-align: center; overflow-y: auto; max-height: 100%;">
+
+                    <h1 id="challenge-title">Challenge Pending...</h1>
+
+                    <p id="challenge-text" style="font-size: 1.2rem; color: var(--warning); font-weight: bold; margin-bottom: 10px;">Player is playing a card.</p>
+
+                    <div id="challenge-card-display" style="display: flex; justify-content: center; margin-bottom: 10px;"></div>
+
+                    <div id="challenge-action-area">
+
+                        <div class="area-label" style="position: relative; margin-bottom: 5px; display: inline-block;">Play a Challenge or Pass</div>
+
+                        <div id="challenge-cards" class="card-container" style="min-height: 150px; margin-bottom: 10px; flex-wrap: wrap;">
+
+                            <!-- Challenge cards populated here -->
+
+                        </div>
+
+                        <div class="challenge-buttons-container" style="display: flex; justify-content: center; gap: 10px;">
+
+                            <button id="challenge-play-btn" class="action-btn challenge-play" style="width: 150px;" disabled>PLAY CHALLENGE</button>
+
+                            <button id="challenge-pass-btn" class="action-btn" style="background: #ef4444; width: 150px;">PASS</button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- Dice Panel -->
+
+                <div id="dice-overlay" class="hidden" style="width: 100%; text-align: center; overflow-y: auto; max-height: 100%; display: flex; flex-direction: column; align-items: center;">
+
+                    <h1 id="dice-reason" style="margin-bottom: 10px; font-size: 1.5rem;">Rolling...</h1>
+
+                    <div id="dice-passives-container" style="display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; min-height: 30px; flex-wrap: wrap;">
+
+                        <!-- Passives injected here -->
+
+                    </div>
+
+                    <div id="dice-container" style="display: flex; justify-content: center; gap: 30px; margin-bottom: 20px; perspective: 1000px; transform: scale(0.8);">
+
+                        <div class="die die-1" id="die1"></div>
+
+                        <div class="die die-2" id="die2"></div>
+
+                    </div>
+
+                    <div id="dice-action-area" style="margin-bottom: 10px;">
+
+                        <button id="manual-roll-btn" class="action-btn primary" style="font-size: 1.2rem; padding: 10px 30px; display: none;" onclick="executeManualRoll()">ROLL DICE</button>
+
+                        <div id="waiting-roll-text" style="font-size: 1.1rem; color: var(--warning); display: none;">Waiting for player to roll...</div>
+
+                    </div>
+
+                    <h2 id="math-breakdown-banner" style="font-size: 1.5rem; margin-bottom: 10px; color: #ffd700; text-shadow: 0 0 10px rgba(255,215,0,0.5); display: none;">[🎲 ?] + [🎲 ?] = ?</h2>
+
+                    <div id="modifier-staging-area" class="card-container hidden" style="min-height: 120px; justify-content: center; margin-top: 10px; border-top: 2px solid rgba(255,255,255,0.1); padding-top: 10px; position: relative;">
+
+                        <!-- Modifier cards drop here -->
+
+                    </div>
+
+                    <div id="dice-final-result" style="font-size: 2rem; font-weight: bold; color: var(--success); margin-top: 10px; opacity: 0; transition: opacity 0.3s;"></div>
+
+                    <div id="dice-hand-modifiers" class="card-container" style="min-height: 120px; justify-content: center; margin-top: 10px; padding-top: 10px; flex-wrap: wrap;">
+
+                        <!-- Playable hand modifiers drop here -->
+
+                    </div>
+
+                    <button id="dice-pass-btn" class="action-btn" style="background: #ef4444; margin-top: 10px; display: none; padding: 10px 20px; font-size: 1rem;" onclick="passModifierPhase()">NO MODIFIERS (PASS)</button>
+
+                </div>
+
+
+
+                <!-- Default State: scrollable event chat log -->
+
+                <div id="event-console-empty" style="display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; height: 100%; width: 100%;">
+
+                    <div id="chat-panel">
+
+                        <div class="event-log-header" onclick="toggleChat()">Game Chat <span id="chat-caret">▴</span></div>
+
+                        <div id="event-log" onclick="if(!this.classList.contains('expanded')) toggleChat(true)">
+                            <div class="event-log-empty">Waiting for events…</div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    </div>
+
+    <!-- Inspector Modal Overlay -->
+    <div id="inspector-modal" class="overlay hidden" style="z-index: 10500;">
+        <div class="glass-panel" style="max-width: 480px; width: 90%; max-height: 92vh; overflow-y: auto; position: relative;">
+            <button id="inspector-close-btn" class="close-btn" onclick="closeInspectorModal()">&times;</button>
+            <div id="inspector-modal-image-container" style="margin-bottom: 12px; display: flex; justify-content: center;">
+                <img id="inspector-modal-image" src="" alt="Card Image" style="max-height: 28vh; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.6);">
+            </div>
+            <div id="inspector-modal-details" style="text-align: center; margin-bottom: 12px;">
+                <h2 id="inspector-modal-name" style="font-size: 1.4rem; margin-bottom: 4px;">Card Name</h2>
+                <h4 id="inspector-modal-type" style="color: var(--accent); margin-bottom: 8px; font-size: 0.9rem;">Card Type</h4>
+                <p id="inspector-modal-description" style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.45; text-align: left; padding: 10px; background: rgba(0,0,0,0.25); border-radius: 8px; margin: 0;"></p>
+            </div>
+            <div id="inspector-modal-actions" style="display: flex; flex-direction: column; gap: 10px; justify-content: center;">
+                <!-- Dynamic actions injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Board Modal -->
+    <div id="board-modal" class="overlay hidden" style="z-index: 9000;">
+        <div class="glass-panel large" style="position:relative; width:95%; max-height:90vh; overflow-y:auto;">
+            <button class="close-btn" onclick="document.getElementById('board-modal').classList.add('hidden')">&times;</button>
+            <h2 style="margin-bottom:15px;">The Board</h2>
+            <div id="board-modal-content" style="display:flex; flex-direction:column; gap:20px;">
+                <div class="deck-area">
+                    <div class="card card-back" id="main-deck">
+                        <span>Main Deck</span>
+                    </div>
+                    <div class="card-container" id="discard-pile">
+                        <div class="card empty-slot">Discard</div>
+                    </div>
+                </div>
+                <div class="monsters-area">
+                    <div class="card-container" id="active-monsters">
+                        <!-- Monster cards -->
+                    </div>
+                </div>
+                <div id="global-discard-pool" class="hidden" style="border: 2px dashed #ffd700; padding: 10px; margin-left: 20px;">
+                    <h3>Discard Pool</h3>
+                    <div id="pool-cards" class="card-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="app.js"></script>
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('[PWA] Service Worker registered, scope:', reg.scope))
+                    .catch(err => console.warn('[PWA] Service Worker registration failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>

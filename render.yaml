@@ -1,0 +1,18 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# A single always-on Node web service. The Socket.IO server keeps all game
+# state in memory in one process, so it must NOT be scaled past 1 instance.
+services:
+  - type: web
+    name: here-to-slay
+    runtime: node
+    plan: free
+    # Lockfile is committed, so use a clean, reproducible, prod-only install.
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    # The Express static handler serves index.html at "/", returning 200.
+    healthCheckPath: /
+    numInstances: 1
+    envVars:
+      # server.js reads process.env.PORT (Render injects it automatically).
+      - key: NODE_VERSION
+        value: "20"

@@ -1,0 +1,290 @@
+[
+  {
+    "name": "Bad Axe",
+    "id": "card_016",
+    "skill_id": "DESTROY_HERO",
+    "effect": "DESTROY a Hero card."
+  },
+  {
+    "name": "Bear Claw",
+    "id": "card_017",
+    "skill_id": "SKILL_BEAR_CLAW",
+    "effect": "Pull a card from another player's hand. If it is a Hero card, pull a second card from that player's hand."
+  },
+  {
+    "name": "Beary Wise",
+    "id": "card_018",
+    "skill_id": "SKILL_BEARY_WISE",
+    "effect": "Each other player must DISCARD a card. Choose one of the discarded cards and add it to your hand."
+  },
+  {
+    "name": "Fury Knuckle",
+    "id": "card_019",
+    "skill_id": "SKILL_FURY_KNUCKLE",
+    "effect": "Pull a card from another player's hand. If it is a Challenge card, pull a second card from that player's hand."
+  },
+  {
+    "name": "Heavy Bear",
+    "id": "card_020",
+    "skill_id": "SKILL_HEAVY_BEAR",
+    "effect": "Choose a player. That player must DISCARD 2 cards."
+  },
+  {
+    "name": "Pan Chucks",
+    "id": "card_021",
+    "skill_id": "SKILL_PAN_CHUCKS",
+    "effect": "DRAW 2 cards. If at least one of those cards is a Challenge card, you may reveal it, then DESTROY a Hero card."
+  },
+  {
+    "name": "Qi Bear",
+    "id": "card_022",
+    "skill_id": "SKILL_QI_BEAR",
+    "effect": "DISCARD up to 3 cards. For each card discarded, DESTROY a Hero card."
+  },
+  {
+    "name": "Tough Teddy",
+    "id": "card_023",
+    "skill_id": "SKILL_TOUGH_TEDDY",
+    "effect": "Each other player with a Fighter in their Party must DISCARD a card."
+  },
+  {
+    "name": "Dodgy Dealer",
+    "id": "card_024",
+    "skill_id": "TRADE_HANDS",
+    "effect": "Trade hands with another player."
+  },
+  {
+    "name": "Fuzzy Cheeks",
+    "id": "card_025",
+    "skill_id": "SKILL_FUZZY_CHEEKS",
+    "effect": "DRAW a card and play a Hero card from your hand immediately."
+  },
+  {
+    "name": "Greedy Cheeks",
+    "id": "card_026",
+    "skill_id": "SKILL_GREEDY_CHEEKS",
+    "effect": "Each other player must give you a card from their hand."
+  },
+  {
+    "name": "Lucky Bucky",
+    "id": "card_027",
+    "skill_id": "SKILL_LUCKY_BUCKY",
+    "effect": "Pull a card from another player's hand. If that card is a Hero card, you may play it immediately"
+  },
+  {
+    "name": "Mellow Dee",
+    "id": "card_028",
+    "skill_id": "DRAW_AND_PLAY",
+    "effect": "DRAW a card. If that card is a Hero card, you may play it immediately."
+  },
+  {
+    "name": "Napping Nibbles",
+    "id": "card_029",
+    "skill_id": "SKILL_NAPPING_NIBBLES",
+    "effect": "Do nothing."
+  },
+  {
+    "name": "Peanut",
+    "id": "card_030",
+    "skill_id": "DRAW_2_CARDS",
+    "effect": "DRAW 2 cards."
+  },
+  {
+    "name": "Tipsy Tootie",
+    "id": "card_031",
+    "skill_id": "SKILL_TIPSY_TOOTIE",
+    "effect": "Choose a player. STEAL a Hero card from that player's Party and move Tipsy Tootie to that player's Party."
+  },
+  {
+    "name": "Calming Voice",
+    "id": "card_032",
+    "skill_id": "SKILL_CALMING_VOICE",
+    "effect": "Hero cards in your Party cannot be stolen until your next turn."
+  },
+  {
+    "name": "Guiding Light",
+    "id": "card_033",
+    "skill_id": "SKILL_GUIDING_LIGHT",
+    "effect": "Search the discard pile for a Hero card and add it to your hand."
+  },
+  {
+    "name": "Holy Curselifter",
+    "id": "card_034",
+    "skill_id": "SKILL_HOLY_CURSELIFTER",
+    "effect": "Return a Cursed Item card equipped to a Hero card in your Party to your hand."
+  },
+  {
+    "name": "Iron Resolve",
+    "id": "card_035",
+    "skill_id": "SKILL_IRON_RESOLVE",
+    "effect": "Cards you play cannot be challenged for the rest of your turn."
+  },
+  {
+    "name": "Mighty Blade",
+    "id": "card_036",
+    "skill_id": "SKILL_MIGHTY_BLADE",
+    "effect": "Hero cards in your Party cannot be destroyed until your next turn."
+  },
+  {
+    "name": "Radiant Horn",
+    "id": "card_037",
+    "skill_id": "SKILL_RADIANT_HORN",
+    "effect": "Search the discard pile for a Modifier card and add it it to your hand."
+  },
+  {
+    "name": "Vibrant Glow",
+    "id": "card_038",
+    "skill_id": "SKILL_VIBRANT_GLOW",
+    "effect": "+5 to all your rolls until the end of your turn."
+  },
+  {
+    "name": "Wise Shield",
+    "id": "card_039",
+    "skill_id": "SKILL_WISE_SHIELD",
+    "effect": "+3 to all your rolls until the end of your turn."
+  },
+  {
+    "name": "Bullseye",
+    "id": "card_040",
+    "skill_id": "SKILL_BULLSEYE",
+    "effect": "Look at the top 3 cards of the deck. Add one to your hand, then return the other two to the top of the deck in any order."
+  },
+  {
+    "name": "Hook",
+    "id": "card_041",
+    "skill_id": "SKILL_HOOK",
+    "effect": "Play an item card from your hand immediately and DRAW a card."
+  },
+  {
+    "name": "Lookie Rookie",
+    "id": "card_042",
+    "skill_id": "SKILL_LOOKIE_ROOKIE",
+    "effect": "Search the discard pile for an item card and add it to your hand."
+  },
+  {
+    "name": "Quick Draw",
+    "id": "card_043",
+    "skill_id": "SKILL_QUICK_DRAW",
+    "effect": "DRAW 2 cards. If at least one of those cards is an item card, you may play one of them immediately."
+  },
+  {
+    "name": "Serious Grey",
+    "id": "card_044",
+    "skill_id": "SKILL_SERIOUS_GREY",
+    "effect": "DESTROY a Hero and DRAW a card."
+  },
+  {
+    "name": "Sharp Fox",
+    "id": "card_045",
+    "skill_id": "SKILL_SHARP_FOX",
+    "effect": "Look at another player's hand"
+  },
+  {
+    "name": "Wildshot",
+    "id": "card_046",
+    "skill_id": "SKILL_WILDSHOT",
+    "effect": "DRAW 3 cards and DISCARD a card."
+  },
+  {
+    "name": "Wily Red",
+    "id": "card_047",
+    "skill_id": "SKILL_WILY_RED",
+    "effect": "DRAW cards until you have 7 cards in your hand."
+  },
+  {
+    "name": "Kit Napper",
+    "id": "card_048",
+    "skill_id": "STEAL_HERO",
+    "effect": "STEAL a Hero card."
+  },
+  {
+    "name": "Meowzio",
+    "id": "card_049",
+    "skill_id": "SKILL_MEOWZIO",
+    "effect": "Choose a player. STEAL a Hero from that player and pull a card from that player's hand."
+  },
+  {
+    "name": "Plundering Puma",
+    "id": "card_050",
+    "skill_id": "SKILL_PLUNDERING_PUMA",
+    "effect": "Pull 2 cards from another player's hand. That player may DRAW a card."
+  },
+  {
+    "name": "Shurikitty",
+    "id": "card_051",
+    "skill_id": "SKILL_SHURIKITTY",
+    "effect": "DESTROY a Hero card. If that Hero card had an item card equipped to it, add that item card to your hand instead of moving it to the discard pile."
+  },
+  {
+    "name": "Silent Shadow",
+    "id": "card_052",
+    "skill_id": "SKILL_SILENT_SHADOW",
+    "effect": "Look at another player's hand. Choose a card and add it to your hand."
+  },
+  {
+    "name": "Slippery Paws",
+    "id": "card_053",
+    "skill_id": "SKILL_SLIPPERY_PAWS",
+    "effect": "Pull 2 cards from another player's hand, then DISCARD one of those cards."
+  },
+  {
+    "name": "Sly Pickings",
+    "id": "card_054",
+    "skill_id": "SKILL_SLY_PICKINGS",
+    "effect": "Pull a card from another player's hand. If that card is an item card, you may play it immediately."
+  },
+  {
+    "name": "Smooth Mimimeow",
+    "id": "card_055",
+    "skill_id": "SKILL_SMOOTH_MIMIMEOW",
+    "effect": "Pull a card from the hand of each other player with a Thief in their Party."
+  },
+  {
+    "name": "Bun Bun",
+    "id": "card_056",
+    "skill_id": "SKILL_BUN_BUN",
+    "effect": "Search the discard pile for a Magic card and add it to your hand."
+  },
+  {
+    "name": "Buttons",
+    "id": "card_057",
+    "skill_id": "SKILL_BUTTONS",
+    "effect": "Pull a card from another player's hand. If it is a Magic card, you may play it immediately."
+  },
+  {
+    "name": "Fluffy",
+    "id": "card_058",
+    "skill_id": "SKILL_FLUFFY",
+    "effect": "DESTROY 2 Hero cards"
+  },
+  {
+    "name": "Hopper",
+    "id": "card_059",
+    "skill_id": "SKILL_HOPPER",
+    "effect": "Choose a player. That player must SACRIFICE a Hero card."
+  },
+  {
+    "name": "Snowball",
+    "id": "card_060",
+    "skill_id": "SKILL_SNOWBALL",
+    "effect": "DRAW a card. If it is a Magic card, you may play it immediately and DRAW a second card."
+  },
+  {
+    "name": "Spooky",
+    "id": "card_061",
+    "skill_id": "SKILL_SPOOKY",
+    "effect": "Each other player must SACRIFICE a Hero card."
+  },
+  {
+    "name": "Whiskers",
+    "id": "card_062",
+    "skill_id": "SKILL_WHISKERS",
+    "effect": "STEAL a Hero card and DESTROY a Hero card."
+  },
+  {
+    "name": "Wiggles",
+    "id": "card_063",
+    "skill_id": "SKILL_WIGGLES",
+    "effect": "STEAL a Hero and roll to use its effect immediately"
+  }
+]
