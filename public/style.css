@@ -2314,6 +2314,28 @@ body {
     min-width: 0 !important;
 }
 
+/* Landscape (primary orientation) has width to spare but little height, so the
+   stacked-buttons layout wasted space and left the card small. Show a bigger
+   card and lay the two buttons side-by-side. */
+body.landscape #challenge-card-display .card {
+    height: clamp(150px, 50vh, 210px) !important;
+    max-height: clamp(150px, 50vh, 210px) !important; /* beat the global .card max-height:110px in landscape */
+    min-height: 150px !important;
+    width: auto !important;
+    flex: 0 0 auto !important; /* don't let the flex column compress it */
+}
+body.landscape #challenge-card-display { flex: 0 0 auto !important; }
+body.landscape #event-console #challenge-modal .challenge-buttons-container {
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    max-width: 480px !important;
+    gap: 14px !important;
+}
+body.landscape #event-console #challenge-modal .challenge-buttons-container .action-btn {
+    width: auto !important;
+    flex: 1 1 0 !important;
+}
+
 /* --- OVERLAY MODALS (Phase 5.3) ---
    Reverses the old "console jail": the dice / challenge / skill-prompt panels
    float as centered modals OVER the board in both orientations, instead of
