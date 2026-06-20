@@ -3747,15 +3747,34 @@ body.landscape #player-party .card.card-leader { transform-origin: bottom left; 
 #active-monsters .card-type, #active-monsters .card-info,
 #leader-slot .card-type, #leader-slot .card-info,
 #opponent-modal .card-type, #opponent-modal .card-info,
-#discard-pile .card-type, #discard-pile .card-info {
+#discard-pile .card-type, #discard-pile .card-info,
+#discard-viewer-content .card-type, #discard-viewer-content .card-info,
+#challenge-card-display .card-type, #challenge-card-display .card-info {
     display: none !important;
 }
 #player-party .card-img, #player-hand .card-img, #active-monsters .card-img,
-#leader-slot .card-img, #opponent-modal .card-img, #discard-pile .card-img {
+#leader-slot .card-img, #opponent-modal .card-img, #discard-pile .card-img,
+#discard-viewer-content .card-img, #challenge-card-display .card-img {
     background-size: contain !important;
     background-position: center !important;
     background-repeat: no-repeat !important;
     background-color: #14110a !important;
+}
+
+/* Challenge prompt: show the played card LARGE so it's actually readable (it was
+   tiny before). Full-image like every other in-game card; non-interactive. */
+#challenge-card-display .card {
+    height: clamp(160px, 34vh, 280px) !important;
+    cursor: default !important;
+}
+#challenge-card-display .card:hover {
+    transform: none !important;
+    box-shadow: var(--shadow-card) !important;
+    border-color: transparent !important;
+}
+/* Discard viewer: slightly larger full-image cards so the grid reads well. */
+#discard-viewer-content .card {
+    height: clamp(120px, 26vh, 175px) !important;
 }
 
 /* ============================================================================
