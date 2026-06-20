@@ -3004,6 +3004,74 @@ body {
     100% { box-shadow: 0 10px 20px rgba(0,0,0,0.5), 0 0 20px rgba(16, 185, 129, 0.4); }
 }
 
+/* ── Lobby: party-leader display (right column) — clean vertical stack so the
+   label, card (with its 👑 crown), intro quote, and reroll never overlap. ── */
+.lobby-leader-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    gap: 8px;
+}
+.lobby-leader-label {
+    color: var(--success) !important;
+    font-family: var(--font-display);
+    font-size: clamp(1rem, 3.4vw, 1.4rem);
+    margin: 0 !important;
+}
+/* Non-interactive leader card with headroom above for the crown. */
+.lobby-leader-card {
+    height: clamp(90px, 22vh, 130px) !important;
+    margin-top: 10px !important;
+    cursor: default !important;
+    flex: 0 0 auto !important;
+}
+.lobby-leader-card:hover {
+    transform: none !important;
+    box-shadow: var(--shadow-card) !important;
+    border-color: transparent !important;
+}
+.lobby-leader-intro {
+    color: #fcd9a8 !important;
+    font-style: italic;
+    font-size: clamp(0.8rem, 2.6vw, 0.98rem);
+    line-height: 1.25;
+    margin: 0 !important;
+    max-width: 280px;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+
+/* ── Portrait lobby: stack the two columns vertically (landscape keeps the
+   side-by-side layout). Fixes the overlap where ENTER THE DUNGEON sat on top
+   of the roster and the title/leader collided. ── */
+@media (orientation: portrait) {
+    .lobby-panel {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        justify-content: flex-start !important;
+        gap: 14px !important;
+        width: 92% !important;
+        max-width: 460px !important;
+        padding: 18px 20px !important;
+    }
+    .lobby-col { flex: 0 0 auto !important; }
+    .lobby-col-right {
+        align-items: center !important;
+        border-left: none !important;
+        padding-left: 0 !important;
+        border-top: 1px solid rgba(217, 119, 6, 0.25) !important;
+        padding-top: 14px !important;
+    }
+    .tavern-title {
+        text-align: center !important;
+        font-size: clamp(1.9rem, 8vw, 2.6rem) !important;
+        margin-bottom: 2px !important;
+    }
+    .tavern-subtitle { text-align: center !important; margin-bottom: 10px !important; }
+    .tavern-input { max-width: 100% !important; }
+    .lobby-leader-card { height: clamp(150px, 22vh, 200px) !important; }
+}
+
 /* Short landscape phones: compact the lobby so ROLL FOR LEADER / ENTER THE
    DUNGEON fit without scrolling. */
 @media (max-height: 480px) {

@@ -197,6 +197,38 @@ document.addEventListener('pointerdown', (e) => {
     }
 }, { capture: true, passive: true });
 
+// Party-leader class intro lines. Spoken via the Web Speech API (no asset files)
+// and shown as a quote under the leader card when a leader is assigned/rerolled.
+const CLASS_INTROS = {
+    Fighter:  "I am the Fighter. Strength settles every argument.",
+    Bard:     "I am the Bard. Let the song of battle begin!",
+    Guardian: "I am the Guardian. None shall pass my watch.",
+    Ranger:   "I am the Ranger. My aim never wavers.",
+    Thief:    "I am the Thief. What's yours is already mine.",
+    Wizard:   "I am the Wizard. Power beyond your reckoning."
+};
+function leaderIntroLine(leader) {
+    return (leader && CLASS_INTROS[leader.class]) || "I shall lead this party to glory.";
+}
+// Speak the intro once per distinct leader (guards against lobby re-renders).
+function announceLeader(leader) {
+    if (!leader) return;
+    const key = leader.id || leader.name;
+    if (window._lastLeaderAnnounced === key) return;
+    window._lastLeaderAnnounced = key;
+    if (Sound.isMuted()) return;
+    playSound('skill'); // a small flourish under the voice
+    triggerHaptic([20, 30, 20]);
+    try {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel(); // drop any queued line (e.g. a quick reroll)
+            const u = new SpeechSynthesisUtterance(leaderIntroLine(leader));
+            u.rate = 0.95; u.pitch = 0.9; u.volume = 0.9;
+            window.speechSynthesis.speak(u);
+        }
+    } catch (e) { /* TTS unsupported — the on-screen quote still shows */ }
+}
+
 
 function renderDicePips(value) {
     if (value === '?' || value === '' || value === undefined || value === null || isNaN(value)) {
@@ -1301,11 +1333,11 @@ socket.on('gameStateUpdate', (data) => {
 
                     leaderSelection.innerHTML = `
 
-                        <div style="text-align: center; width: 100%;">
+                        <div class="lobby-leader-display">
 
-                            <h3 style="color: var(--success); margin-bottom: 15px;">Your Party Leader:</h3>
+                            <h3 class="lobby-leader-label">Your Party Leader:</h3>
 
-                            <div class="card card-leader" style="margin: 0 auto; cursor: default; --cc: var(--leader-pink);">
+                            <div class="card card-leader lobby-leader-card" style="--cc: var(--leader-pink);">
 
                                 <div class="card-face">
 
@@ -1323,11 +1355,15 @@ socket.on('gameStateUpdate', (data) => {
 
                             </div>
 
+                            <p class="lobby-leader-intro">&ldquo;${leaderIntroLine(leader)}&rdquo;</p>
+
                             ${rerollBtnHtml}
 
                         </div>
 
                     `;
+
+                    announceLeader(leader);
 
                 } else {
 
@@ -1550,6 +1586,8 @@ socket.on('game_over', (data) => {
 
 
 socket.on('game_reset_complete', () => {
+
+    window._lastLeaderAnnounced = null; // re-announce the leader in the next lobby
 
     // Clean up victory effects
 
