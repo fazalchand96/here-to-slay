@@ -77,9 +77,28 @@ Run targeted specs while iterating (e.g. `test/e2e/mobile/party-scroll.spec.js`,
 - **Portrait**: reordered to party → raised leader → hand → bottom buttons; zone boxes/tray/label removed; everything centered (killed a stray `.monsters-area { margin-left:20px }`); party is a 2-row **horizontal-scroll** grid; hand is a **fanned** scrollable row.
 - **Cards (both)**: full card image fills the frame; bigger; corner number badge removed; party container no longer clips card bottoms; monster red glow tightened.
 
+## 5b. Animation polish pass (emil-design-eng session)
+
+CSS-only, verified against mobile-smoke in **both** orientations (14/14 landscape, 5/5 portrait spot-check). No JS/selector changes.
+- Added a single motion token `--ease-out: cubic-bezier(0.23,1,0.32,1)` (strong ease-out; built-ins are too weak).
+- Removed all 8 `transition: all` declarations → explicit `transform`/`box-shadow`/`filter`/`border-color` lists on `--ease-out`.
+- Modal entrance: `.glass-panel` swapped shared `fadeIn 0.5s` (translateY only) → dedicated `modalPop 0.28s var(--ease-out)` (scale 0.96→1 + fade, origin center per Emil's modal rule).
+- Card lift (`.card`, `#player-hand .card`) now eases on `--ease-out`.
+- `.opponent-chip:active { scale(0.97) }` press feedback (it opens the opponent modal).
+- Bumped `sw.js` CACHE_VERSION `hts-v5` → `hts-v6`.
+- **Not committed yet** (awaiting user OK). Reduced-motion guard already neutralizes `modalPop`.
+- Deliberately skipped: per-AP-gem and per-win-pip fill animations — those regions full-rerender via `setRegionHtml`, so a CSS entrance would re-fire on every unrelated state change (distracting flash). Slay reward toast + monster-death shake already cover that beat.
+
+### 5b-2: event-driven motion (second pass)
+Verified: mobile-smoke 14/14, gameplay.spec 6/6, both orientations spot-checked. No selector/contract changes.
+- **Dice landing bounce** — new `settleDie(el)` helper (app.js, by `renderDicePips`) toggles `.die.settle` (restart-safe reflow) at the two roll-resolution points (challenge roll-off + skill/attack roll). CSS `@keyframes dieSettle` (overshoot→settle, 0.4s) by the `diceThrow` block. `executeManualRoll` only kicks the roll; settle fires in the socket handlers.
+- **Turn-change cue** — `becameMyTurn` block (already fired haptic) now pops the `#turn-indicator` once via `.turn-cue` (`@keyframes turnCue`, 0.6s) then drops the class so the idle `pulse` resumes. The badge is revealed later in the same synchronous render pass, so the anim plays on reveal.
+- Both new keyframes are transform/filter only and covered by the `prefers-reduced-motion` guard.
+- **Skipped (and why):** hand-fan-on-hover — user already likes the static fan, and a hover-spread shifts click targets (e2e flake risk). Modal **exit** transitions — would need to defer `.hidden` on every close path; tests assert immediate hide → higher risk, low reward vs the entrance we already added.
+
 ## 6. TODO / next (for the new chat)
 
-1. **Use the `emil-design-eng` skill** for the remaining polish + **animations**. Good candidates: card hover/lift/select, hand fan on hover, dice-roll motion, modal enter/exit (challenge/inspector/victory), turn-change cue, monster-slain reward, AP-gem fill, page/orientation transitions. (`review-animations` skill exists for critiquing motion — it's manual-invoke only.)
+1. **Use the `emil-design-eng` skill** for any further polish. The obvious candidates are done (5b, 5b-2). Remaining/optional: modal **exit** transitions (needs JS deferral on close paths — see skip note), hand-fan-on-hover (user likes current fan), victory-screen choreography. Good candidates: card hover/lift/select, hand fan on hover, dice-roll motion, modal enter/exit (challenge/inspector/victory), turn-change cue, monster-slain reward, AP-gem fill, page/orientation transitions. (`review-animations` skill exists for critiquing motion — it's manual-invoke only.)
 2. Open layout questions the user may revisit: the **gap between hand and bottom buttons** in portrait; whether the shrunken **deck/discard rail** should be bigger; landscape hand still has the fan overlap (user likes the fan).
 3. **Before shipping**: bump `public/sw.js` `CACHE_VERSION` again (currently `hts-v5`; more shell changes since) and run the **full e2e in both orientations**.
 4. **Committing**: nothing is committed yet — the user hasn't asked to. Confirm before committing/pushing.

@@ -65,6 +65,15 @@ function renderDicePips(value) {
     return html;
 }
 
+// One-shot landing bounce when a die stops tumbling and shows its final face.
+// Restart-safe (remove → reflow → add) so rapid consecutive rolls re-trigger it.
+function settleDie(el) {
+    if (!el) return;
+    el.classList.remove('settle');
+    void el.offsetWidth; // force reflow so the animation replays
+    el.classList.add('settle');
+}
+
 
 
 // Immersive Auto-Fullscreen on first touch/click interaction
@@ -1609,6 +1618,14 @@ function renderBoard(data) {
     const becameMyTurn = isMyTurn && (!previousGameState || previousGameState.activePlayerSocketId !== myId);
     if (becameMyTurn) {
         triggerHaptic(100);
+        // One-shot pop on the turn badge (it's revealed later in this same render
+        // pass), then drop the class so the idle pulse resumes.
+        if (turnIndicator) {
+            turnIndicator.classList.remove('turn-cue');
+            void turnIndicator.offsetWidth;
+            turnIndicator.classList.add('turn-cue');
+            setTimeout(() => turnIndicator.classList.remove('turn-cue'), 650);
+        }
     }
 
     // During the modifier window, compact the dice overlay (smaller dice, tighter
@@ -2917,6 +2934,8 @@ socket.on('dice_roll_pending', (data) => {
                 window.diceRollInterval = null;
                 die1?.classList.remove('rolling');
                 die2?.classList.remove('rolling');
+                settleDie(die1);
+                settleDie(die2);
 
                 if (data.isChallenge) {
                     if (die1) {
@@ -3103,6 +3122,8 @@ socket.on('challenge_individual_roll', (data) => {
         window.diceRollInterval = null;
         die1.classList.remove('rolling');
         die2.classList.remove('rolling');
+        settleDie(die1);
+        settleDie(die2);
 
         const r1 = data.roll1 || 1;
         const r2 = data.roll2 || 1;
