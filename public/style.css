@@ -213,6 +213,18 @@ body {
     color: #ffd700;
     text-shadow: 0 0 18px rgba(255, 215, 0, 0.5);
 }
+/* Winner name: responsive (the inline 4rem overflowed off both edges in portrait)
+   and allowed to wrap, with the panel width-capped so nothing spills out. */
+#victory-winner-name {
+    font-size: clamp(1.8rem, 9vw, 4rem) !important;
+    line-height: 1.05 !important;
+    word-break: break-word !important;
+    max-width: 100% !important;
+}
+#victory-modal .glass-panel {
+    max-width: min(92vw, 720px) !important;
+    box-sizing: border-box !important;
+}
 /* lobby has its own dark tavern background (!important) — keep its text light. */
 .lobby-panel { color: var(--text-main); }
 
@@ -3532,15 +3544,20 @@ input:focus-visible,
     opacity: 0.75 !important;
 }
 
-/* Chat hidden by default; shown as a floating panel when body.chat-open. */
+/* Chat hidden by default; shown as a floating panel when body.chat-open.
+   Anchored TOP-right (under the 🔊/☰ buttons) and height-capped so it never
+   covers the hand at the bottom — same in both orientations. */
 #event-console-empty { display: none !important; }
 body.chat-open #event-console-empty {
     display: flex !important;
     position: fixed !important;
+    top: 50px !important;
     right: 10px !important;
-    bottom: 10px !important;
-    width: min(86vw, 360px) !important;
-    height: min(52vh, 360px) !important;
+    bottom: auto !important;
+    justify-content: flex-start !important;
+    width: min(86vw, 340px) !important;
+    height: auto !important;            /* wrap the chat panel — no empty dead space */
+    max-height: min(64vh, 420px) !important;
     max-width: 86vw !important;
     z-index: 9500 !important;
     box-sizing: border-box !important;
@@ -3549,6 +3566,7 @@ body.chat-open #event-console-empty {
     border: 3px solid var(--wood-dark) !important;
     border-radius: var(--r-panel) !important;
     box-shadow: var(--shadow-panel), 0 0 0 2px rgba(232, 184, 74, 0.35) !important;
+    animation: modalPop 0.22s var(--ease-out) both;
 }
 
 /* Reclaim the old console half in LANDSCAPE: collapse #event-console to zero
@@ -4097,7 +4115,7 @@ body.landscape #event-console {
     background: transparent !important;
     overflow: visible !important;
 }
-body.landscape #event-console-empty { display: none !important; }
+body.landscape:not(.chat-open) #event-console-empty { display: none !important; }
 
 /* Turn indicator / waiting overlay (children of the flattened controls). */
 body.landscape #turn-indicator {
