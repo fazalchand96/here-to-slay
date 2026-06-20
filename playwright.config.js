@@ -36,6 +36,17 @@ module.exports = defineConfig({
                 serviceWorkers: 'block',
             },
         },
+        // Portrait pass for the dual-orientation overhaul (spec §7.8). Tests that
+        // pin their own viewport (e.g. startMobileGame's landscape MOBILE_VIEWPORT)
+        // stay as-is; tests that use the default context viewport run in portrait.
+        {
+            name: 'mobile-portrait',
+            use: {
+                ...devices['Pixel 7'],
+                viewport: { width: 390, height: 844 },
+                serviceWorkers: 'block',
+            },
+        },
     ],
 
     // Auto-start the server before tests; skip if something is already on port 3000

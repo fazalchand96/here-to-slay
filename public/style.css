@@ -12,6 +12,59 @@
     --success: #10b981;
     --warning: #f59e0b; /* Amber — was referenced (challenge text/buttons) but never defined */
     --info: #38bdf8;
+
+    /* ── UI overhaul tokens (Phase 0) — surfaces, frame, radii, spacing, type. ──
+       Existing amber/gold hues above are kept; these ADD the wooden/brass +
+       parchment system from the mockups so elements can reference vars instead of
+       raw hex. Retokenize per element as each one is restyled (no blind replace). */
+
+    /* Surfaces & frame (wooden tray / card edges / parchment) */
+    --wood-lite: #8a6440;
+    --wood: #6b4a2e;
+    --wood-dark: #3e2a18;
+    --card-face: #fdf6e8;   /* parchment card face */
+    --card-edge: #e8d5b0;
+    --card-ink: #3a2a1e;    /* dark text on parchment */
+    --parchment-1: #fffaf0; /* modal body gradient top */
+    --parchment-2: #f3e6cc; /* modal body gradient bottom */
+
+    /* Accent fills used by badges/frames */
+    --roll-blue: #4a90d9;        /* roll-requirement badge */
+    --roll-blue-deep: #2a5a9a;
+    --leader-pink: #e8607a;      /* party-leader inner frame */
+    --leader-pink-deep: #a83a52;
+    --gold: #e8b84a;             /* brass/gold frame (mockup gold) */
+    --gold-deep: #a87818;
+
+    /* Per-class colors (six classes; matches mockup CLASS map) */
+    --class-fighter: #e05a4a;
+    --class-bard: #e89a3a;
+    --class-guardian: #e8c84a;
+    --class-ranger: #5ab85a;
+    --class-thief: #4a90d9;
+    --class-wizard: #9a5ad9;
+
+    /* Radii */
+    --r-card: 8px;
+    --r-panel: 14px;
+    --r-pill: 16px;
+    --r-badge: 50%;
+
+    /* Spacing scale (replaces ad-hoc px as elements are restyled) */
+    --s-1: 4px;
+    --s-2: 8px;
+    --s-3: 12px;
+    --s-4: 16px;
+    --s-6: 24px;
+
+    /* Elevation */
+    --shadow-card: 0 2px 4px rgba(0,0,0,.4);
+    --shadow-panel: 0 20px 50px rgba(0,0,0,.7);
+
+    /* Type — resolves the dead Montserrat/Inter refs. Both fonts below ARE
+       imported in index.html; Montserrat/Inter were not (system fallback). */
+    --font-display: 'Cinzel', Georgia, serif;        /* card names, headers */
+    --font-body: 'Outfit', system-ui, sans-serif;    /* body / UI text */
 }
 
 * {
@@ -37,7 +90,7 @@ html, body {
 }
 
 body {
-    font-family: 'Montserrat', sans-serif;
+    font-family: var(--font-body); /* was 'Montserrat' (never imported → system fallback) */
     color: var(--text-main);
     background-color: #1e1515; /* Warm dark fallback */
     background: 
@@ -83,14 +136,24 @@ body {
     background-color: #1a1a24 !important;
 }
 
+/* ── Modal shell (Phase 3) ──
+   Wooden gradient frame (via padding-box/border-box trick so the corners stay
+   rounded) wrapping a parchment body with dark ink text — the mockups' single
+   reusable popup shell. Applied to every .overlay > .glass-panel popup. Themed
+   exceptions (lobby / victory / gameover) re-darken below; they carry heavy
+   light text and their own treatment. */
 .glass-panel {
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-    backdrop-filter: blur(15px) !important; /* Stronger 'frosted' effect */
-    border-radius: 12px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.8), 0 0 10px rgba(217, 119, 6, 0.1) !important;
-    padding: 40px;
+    position: relative;
+    border: 4px solid transparent;
+    border-radius: var(--r-panel);
+    background:
+        linear-gradient(180deg, var(--parchment-1), var(--parchment-2)) padding-box,
+        linear-gradient(180deg, var(--wood-lite), var(--wood-dark)) border-box;
+    box-shadow: var(--shadow-panel), 0 0 0 2px rgba(232, 184, 74, 0.35);
+    padding: 26px;
     text-align: center;
+    color: var(--card-ink);
+    font-family: var(--font-body);
     animation: fadeIn 0.5s ease-out;
 }
 
@@ -100,17 +163,46 @@ body {
 }
 
 .glass-panel h1 {
+    font-family: var(--font-display);
     font-size: clamp(1.5rem, 5vw, 2.5rem);
     margin-bottom: 10px;
-    background: linear-gradient(to right, #a78bfa, #f472b6);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: var(--wood-dark);
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+/* Headings without an explicit inline color inherit the dark ink; modals that set
+   an accent color inline (e.g. #ef4444 / #10b981 / #f59e0b) keep it. */
+.glass-panel h2, .glass-panel h3 {
+    font-family: var(--font-display);
+    color: var(--wood-dark);
 }
 
 .glass-panel p {
-    color: var(--text-muted);
-    margin-bottom: 30px;
+    color: #6a5a48;
+    margin-bottom: 22px;
 }
+
+/* ── Themed exceptions: these carry heavy light text + their own atmosphere, so
+   they keep a dark body (and re-assert light text) while still gaining the wood
+   frame + depth from .glass-panel. ── */
+#victory-modal .glass-panel,
+#gameover-screen .glass-panel {
+    background:
+        linear-gradient(180deg, rgba(20, 14, 34, 0.96), rgba(10, 6, 20, 0.98)) padding-box,
+        linear-gradient(180deg, var(--gold), var(--gold-deep)) border-box;
+    color: #fff;
+}
+#victory-modal .glass-panel h1,
+#victory-modal .glass-panel h2,
+#victory-modal .glass-panel h3,
+#gameover-screen .glass-panel h1,
+#gameover-screen .glass-panel h2,
+#gameover-screen .glass-panel h3 {
+    color: #ffd700;
+    text-shadow: 0 0 18px rgba(255, 215, 0, 0.5);
+}
+/* lobby has its own dark tavern background (!important) — keep its text light. */
+.lobby-panel { color: var(--text-main); }
 
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(20px); }
@@ -301,15 +393,22 @@ body {
     animation: targetPulse 1.5s infinite;
 }
 
+/* Scale-only pulse so a card's static colored glow (set per highlight class
+   below) is preserved while it gently breathes. */
+@keyframes tgtPulse {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-2px) scale(1.04); }
+}
+
 .valid-target {
-    box-shadow: 0 0 20px 5px #10b981 !important;
+    box-shadow: 0 0 16px 4px var(--gold) !important;
     cursor: crosshair !important;
-    animation: validTargetPulse 1.5s infinite;
+    animation: tgtPulse 1.4s ease-in-out infinite;
 }
 
 .active-skill-glow {
-    box-shadow: 0 0 20px 5px var(--accent) !important;
-    animation: activeSkillPulse 1.5s infinite;
+    box-shadow: 0 0 18px 5px var(--accent) !important;
+    animation: tgtPulse 1.4s ease-in-out infinite;
 }
 
 @keyframes targetPulse {
@@ -484,7 +583,7 @@ body {
     justify-content: center !important;
     align-items: center !important;
     font-size: 0.85rem !important; /* Adjusted for text */
-    font-family: 'Inter', sans-serif !important;
+    font-family: var(--font-body) !important; /* was 'Inter' (never imported) */
     font-weight: 800 !important;
     text-transform: uppercase !important;
     letter-spacing: -0.5px !important;
@@ -770,29 +869,37 @@ body {
 }
 
 /* Buttons */
+/* Mockup buttons: tan "parchment" secondary by default, gold gradient for
+   .primary. Buttons that set an inline background (red cancel/close, green play,
+   etc.) keep their explicit color. Action-bar buttons are re-darkened by the
+   higher-specificity `.action-bar .action-btn` rule, so they're unaffected. */
 .action-btn {
-    background: var(--accent);
-    color: white;
+    background: #e8d5b0;
+    color: var(--card-ink);
     border: none;
-    padding: 10px 20px;
-    border-radius: 8px;
-    font-family: inherit;
-    font-weight: 600;
+    padding: 11px 18px;
+    border-radius: 12px;
+    font-family: var(--font-display);
+    font-weight: 800;
     cursor: pointer;
     pointer-events: auto; /* Ensure clicks are never absorbed by broken parents */
-    transition: all 0.2s;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    transition: all 0.12s;
+    letter-spacing: 0.3px;
+}
+
+.action-btn.primary {
+    background: linear-gradient(180deg, var(--gold), var(--gold-deep));
+    color: #fff;
 }
 
 .action-btn:hover:not(:disabled) {
-    background: var(--accent-hover);
     transform: translateY(-2px);
-    box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.4);
+    filter: brightness(1.05);
 }
 
 .action-btn:disabled {
-    background: #475569;
+    background: #cbb896;
+    color: rgba(0, 0, 0, 0.4);
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
@@ -830,15 +937,16 @@ body {
 
 .close-btn {
     position: absolute;
-    top: 15px;
-    right: 20px;
+    top: 10px;
+    right: 14px;
     background: transparent;
     border: none;
-    color: var(--text-muted);
-    font-size: 2.5rem;
+    color: var(--wood);
+    font-size: 2.2rem;
     cursor: pointer;
     transition: color 0.2s;
     line-height: 1;
+    z-index: 2;
 }
 
 .close-btn:hover {
@@ -878,18 +986,17 @@ body {
     flex: 0 0 auto;
     height: clamp(70px, 22vh, 120px) !important;
     aspect-ratio: 2.5 / 3.5;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 6px;
-    border: 1px solid rgba(255,255,255,0.1);
     position: relative;
-    overflow: hidden;
+    overflow: visible;                 /* let the roll badge overlap the frame corner */
+    box-sizing: border-box;
+    padding: 2px;                      /* wooden frame thickness */
+    border: none;
+    border-radius: calc(var(--r-card) + 3px);
+    background: linear-gradient(180deg, var(--wood-lite), var(--wood-dark));
+    box-shadow: var(--shadow-card);
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    padding: 4px;
-    box-sizing: border-box;
-    box-shadow: 0 3px 8px rgba(0,0,0,0.4);
-    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, margin-left 0.2s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, margin-left 0.2s ease;
     cursor: pointer;
 }
 
@@ -919,76 +1026,152 @@ body {
     transform: translateX(-50%) translateY(0);
 }
 
-.card-img {
-    width: 100%;
-    height: 55%;
-    flex-shrink: 0;
-    background-color: #0f172a;
-    background-size: cover;
-    background-position: center;
-    border-bottom: 1px solid #334155;
-}
-
-.card-info {
-    padding: 2px 4px;
-    font-size: 0.7rem;
+/* Inner parchment face — wraps ribbon + art + text inside the wooden frame and
+   clips them. Its border is the class/type-colored inner edge (driven by --cc,
+   set per-card by renderCard). */
+.card-face {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
     display: flex;
     flex-direction: column;
-    flex: 1;
-    justify-content: space-between;
+    background: var(--card-face);
+    border: 2px solid var(--cc, var(--card-edge));
+    border-radius: var(--r-card);
+    overflow: hidden;
 }
 
-.card-name, .card-title {
-    font-size: clamp(0.5rem, 1.2vh, 0.75rem);
-    white-space: normal; /* Allow wrapping */
-    overflow-wrap: break-word; /* Break long single-word names (e.g. "Malamammoth") */
-    line-height: 1.1;
-    text-align: center;
-    margin: 2px 0;
+/* Type ribbon — thin colored bar at the top of the face (maps to .card-type) */
+.card-type {
+    flex: 0 0 auto;
+    background: var(--cc, var(--accent));
+    color: #fff;
+    font-family: var(--font-body);
+    font-size: clamp(0.34rem, 0.85vh, 0.5rem);
     font-weight: 800;
-    color: white;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    text-align: center;
+    line-height: 1.35;
+    padding: 1px 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
-
-.card-type, .card-description {
+/* legacy alias kept for any non-card uses of .card-description */
+.card-description {
     color: var(--accent);
     font-size: clamp(0.4rem, 1vh, 0.6rem);
     text-transform: uppercase;
-    margin-bottom: 2px;
+}
+
+/* Art window — the real card art (card.imageUrl), cover-cropped */
+.card-img {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+    background-color: #0f172a;
+    background-size: cover;
+    background-position: center top;
+}
+
+/* Text strip on the parchment */
+.card-info {
+    flex: 0 0 auto;
+    background: var(--card-face);
+    padding: 2px 3px 3px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.card-name, .card-title {
+    font-family: var(--font-display);
+    font-size: clamp(0.46rem, 1.1vh, 0.68rem);
+    font-weight: 700;
+    line-height: 1.05;
+    text-align: center;
+    color: var(--card-ink);
     white-space: normal;
-    line-height: 1.1;
+    overflow-wrap: break-word; /* break long single-word names (e.g. "Malamammoth") */
 }
 
 .card-class {
-    color: #f472b6;
-    font-weight: bold;
-    font-size: clamp(0.4rem, 1vh, 0.6rem);
-    white-space: normal;
-    line-height: 1.1;
+    font-size: clamp(0.34rem, 0.9vh, 0.5rem);
+    font-weight: 700;
+    line-height: 1.05;
+    text-align: center;
+    color: var(--cc, #6a5a48);
 }
 
+/* Blue circular roll badge, overlapping the top-right of the frame (maps to
+   .card-req). Empty for cards with no roll → hidden. */
 .card-req {
-    margin-top: auto;
-    font-size: clamp(0.4rem, 1vh, 0.6rem);
-    color: var(--text-muted);
-    white-space: normal;
-    line-height: 1.1;
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    z-index: 6;
+    width: clamp(16px, 4.4vh, 22px);
+    height: clamp(16px, 4.4vh, 22px);
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 28%, #bfe0ff, var(--roll-blue) 55%, var(--roll-blue-deep));
+    border: 2px solid #fff;
+    box-shadow: var(--shadow-card);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: clamp(0.5rem, 1.3vh, 0.7rem);
+    font-weight: 900;
+    color: #fff;
+    line-height: 1;
+    text-shadow: 0 1px 1px var(--roll-blue-deep);
 }
+.card-req:empty { display: none; }
+
+/* ── Party Leader variant: gold outer frame, pink inner border, 👑 corner ── */
+.card.card-leader {
+    background: linear-gradient(180deg, var(--gold), var(--gold-deep));
+}
+.card.card-leader .card-face { border-color: var(--leader-pink); }
+.card.card-leader .card-type { background: var(--leader-pink); }
+.card.card-leader::before {
+    content: '👑';
+    position: absolute;
+    top: -7px;
+    left: -2px;
+    z-index: 6;
+    font-size: clamp(0.6rem, 1.6vh, 0.85rem);
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5));
+    pointer-events: none;
+}
+
+/* ── Monster variant: dark purple face + pink border ── */
+.card.card-monster .card-face {
+    background: #2e2440;
+    border-color: #e0607a;
+}
+.card.card-monster .card-img { background-color: #2e2440; }
+.card.card-monster .card-name { color: #fff; }
+.card.card-monster .card-class { color: #ffc0c8; }
 
 .card-back, #main-deck {
-    background: repeating-linear-gradient(45deg, #1e1b4b, #1e1b4b 10px, #312e81 10px, #312e81 20px);
-    border: 2px solid #4338ca;
+    background: repeating-linear-gradient(45deg, #2a1f4e, #2a1f4e 9px, #3e2a18 9px, #3e2a18 18px);
+    border: 2px solid var(--gold);
+    border-radius: var(--r-card);
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     text-align: center;
     font-weight: 800;
-    color: rgba(255,255,255,0.5);
+    color: rgba(255,255,255,0.75);
     text-transform: uppercase;
     letter-spacing: 1px;
     line-height: 1.2;
     padding: 6px;
     font-size: 0.7rem;
+    overflow: hidden;
 }
 
 .empty-slot {
@@ -1581,23 +1764,26 @@ body {
 }
 
 /* Custom visual highlights for targeting states */
+/* Highlight glow colors map to intent (spec §2): steal = blue, equip = gold,
+   attackable = red/pink, active-skill = amber. The glow is on the wood frame
+   root; the class-colored inner edge is overridden on .card-face. */
 .valid-target-steal {
-    box-shadow: 0 0 15px 4px var(--danger) !important;
-    border-color: var(--danger) !important;
-    animation: targetPulse 1.5s infinite !important;
+    box-shadow: 0 0 16px 4px var(--roll-blue) !important;
+    animation: tgtPulse 1.4s ease-in-out infinite !important;
 }
+.valid-target-steal .card-face { border-color: var(--roll-blue) !important; }
 
 .valid-target-equip {
-    box-shadow: 0 0 15px 4px var(--success) !important;
-    border-color: var(--success) !important;
-    animation: validTargetPulse 1.5s infinite !important;
+    box-shadow: 0 0 16px 4px var(--gold) !important;
+    animation: tgtPulse 1.4s ease-in-out infinite !important;
 }
+.valid-target-equip .card-face { border-color: var(--gold) !important; }
 
 .attackable-monster {
-    box-shadow: 0 0 15px 4px var(--success) !important;
-    border-color: var(--success) !important;
-    animation: validTargetPulse 1.5s infinite !important;
+    box-shadow: 0 0 5px 1px var(--danger) !important; /* tight red ring, no wide bleed */
+    animation: tgtPulse 1.4s ease-in-out infinite !important;
 }
+.attackable-monster .card-face { border-color: var(--danger) !important; }
 
 /* Float active/selected cards */
 .card {
@@ -1629,14 +1815,11 @@ body {
 #inspector-modal .glass-panel {
     max-width: 480px;
     width: 90%;
-    background: rgba(15, 23, 42, 0.9) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
-    padding: 30px;
-    border-radius: 20px;
+    padding: 22px;
     text-align: center;
     position: relative;
     animation: fadeIn 0.3s ease-out;
+    /* background/border/radius now inherit the parchment shell (.glass-panel) */
 }
 #inspector-modal-image-container img {
     max-height: 40vh;
@@ -1810,14 +1993,11 @@ body {
 #inspector-modal .glass-panel {
     max-width: 480px;
     width: 90%;
-    background: rgba(15, 23, 42, 0.9) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
-    padding: 30px;
-    border-radius: 20px;
+    padding: 22px;
     text-align: center;
     position: relative;
     animation: fadeIn 0.3s ease-out;
+    /* background/border/radius now inherit the parchment shell (.glass-panel) */
 }
 #inspector-modal-image-container img {
     max-height: 40vh;
@@ -2098,29 +2278,53 @@ body {
     min-width: 0 !important;
 }
 
-/* --- NEUTRALIZE FLOATING OVERLAYS --- */
+/* --- OVERLAY MODALS (Phase 5.3) ---
+   Reverses the old "console jail": the dice / challenge / skill-prompt panels
+   float as centered modals OVER the board in both orientations, instead of
+   docking inside the console's right half. They remain DOM children of
+   #event-console, so the ~50 #event-console-scoped style rules (dice pips,
+   .mod-compact, etc.) all keep applying — only position/frame change.
 
-/* Strip fixed positioning from any modal moved into the console */
+   `display` is deliberately NOT set here so the existing JS / .hidden show-hide
+   logic stays in full control (this selector is 2-id specific and would beat
+   `.hidden`'s display:none otherwise). The big spread box-shadow is the
+   full-screen scrim, so no wrapper element is needed.
+
+   Body kept DARK (not parchment): the dice are ivory and the math/result banners
+   are gold/colored — a light body would kill their contrast. The wood frame +
+   gold ring give the mockup's framed-modal structure. */
 #event-console .overlay,
 #event-console #challenge-modal,
 #event-console #modifier-modal,
 #event-console #skill-prompt-modal,
 #event-console #dice-overlay {
-    position: relative !important; /* THIS KILLS THE FLOATING BEHAVIOR */
-    top: auto !important;
-    left: auto !important;
-    bottom: auto !important;
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
     right: auto !important;
-    transform: none !important;
-    width: 100% !important;
-    max-width: 100% !important;
+    bottom: auto !important;
+    transform: translate(-50%, -50%) !important;
+    width: min(92vw, 460px) !important;
+    max-width: 92vw !important;
     height: auto !important;
-    background: transparent !important; /* Removes the old dark screen-dimming */
-    z-index: 1 !important;
+    max-height: 88dvh !important;
+    overflow-y: auto !important;
+    z-index: 9999 !important;
     margin: 0 !important;
-    padding: 0 !important;
+    padding: 18px 16px !important;
+    box-sizing: border-box !important;
     align-items: center !important;
-    justify-content: center !important;
+    justify-content: flex-start !important;
+    /* Wood gradient frame (padding-box/border-box) over a dark body. */
+    border: 4px solid transparent !important;
+    border-radius: var(--r-panel) !important;
+    background:
+        linear-gradient(180deg, #211a2e, #15101f) padding-box,
+        linear-gradient(180deg, var(--wood-lite), var(--wood-dark)) border-box !important;
+    box-shadow:
+        var(--shadow-panel),
+        0 0 0 2px rgba(232, 184, 74, 0.35),
+        0 0 0 100vmax rgba(6, 4, 12, 0.66) !important; /* full-screen scrim */
 }
 
 /* The inner glass panels often have fixed widths like 800px. Nuke them. */
@@ -2149,6 +2353,20 @@ body {
     flex-direction: column !important;
     align-items: center !important;
     padding: 10px !important;
+}
+
+/* During the modifier window the player interacts with their HAND (tap a hand
+   modifier -> inspector -> Play Modifier — the buttons no longer live in the
+   overlay), so the floated overlay must NOT cover or scrim the hand. Anchor the
+   .mod-compact variant to the top, cap its height, and drop the full-screen
+   dimmer so the hand at the bottom stays visible and tappable. */
+#event-console #dice-overlay.mod-compact {
+    top: 6px !important;
+    transform: translateX(-50%) !important;
+    max-height: 56dvh !important;
+    box-shadow:
+        var(--shadow-panel),
+        0 0 0 2px rgba(232, 184, 74, 0.35) !important;
 }
 
 /* Compact dice overlay during the modifier window so the PASS button stays on
@@ -2885,22 +3103,22 @@ body {
 }
 
 .action-btn {
-    font-family: 'Cinzel', serif; /* Use fantasy font for buttons if possible */
+    font-family: var(--font-display); /* Cinzel */
     font-weight: 800;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.3px;
     cursor: pointer;
-    transition: all 0.2s;
-    border-radius: 10px;
+    transition: all 0.12s;
+    border-radius: 12px;
     position: relative;
-    box-shadow: 0 4px 0 rgba(0,0,0,0.5), 0 6px 15px rgba(0,0,0,0.8) !important;
+    box-shadow: 0 3px 0 rgba(0,0,0,0.22), inset 0 1px 1px rgba(255,255,255,0.4);
     top: 0;
 }
+/* keep a readable text-shadow only where the button text is white */
+.action-btn.primary, .action-bar .action-btn { text-shadow: 0 1px 2px rgba(0,0,0,0.45); }
 
 .action-btn:active {
     top: 2px; /* Push-down effect */
-    box-shadow: 0 2px 0 rgba(0,0,0,0.5), 0 4px 10px rgba(0,0,0,0.8) !important;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.22);
 }
 
 /* DRAW Button (Tactile Golden Fiche) */
@@ -2961,4 +3179,853 @@ input:focus-visible,
         transition-duration: 0.001ms !important;
         scroll-behavior: auto !important;
     }
+}
+
+/* ============================================================================
+   PORTRAIT SHELL (UI overhaul Phase 5)
+   Dual-orientation: the SAME persistent board nodes are reflowed into the
+   portrait mockup arrangement purely via CSS keyed on `#game-board.portrait`
+   (set by checkOrientationAndLayout). No DOM is swapped or rebuilt, so the
+   cached element references stay valid and an open overlay survives rotation.
+   Landscape carries no `.portrait` class, so none of this applies there.
+   Selectors are intentionally id+class specific to beat the existing
+   single-id `!important` board rules.
+   ============================================================================ */
+
+/* Portrait-only chrome — hidden by default (and therefore in landscape, where a
+   display:none grid child takes no cell and can't disturb the layout). */
+#board-top-bar,
+#portrait-divider { display: none; }
+
+#game-board.portrait {
+    display: flex !important;
+    flex-direction: column !important;
+    grid-template-columns: none !important;
+    grid-template-rows: none !important;
+    gap: 8px !important;
+    padding: 6px !important;
+    height: 100dvh !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+}
+
+/* Top bar: win-track (left) + ☰ menu (right) */
+#game-board.portrait #board-top-bar {
+    order: 0;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 10px !important;
+    width: 100% !important;
+    flex: 0 0 auto !important;
+    padding: 4px 48px 4px 10px !important; /* right pad clears the fixed ☰ button */
+    box-sizing: border-box !important;
+    background: rgba(0, 0, 0, 0.35) !important;
+    border-radius: var(--r-pill) !important;
+}
+#game-board.portrait #player-win-tracker {
+    font-family: var(--font-body) !important;
+    font-size: 0.78rem !important;
+    font-weight: 700 !important;
+    color: var(--text-main) !important;
+    white-space: nowrap !important;
+}
+
+/* Opponents row — full width */
+#game-board.portrait #opponents-bar {
+    order: 1;
+    width: 100% !important;
+    flex: 0 0 auto !important;
+    height: auto !important;
+    max-height: 64px !important;
+    border-radius: var(--r-pill) !important;
+}
+
+/* Gold battlefield divider */
+#game-board.portrait #portrait-divider {
+    order: 3;
+    display: block !important;
+    width: 100% !important;
+    height: 3px !important;
+    flex: 0 0 auto !important;
+    margin: 2px 0 !important;
+    border-radius: 2px !important;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent) !important;
+}
+
+/* Body: party (top) then the wooden tray (hand + buttons). Single column. */
+#game-board.portrait #player-zone {
+    order: 4;
+    flex-direction: column !important;
+    width: 100% !important;
+    height: auto !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    gap: 8px !important;
+}
+#game-board.portrait #player-assets {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    gap: 8px !important;
+    /* Party pinned to the top, the hand tray to the bottom (flush with the
+       controls strip). The open middle is the battlefield — Phase 6 drops the
+       always-visible monsters in there. */
+    justify-content: space-between !important;
+}
+#game-board.portrait #party-zone { flex: 0 0 auto !important; }
+#game-board.portrait #hand-zone   { flex: 0 0 auto !important; }
+/* The chat console collapses in portrait (chat moves behind the ☰ toggle in
+   5.4). Kept as display (NOT none) so the dice/challenge/modifier/skill panels
+   it still hosts can show as fixed overlays in 5.3 — display:none on the parent
+   would suppress them too. */
+#game-board.portrait #event-console {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 auto !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    overflow: visible !important;
+}
+/* Party wraps to (up to) two rows, centered */
+#game-board.portrait #player-party {
+    flex-wrap: wrap !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    justify-content: center !important;
+    align-content: flex-start !important;
+    align-items: flex-start !important;
+    height: auto !important;
+    max-height: 40dvh !important;
+    gap: 4px !important;
+}
+
+/* The hand zone IS the wooden tray (top half) holding the hand */
+#game-board.portrait #hand-zone {
+    flex: 0 0 auto !important;
+    box-sizing: border-box !important;
+    padding: 8px 6px 6px !important;
+    background: linear-gradient(180deg, var(--wood-lite), var(--wood-dark)) !important;
+    border: 3px solid var(--wood-dark) !important;
+    border-bottom: 0 !important;
+    border-top-left-radius: var(--r-panel) !important;
+    border-top-right-radius: var(--r-panel) !important;
+    box-shadow: var(--shadow-panel) !important;
+}
+#game-board.portrait #hand-zone .area-label { color: var(--card-face) !important; }
+#game-board.portrait #player-hand {
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    justify-content: flex-start !important;
+    height: auto !important;
+}
+
+/* Action buttons become the tray's button strip (bottom half), flush below */
+#game-board.portrait #player-controls {
+    order: 5;
+    flex: 0 0 auto !important;
+    flex-direction: row !important;
+    width: 100% !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    box-sizing: border-box !important;
+    padding: 8px !important;
+    margin-top: -8px !important; /* close the flex gap up to the hand tray */
+    background: linear-gradient(180deg, var(--wood), var(--wood-dark)) !important;
+    border: 3px solid var(--wood-dark) !important;
+    border-top: 0 !important;
+    border-bottom-left-radius: var(--r-panel) !important;
+    border-bottom-right-radius: var(--r-panel) !important;
+}
+#game-board.portrait #player-controls .btn-group {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    width: auto !important;
+}
+
+/* ============================================================================
+   GAME LOG TOGGLE (UI overhaul Phase 5.4)
+   The permanent event console is gone. The chat/log is hidden by default and
+   floats as a panel only when the ☰ button toggles `body.chat-open`. The
+   dice/challenge/skill panels are independent fixed overlays (5.3), so nothing
+   depends on the console region anymore — it's collapsed in both orientations
+   (kept as display, NOT none, so its still-hosted fixed panels keep working).
+   ============================================================================ */
+
+/* Floating ☰ toggle — visible in BOTH orientations (it's a direct #game-board
+   child now, not inside the portrait-only top bar). */
+#game-menu-btn {
+    position: fixed !important;
+    top: 8px !important;
+    right: 10px !important;
+    z-index: 9600 !important;
+    width: 40px !important;
+    height: 34px !important;
+    font-size: 1.15rem !important;
+    line-height: 1 !important;
+    cursor: pointer !important;
+    color: var(--card-face) !important;
+    background: linear-gradient(180deg, var(--wood-lite), var(--wood-dark)) !important;
+    border: 2px solid var(--wood-dark) !important;
+    border-radius: 8px !important;
+    box-shadow: var(--shadow-card) !important;
+}
+
+/* Chat hidden by default; shown as a floating panel when body.chat-open. */
+#event-console-empty { display: none !important; }
+body.chat-open #event-console-empty {
+    display: flex !important;
+    position: fixed !important;
+    right: 10px !important;
+    bottom: 10px !important;
+    width: min(86vw, 360px) !important;
+    height: min(52vh, 360px) !important;
+    max-width: 86vw !important;
+    z-index: 9500 !important;
+    box-sizing: border-box !important;
+    padding: 8px !important;
+    background: linear-gradient(180deg, #211a2e, #15101f) !important;
+    border: 3px solid var(--wood-dark) !important;
+    border-radius: var(--r-panel) !important;
+    box-shadow: var(--shadow-panel), 0 0 0 2px rgba(232, 184, 74, 0.35) !important;
+}
+
+/* Reclaim the old console half in LANDSCAPE: collapse #event-console to zero
+   width and let the party/hand use the full board. Kept display:flex (not none)
+   so the fixed dice/challenge/skill panels it still hosts continue to render. */
+body.landscape #player-zone > #event-console {
+    flex: 0 0 0 !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    overflow: visible !important;
+}
+body.landscape #player-assets {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 auto !important;
+}
+
+/* ============================================================================
+   ON-BOARD MONSTERS + DECK/DISCARD (UI overhaul Phase 6)
+   #board-center holds the .deck-area + .monsters-area nodes that used to live in
+   #board-modal. Always visible now; positioned per orientation. The nodes keep
+   their ids/classes, so the existing .deck-area/.monsters-area/#active-monsters
+   styling (incl. the landscape @media block) applies unchanged.
+   ============================================================================ */
+#board-center {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    min-height: 0;
+    box-sizing: border-box;
+}
+
+/* LANDSCAPE: insert a monsters strip in col 1 (row 2) above the play area
+   (row 3). The action bar SPANS rows 2-3 in col 2 so its height is untouched
+   (a full-width monster row would squeeze the stacked buttons out of the
+   ~390px-tall viewport). */
+body.landscape #game-board {
+    grid-template-rows: 40px auto 1fr !important;
+}
+body.landscape #board-center {
+    grid-column: 1 / 2 !important;
+    grid-row: 2 !important;
+    width: 100% !important;
+    padding: 2px 12px !important;
+    gap: 12px !important;
+    justify-content: flex-start !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+}
+/* Keep the on-board strip short so the play area below keeps room. */
+body.landscape #board-center .card {
+    height: 64px !important;
+    max-height: 64px !important;
+    min-height: 64px !important;
+}
+body.landscape #board-center .monsters-area .area-label { display: none !important; }
+body.landscape #board-center .deck-area { padding-right: 12px !important; }
+body.landscape #player-zone     { grid-column: 1 / 2 !important; grid-row: 3 !important; }
+body.landscape #player-controls { grid-column: 2 / 3 !important; grid-row: 2 / 4 !important; }
+
+/* PORTRAIT: monsters/deck sit just under the opponents row (order 2), ahead of
+   the gold divider (3), party (4) and the tray/controls (5). */
+#game-board.portrait #board-center {
+    order: 2;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 6px !important;
+    width: 100% !important;
+    flex: 0 0 auto !important;
+}
+#game-board.portrait #board-center .deck-area {
+    flex-direction: row !important;
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+    padding: 0 !important;
+    gap: 8px !important;
+}
+#game-board.portrait #board-center .monsters-area {
+    margin: 0 !important; /* kill the base 20px margin-left that pushed monsters off-center */
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    max-width: 100% !important;
+    gap: 6px !important;
+}
+
+/* ============================================================================
+   COSMETIC HUD + LEADER + REWARD (UI overhaul Phase 7)
+   Win-track pips, AP gems, raised party leader, and the slay reward toast.
+   Pure cosmetics over existing state — no socket wiring.
+   ============================================================================ */
+
+/* HUD (#board-top-bar = win-track + AP gems) shown in BOTH orientations.
+   Portrait: the in-flow top bar (order 0, styled in the portrait block).
+   Landscape: float it top-right, left of the ☰ button. */
+body.landscape #board-top-bar {
+    display: flex !important;
+    position: fixed !important;
+    top: 8px !important;
+    right: 58px !important;
+    z-index: 9600 !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 14px !important;
+    padding: 4px 12px !important;
+    background: rgba(0, 0, 0, 0.45) !important;
+    border: 1px solid var(--wood-dark) !important;
+    border-radius: var(--r-pill) !important;
+}
+body.landscape #player-win-tracker { font-size: 0.72rem !important; }
+
+/* Win-track: slain ✦✦○ pips + X/6 classes (both win paths). */
+#player-win-tracker {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--font-body);
+    font-weight: 700;
+    color: var(--text-main);
+    white-space: nowrap;
+}
+.wt-slain, .wt-classes { display: inline-flex; align-items: center; gap: 4px; }
+.wt-pip { color: rgba(255, 255, 255, 0.35); }
+.wt-pip.on { color: var(--gold); text-shadow: 0 0 6px rgba(232, 184, 74, 0.7); }
+.wt-classes b { color: var(--gold); }
+
+/* AP gems — one amber gem per current AP (from me.ap; 4th slot only when AP > 3). */
+#ap-gems { display: flex; align-items: center; gap: 5px; }
+.ap-gems-label {
+    font-family: var(--font-body);
+    font-weight: 800;
+    font-size: 0.7rem;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-right: 2px;
+}
+.ap-gem {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: inset 0 0 2px rgba(0, 0, 0, 0.5);
+}
+.ap-gem.on {
+    background: radial-gradient(circle at 35% 30%, #ffe08a, var(--accent));
+    box-shadow: 0 0 7px 1px rgba(245, 158, 11, 0.75);
+}
+
+/* Raised party leader — stands proud of the party row. Landscape origin left
+   (raised left), portrait origin center. */
+#player-party .card.card-leader {
+    transform: translateY(-6px) scale(1.06);
+    transform-origin: bottom center;
+    z-index: 7;
+    margin-right: 8px;
+}
+body.landscape #player-party .card.card-leader { transform-origin: bottom left; }
+
+/* Reward toast — brief slay celebration. */
+#reward-toast {
+    position: fixed;
+    top: 16%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-12px) scale(0.92);
+    z-index: 10800;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+#reward-toast.hidden { display: none; }
+#reward-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+}
+#reward-toast-inner {
+    text-align: center;
+    padding: 16px 28px;
+    border: 4px solid transparent;
+    border-radius: var(--r-panel);
+    background:
+        linear-gradient(180deg, #211a2e, #15101f) padding-box,
+        linear-gradient(180deg, var(--gold), var(--gold-deep)) border-box;
+    box-shadow: var(--shadow-panel), 0 0 0 2px rgba(232, 184, 74, 0.5);
+}
+.reward-toast-burst { font-size: 2rem; }
+.reward-toast-title {
+    font-family: var(--font-display);
+    font-size: 1.3rem;
+    color: var(--gold);
+    text-shadow: 0 0 12px rgba(232, 184, 74, 0.6);
+    margin: 4px 0;
+}
+#reward-toast-name {
+    font-family: var(--font-body);
+    color: #fff;
+    font-size: 0.95rem;
+}
+
+/* Roll-requirement badge hidden on the card face (both orientations). The number
+   (hero roll / monster slay req) is still reachable by tapping the card — the
+   inspector shows "Requirement: …" / slay+fail. Keeps the card faces clean. */
+.card-req { display: none !important; }
+
+/* In-game cards show the FULL card image. The imageUrl is a whole card scan
+   (art + name + type already on it), so our type ribbon + name/class strip are
+   redundant AND crop the art. Hide them so .card-img fills the frame, and use
+   `contain` so the entire card shows (read details via the inspector). The
+   .card-info / .card-class nodes stay in the DOM (e2e reads their text). Lobby
+   leader-pick and the inspector keep their text strips. */
+#player-party .card-type, #player-party .card-info,
+#player-hand .card-type, #player-hand .card-info,
+#active-monsters .card-type, #active-monsters .card-info,
+#leader-slot .card-type, #leader-slot .card-info,
+#opponent-modal .card-type, #opponent-modal .card-info,
+#discard-pile .card-type, #discard-pile .card-info {
+    display: none !important;
+}
+#player-party .card-img, #player-hand .card-img, #active-monsters .card-img,
+#leader-slot .card-img, #opponent-modal .card-img, #discard-pile .card-img {
+    background-size: contain !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    background-color: #14110a !important;
+}
+
+/* ============================================================================
+   LANDSCAPE SHELL (UI overhaul — match here-to-slay-landscape.jsx)
+   Same persistent board nodes, reflowed via CSS grid into the landscape mockup,
+   keyed on body.landscape. Wrapper nodes are flattened with display:contents so
+   their leaf regions become direct grid items; every id/class/onclick stays
+   intact (socket + e2e wiring untouched). Replaces the old col-2 action-bar
+   "sidebar" layout.
+     Row1: opponents (left)            · win-track (right)
+     Row2: monsters (center)
+     Mid : deck/discard + draw (left rail) · party (center) · AP + redraw + board (right rail)
+     Tray: leader (raised, left) · hand (center) · End Turn (right)  [wood tray]
+   ============================================================================ */
+
+/* New tray/leader nodes are hidden unless a shell explicitly places them. */
+#landscape-tray-bg, #leader-slot { display: none; }
+
+/* The BOARD button opened #board-modal to view monsters/deck/discard — all of
+   which are permanently on the board now (Phase 6), so it is redundant in both
+   orientations. Hidden (element kept so #board-modal wiring stays intact). */
+#view-board-btn { display: none !important; }
+
+body.landscape #game-board {
+    display: grid !important;
+    grid-template-columns: 96px 1fr 96px !important;
+    grid-template-rows: auto auto auto auto 1fr auto !important;
+    grid-template-areas:
+        "opp     win     win"
+        "mons    mons    mons"
+        "deck    party   ap"
+        "draw    party   redraw"
+        ".       party   ."
+        "leader  hand    endturn" !important;
+    gap: 2px 10px !important;
+    padding: 6px 10px 12px !important; /* bottom padding lifts the hand off the screen edge */
+    height: 100dvh !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+}
+
+/* Flatten wrappers so their leaf children become grid items of #game-board. */
+body.landscape #board-top-bar,
+body.landscape #board-center,
+body.landscape #player-zone,
+body.landscape #player-assets,
+body.landscape #player-controls,
+body.landscape #player-controls .btn-group {
+    display: contents !important;
+}
+
+/* --- Row 1: opponents (left) + win-track (right) --- */
+body.landscape #opponents-bar {
+    grid-area: opp !important;
+    position: static !important;
+    align-self: start !important;
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 6px !important;
+    width: auto !important;
+    max-width: 100% !important;
+    height: auto !important;
+    overflow-x: auto !important;
+    background: transparent !important;
+    padding: 0 !important;
+}
+/* Win-track + turn indicator float fixed in the top-right (stacked), so they
+   don't claim grid-row height on the short mobile-landscape viewport. */
+body.landscape #player-win-tracker {
+    position: fixed !important;
+    top: 8px !important;
+    right: 52px !important; /* clear the fixed ☰ menu button */
+    z-index: 9600 !important;
+    background: rgba(0, 0, 0, 0.45) !important;
+    border: 1px solid var(--wood-dark) !important;
+    border-radius: var(--r-pill) !important;
+    padding: 4px 12px !important;
+}
+
+/* --- Row 2: monsters (center) --- */
+body.landscape .monsters-area {
+    grid-area: mons !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    width: 100% !important;
+    margin: 0 !important; /* kill a stray margin-left that pushed monsters off-center */
+    overflow: visible !important;
+}
+body.landscape .monsters-area .area-label {
+    display: block !important;
+    position: static !important;
+    font-size: 0.55rem !important;
+    letter-spacing: 2px !important;
+    text-transform: uppercase !important;
+    color: rgba(255, 255, 255, 0.75) !important;
+    margin-bottom: 2px !important;
+}
+body.landscape #active-monsters { justify-content: center !important; }
+/* Monsters are the focal top-center cards — bigger than the old 64px Phase-6
+   strip. (#board-center prefix beats the generic `#board-center .card` id rule.) */
+body.landscape #board-center .monsters-area .card {
+    height: 80px !important;
+    max-height: 80px !important;
+    min-height: 80px !important;
+}
+
+/* --- Left rail: deck/discard (stacked) + draw button --- */
+body.landscape .deck-area {
+    grid-area: deck !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 6px !important;
+    border: none !important;
+    background: rgba(0, 0, 0, 0.22) !important;
+    border-radius: var(--r-panel) !important;
+    padding: 6px !important;
+    width: auto !important;
+}
+/* Rail piles are small thumbnails (#board-center prefix beats the generic
+   `#board-center .card` id rule). Keeping the left column short is what lets the
+   hand fit on the short ~360px mobile-landscape viewport instead of overflowing
+   below the fold. */
+body.landscape #board-center .deck-area .card {
+    height: 46px !important;
+    max-height: 46px !important;
+    min-height: 46px !important;
+}
+body.landscape #draw-card-btn { grid-area: draw !important; }
+
+/* --- Center: party (centered, wraps) --- */
+body.landscape #party-zone {
+    grid-area: party !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 0 !important;
+    /* Drop the .row glass panel framing — no boxes around the cards. */
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+}
+body.landscape #party-zone .area-label {
+    position: static !important;
+    align-self: center !important;
+    margin-bottom: 2px !important;
+}
+body.landscape #player-party {
+    /* Single centered row (matches the mockup's 6-slot party row). Stays nowrap +
+       overflow-x:auto so a big party scrolls horizontally instead of wrapping and
+       pushing the hand off the short mobile-landscape viewport (party-scroll spec). */
+    flex-wrap: nowrap !important;
+    justify-content: center !important;
+    align-items: center !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    height: 100% !important;
+    width: 100% !important;
+    padding: 0 !important;
+}
+
+/* --- Right rail: AP gems + redraw + board --- */
+body.landscape #ap-gems {
+    grid-area: ap !important;
+    justify-self: center !important;
+    align-self: end !important;
+    flex-direction: column !important;
+    gap: 5px !important;
+    background: rgba(0, 0, 0, 0.22) !important;
+    border-radius: var(--r-panel) !important;
+    padding: 8px 6px !important;
+}
+body.landscape #discard-draw-btn { grid-area: redraw !important; }
+
+/* Rail/control buttons — compact uniform pills. */
+body.landscape #draw-card-btn,
+body.landscape #discard-draw-btn,
+body.landscape #end-turn-btn {
+    align-self: center !important;
+    justify-self: center !important;
+    width: 86px !important;
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 6px 4px !important;
+    font-size: 0.6rem !important;
+}
+
+/* --- Bottom wooden tray: leader (raised, left) + hand (center) + End (right) --- */
+/* Tray backdrop made invisible per request — the leader, hand and End button sit
+   directly on the table background (no brown/gold band). */
+body.landscape #landscape-tray-bg {
+    display: block !important;
+    grid-column: 1 / -1 !important;
+    grid-row: 6 !important;
+    z-index: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+body.landscape #leader-slot {
+    display: block !important;
+    grid-area: leader !important;
+    z-index: 2 !important;
+    align-self: end !important;
+    justify-self: center !important;
+}
+body.landscape #leader-slot .card {
+    /* Capped so the raised leader can't grow into / overlap the DRAW button in the
+       left rail above it on short mobile-landscape viewports (~360px tall). */
+    height: 72px !important;
+    max-height: 72px !important;
+    min-height: 0 !important;
+    transform: translateY(-14px) scale(1.03) !important;
+    transform-origin: bottom center !important;
+}
+body.landscape #hand-zone {
+    grid-area: hand !important;
+    z-index: 2 !important;
+    position: relative !important;
+    min-height: 0 !important;
+    padding: 4px !important;
+    /* Transparent so the wooden tray (#landscape-tray-bg) shows through — no box. */
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+}
+body.landscape #hand-zone {
+    align-items: center !important; /* keep the label a centered pill, not a full-width bar */
+}
+body.landscape #hand-zone .area-label { display: none !important; }
+body.landscape #player-hand {
+    justify-content: center !important;
+    align-items: flex-start !important;
+    overflow: visible !important;
+    height: auto !important;
+    width: 100% !important;
+    padding: 0 !important;
+}
+/* Hand cards are the player's primary cards — larger than the default landscape
+   card scale so they're readable on the tray. */
+body.landscape #player-hand .card {
+    height: 92px !important;
+    max-height: 92px !important;
+}
+body.landscape #end-turn-btn {
+    grid-area: endturn !important;
+    z-index: 2 !important;
+    align-self: center !important;
+}
+
+/* Console collapses (chat moves behind the ☰ menu; dice/challenge/modifier
+   panels are fixed overlays). Pin it zero-size so it claims no grid cell. */
+body.landscape #event-console {
+    grid-area: win !important;
+    width: 0 !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    overflow: visible !important;
+}
+body.landscape #event-console-empty { display: none !important; }
+
+/* Turn indicator / waiting overlay (children of the flattened controls). */
+body.landscape #turn-indicator {
+    position: fixed !important;
+    top: 38px !important;       /* directly below the win-track */
+    right: 52px !important;
+    z-index: 9600 !important;
+    margin: 0 !important;
+}
+body.landscape #waiting-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 9000 !important;
+}
+body.landscape .player-profile-box,
+body.landscape #portrait-divider { display: none !important; }
+
+/* ============================================================================
+   PORTRAIT PASS — match here-to-slay-board.jsx + the landscape cleanups.
+   Flatten player-zone/assets (display:contents) so party, leader, hand and the
+   button strip order independently in the #game-board flex column:
+     … monsters → divider → PARTY (top) → raised LEADER (center) → HAND → buttons.
+   No zone boxes, no wooden tray band, no hand label — cards sit on the table,
+   consistent with the landscape shell.
+   ============================================================================ */
+#game-board.portrait #player-zone,
+#game-board.portrait #player-assets {
+    display: contents !important;
+}
+
+/* Party — clean (no .row box), centered, wraps to two rows, below the divider. */
+#game-board.portrait #party-zone {
+    order: 4 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    flex: 0 0 auto !important;  /* size to the 2-row grid; don't shrink and clip the cards */
+    min-height: 0 !important;
+    overflow: visible !important;
+}
+#game-board.portrait #party-zone .area-label {
+    position: static !important;
+    align-self: center !important;
+    margin-bottom: 2px !important;
+}
+
+/* Raised party leader, centered, flowing just below the party (no big void).
+   Small positive bottom margin so it never overlaps/covers the hand below it. */
+#game-board.portrait #leader-slot {
+    display: block !important;
+    order: 5 !important;
+    align-self: center !important;
+    margin: 6px auto 6px !important;
+    z-index: 5 !important;
+}
+#game-board.portrait #leader-slot .card {
+    transform: translateY(-4px) scale(1.06) !important;
+    transform-origin: bottom center !important;
+}
+
+/* Hand — clean (no wood tray, no label), centered. */
+#game-board.portrait #hand-zone {
+    order: 6 !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    flex: 0 0 auto !important;
+}
+#game-board.portrait #hand-zone .area-label { display: none !important; }
+
+/* Hand — a single fanned row (cards overlap like a hand of cards, same as
+   landscape), scrollable left↔right. */
+#game-board.portrait #player-hand {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    justify-content: safe center !important;
+    gap: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    width: 100% !important;
+    height: auto !important;
+    padding: 2px 4px !important;
+}
+/* (fan overlap from the base `#player-hand .card:not(:first-child)` rule applies) */
+
+/* Party — two rows of cards, scrollable left↔right when there are more than fit.
+   grid-auto-flow:column fills downward then rightward, so it's always a 2-row
+   strip that scrolls horizontally instead of wrapping into a tall stack. */
+#game-board.portrait #player-party {
+    display: grid !important;
+    grid-auto-flow: column !important;
+    grid-template-rows: repeat(2, auto) !important;
+    grid-auto-columns: max-content !important;
+    gap: 6px !important;
+    justify-content: safe center !important;
+    align-content: center !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;  /* grid is fixed at 2 rows — don't clip card bottoms */
+    max-height: none !important;
+    width: 100% !important;
+    height: auto !important;
+    padding: 2px 4px 6px !important;
+}
+#game-board.portrait #player-party .card { margin-left: 0 !important; }
+
+/* Bigger cards in portrait (overrides the 85px portrait-media default) so the
+   full card art reads well. Width follows the 2.5:3.5 aspect-ratio. */
+#game-board.portrait #player-hand .card    { height: 132px !important; max-height: 132px !important; }
+#game-board.portrait #player-party .card   { height: 104px !important; max-height: 104px !important; }
+#game-board.portrait #active-monsters .card{ height: 104px !important; max-height: 104px !important; min-height: 104px !important; }
+#game-board.portrait #leader-slot .card    { height: 120px !important; max-height: 120px !important; }
+
+/* Action buttons — pinned to the bottom (margin-top:auto), clean (no wood band).
+   Only the buttons sink; party/leader/hand stay grouped near the top. */
+#game-board.portrait #player-controls {
+    order: 7 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    margin-top: auto !important;
+    padding: 4px !important;
+}
+
+/* Collapsed console kept out of the flow (its fixed dice/challenge panels still
+   render as overlays). */
+#game-board.portrait #event-console {
+    order: 9 !important;
+    height: 0 !important;
 }

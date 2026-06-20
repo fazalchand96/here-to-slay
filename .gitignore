@@ -32,3 +32,10 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# UI screenshot artifacts (keep the capture.js tool, ignore the PNG output)
+screenshots/*.png
+
+# Locally-installed agent skills (machine-specific symlinks)
+.agents/
+skills-lock.json

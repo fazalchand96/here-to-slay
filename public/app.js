@@ -131,40 +131,52 @@ window.addEventListener('resize', applyMobileStacking);
 
 
 
-// Real-time Orientation Lock & Layout Handler
+// Real-time Orientation & Layout Handler (Phase 5: dual-orientation, no lock)
+//
+// The orientation lock is gone — the game runs in BOTH portrait and landscape.
+// This sets a mode class on <body> and #game-board (.portrait / .landscape) and,
+// only when the orientation CATEGORY actually flips, re-renders the board so
+// ensureBoardShell() can swap to the correct shell. The #rotation-lock-overlay
+// element is kept (markup/e2e stability) but is now never shown.
+
+let lastOrientationCategory = null;
 
 function checkOrientationAndLayout() {
 
     const isLandscape = window.innerWidth > window.innerHeight;
+    const category = isLandscape ? 'landscape' : 'portrait';
 
+    // The rotation lock is removed — keep the element but never display it.
     const lockOverlay = document.getElementById('rotation-lock-overlay');
-
-    
-
     if (lockOverlay) {
+        lockOverlay.classList.add('hidden');
+        lockOverlay.style.display = 'none';
+    }
 
-        if (isLandscape) {
+    // Mode classes drive the orientation-specific CSS in both shells.
+    const board = document.getElementById('game-board');
+    if (isLandscape) {
+        document.body.classList.add('landscape');
+        document.body.classList.remove('portrait');
+        board?.classList.add('landscape');
+        board?.classList.remove('portrait');
+    } else {
+        document.body.classList.add('portrait');
+        document.body.classList.remove('landscape');
+        board?.classList.add('portrait');
+        board?.classList.remove('landscape');
+    }
 
-            lockOverlay.classList.add('hidden');
-
-            lockOverlay.style.display = 'none';
-
-            document.body.classList.add('landscape');
-
-            document.getElementById('game-board')?.classList.add('landscape');
-
-        } else {
-
-            lockOverlay.classList.remove('hidden');
-
-            lockOverlay.style.display = 'flex';
-
-            document.body.classList.remove('landscape');
-
-            document.getElementById('game-board')?.classList.remove('landscape');
-
-        }
-
+    // Re-render the board ONLY when the category actually flips (not on every
+    // resize pixel). renderBoard -> ensureBoardShell() builds the right scaffold.
+    // The very first (synchronous) call runs before `latestGameState` is even
+    // declared, so skip the re-render then — the static landscape shell is fine
+    // and there's no game state to draw yet.
+    const isFirstRun = lastOrientationCategory === null;
+    const flipped = !isFirstRun && category !== lastOrientationCategory;
+    lastOrientationCategory = category;
+    if (flipped) {
+        renderBoard(latestGameState);
     }
 
     applyMobileStacking();
@@ -181,53 +193,15 @@ checkOrientationAndLayout(); // Call initially
 
 function setupEventConsoleObserver() {
 
-    const eventConsole = document.getElementById('event-console');
+    // Phase 5.4: the chat/event-log no longer auto-shows when no panel is up — it
+    // is hidden by default and lives behind the ☰ toggle (toggleGameMenu). The
+    // dice/challenge/skill panels are now fixed overlays, independent of the chat,
+    // so the old "hide chat while a panel is active" observer is obsolete. Clear
+    // any stale inline display it may have set so the CSS toggle owns visibility.
 
     const emptyState = document.getElementById('event-console-empty');
 
-    if (!eventConsole || !emptyState) return;
-
-
-
-    const updateEmptyState = () => {
-
-        const activePanels = [
-
-            document.getElementById('challenge-modal'),
-
-            document.getElementById('modifier-modal'),
-
-            document.getElementById('skill-prompt-modal'),
-
-            document.getElementById('dice-overlay')
-
-        ].filter(el => el && !el.classList.contains('hidden') && el.style.display !== 'none');
-
-
-
-        if (activePanels.length > 0) {
-
-            emptyState.style.display = 'none';
-
-        } else {
-
-            emptyState.style.display = 'flex';
-
-        }
-
-    };
-
-
-
-    const observer = new MutationObserver(updateEmptyState);
-
-    observer.observe(eventConsole, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
-
-    
-
-    // Initial check
-
-    updateEmptyState();
+    if (emptyState) emptyState.style.display = '';
 
 }
 
@@ -736,7 +710,26 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
 
 
 
-    const reqText = isMonster ? `Slay: ${card.slayRoll}+ | Fail: ${card.penaltyRoll}-` : (card.requirement || '');
+    // Roll badge value: heroes show roll_requirement, monsters show slayRoll; other
+    // card types have no roll → empty (CSS hides an empty .card-req badge).
+    let badgeVal = '';
+    if (isMonster || card.type === 'Monster Card') {
+        badgeVal = (card.slayRoll != null) ? card.slayRoll : '';
+    } else if (card.type === 'Hero Card' && typeof card.roll_requirement === 'number') {
+        badgeVal = card.roll_requirement;
+    }
+    // Tooltip detail (no extra node) keeps slay/fail/requirement reachable.
+    const detailTitle = (isMonster || card.type === 'Monster Card')
+        ? `Slay ${card.slayRoll}+ · Fail ${card.penaltyRoll}- · Needs ${card.requirement || '—'}`
+        : (card.requirement || card.name || '');
+    // Per-class / per-type accent that tints the frame border + type ribbon (--cc).
+    const CLASS_TINT = { Fighter: 'var(--class-fighter)', Bard: 'var(--class-bard)', Guardian: 'var(--class-guardian)', Ranger: 'var(--class-ranger)', Thief: 'var(--class-thief)', Wizard: 'var(--class-wizard)' };
+    const TYPE_TINT = { 'Item Card': 'var(--gold)', 'Cursed Item Card': 'var(--class-wizard)', 'Magic Card': 'var(--class-wizard)', 'Modifier Card': '#5aa8b8', 'Challenge Card': '#e07a4a' };
+    let cardTint, variantClass = '';
+    if (card.type === 'Party Leader') { cardTint = 'var(--leader-pink)'; variantClass = ' card-leader'; }
+    else if (isMonster || card.type === 'Monster Card') { cardTint = '#e0607a'; variantClass = ' card-monster'; }
+    else if (card.type === 'Hero Card') { cardTint = CLASS_TINT[shownClass] || 'var(--gold)'; }
+    else { cardTint = TYPE_TINT[card.type] || 'var(--gold)'; }
 
 
 
@@ -777,15 +770,23 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
         }
     }
 
+    // NOTE: structure restyle (Phase 2). The wooden frame is `.card` (padding +
+    // wood gradient); the parchment face lives in a new inner `.card-face` wrapper
+    // (clips the art/ribbon). `.card-req` is now the blue roll badge, reparented to
+    // a direct child of `.card` so it overlaps the frame corner. ALL load-bearing
+    // names are intact: data-id on root, .card-img/.card-info/.card-name/.card-type/
+    // .card-class/.card-req/.equipped-item-thumb, and every targeting glow class.
     return `
-        <div class="card ${glowClass}" id="${card.id}" data-id="${card.id}" style="${inlineStyle}">
-            <div class="card-img" style="background-image: url('${card.imageUrl}')"></div>
+        <div class="card${variantClass} ${glowClass}" id="${card.id}" data-id="${card.id}" title="${detailTitle}" style="--cc:${cardTint}; ${inlineStyle}">
+            <div class="card-req">${badgeVal}</div>
             ${equippedBadge}
-            <div class="card-info">
-                <div class="card-name">${card.name}</div>
+            <div class="card-face">
                 <div class="card-type">${card.type}</div>
-                ${cardClass}
-                <div class="card-req">${reqText}</div>
+                <div class="card-img" style="background-image: url('${card.imageUrl}')"></div>
+                <div class="card-info">
+                    <div class="card-name">${card.name}</div>
+                    ${cardClass}
+                </div>
             </div>
             ${actionOverlay}
         </div>
@@ -1150,15 +1151,19 @@ socket.on('gameStateUpdate', (data) => {
 
                             <h3 style="color: var(--success); margin-bottom: 15px;">Your Party Leader:</h3>
 
-                            <div class="card" style="margin: 0 auto; cursor: default;">
+                            <div class="card card-leader" style="margin: 0 auto; cursor: default; --cc: var(--leader-pink);">
 
-                                <div class="card-img" style="background-image: url('${leader.imageUrl}')"></div>
-
-                                <div class="card-info">
-
-                                    <div class="card-name">${leader.name}</div>
+                                <div class="card-face">
 
                                     <div class="card-type">${leader.class || 'Party Leader'}</div>
+
+                                    <div class="card-img" style="background-image: url('${leader.imageUrl}')"></div>
+
+                                    <div class="card-info">
+
+                                        <div class="card-name">${leader.name}</div>
+
+                                    </div>
 
                                 </div>
 
@@ -1453,6 +1458,140 @@ function calculateWinStats(player) {
 }
 
 
+
+// ---------------------------------------------------------------------------
+// Shared board fragments (UI overhaul Phase 4).
+//
+// buildBoardParts() produces the per-region HTML strings (opponents, monsters,
+// discard, party, win-track, hand) ONCE, with every load-bearing id/data-id and
+// targeting class intact. renderBoard() then writes each fragment into its
+// PERSISTENT panel node — the #game-board shell is never innerHTML-nuked on a
+// routine broadcast (Risk #1). The same fragments will feed the portrait shell
+// in Phase 5; only the arrangement of the persistent nodes differs per
+// orientation, and that re-shell happens solely on a portrait<->landscape flip.
+// ---------------------------------------------------------------------------
+function buildBoardParts(data, ctx) {
+    const { me, isMyTurn, myTargetMode, currentPendingAction } = ctx;
+
+    // --- Opponents bar (chips) ---
+    let oppHtml = '';
+    data.playerOrder.forEach(id => {
+        if (id === myId) return;
+        const opp = data.players[id];
+        if (!opp) return;
+
+        const displayName = getPlayerName(id);
+        const stats = calculateWinStats(opp);
+
+        let chipClass = "opponent-chip";
+        let chipClick = `onclick="openOpponentModal('${id}')"`;
+        let chipTitle = `title="Click to view cards"`;
+
+        if (myTargetMode && currentPendingAction && ['FORCE_DISCARD_TARGET', 'CONDITIONAL_PULL', 'PUMA_PULL', 'LOOK_AND_PULL'].includes(currentPendingAction.type)) {
+            chipClass += " valid-target";
+            chipClick = `onclick="selectTarget('${id}')"`;
+            chipTitle = `title="Click to select this player as a target"`;
+        }
+
+        oppHtml += `
+                <div class="${chipClass}" ${chipClick} ${chipTitle}>
+                    <span class="opponent-chip-name">${displayName}</span>
+                    <span class="opponent-chip-stats">AP: ${opp.ap}/3 | Hand: ${opp.hand.length}</span>
+                    <span class="opponent-chip-win">🏆 Monsters: <span class="win-stat-highlight">${stats.monsters}/3</span> | Classes: <span class="win-stat-highlight">${stats.uniqueClasses}/6</span></span>
+                </div>
+            `;
+    });
+
+    // --- Center board: monsters ---
+    const monstersHtml = (data.activeMonsters || []).map(m => renderCard(m, false, false, true, isMyTurn)).join('');
+
+    // --- Discard pile ---
+    const safeDiscardPile = data.discardPile || [];
+    let discardHtml;
+    if (safeDiscardPile.length > 0) {
+        const topDiscard = safeDiscardPile[safeDiscardPile.length - 1];
+        // The whole pile is tappable to open the read-only viewer. The inner card
+        // has pointer-events:none so the tap reaches the wrapper (not the generic
+        // card-inspect handler).
+        discardHtml = `
+            <div onclick="openDiscardViewer()" title="View discard pile" style="cursor:pointer; position:relative;">
+                <div style="pointer-events:none;">${renderCard(topDiscard, false, false, false, false)}</div>
+                <div style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-top:5px; position:absolute; bottom:-25px; width:120px;">Discard: ${safeDiscardPile.length}</div>
+            </div>
+        `;
+    } else {
+        discardHtml = '<div class="card empty-slot">Discard</div>';
+    }
+
+    // --- My party leader (rendered into #leader-slot on the tray, NOT prepended
+    //     to the party row) + party + slain ---
+    const leaderHtml = me.leader ? renderCard(me.leader, true, false, false, isMyTurn) : '';
+    let partyHtml = '';
+    if (me.party && me.party.length > 0) {
+        const sortedMyParty = [...me.party].sort((a, b) => {
+            const classA = a.class || '';
+            const classB = b.class || '';
+            return classA.localeCompare(classB);
+        });
+        partyHtml += sortedMyParty.map(c => renderCard(c, true, false, false, isMyTurn)).join('');
+    }
+    if (me.slainMonsters.length > 0) {
+        partyHtml += `<div class="slain-monsters-container">
+            <h3>Slain (${me.slainMonsters.length}/3)</h3>
+            <div class="slain-monsters-list">
+                ${me.slainMonsters.map(m => `<div class="slain-monster-icon" style="background-image:url('${m.imageUrl}')" title="${m.name}"></div>`).join('')}
+            </div>
+        </div>`;
+    }
+
+    // --- Local win tracker --- (Phase 7: slain ✦✦○ pips + X/6 classes; both win paths)
+    const myStats = calculateWinStats(me);
+    const slain = Math.min(myStats.monsters, 3);
+    const slainPips = [0, 1, 2].map(i => `<span class="wt-pip${i < slain ? ' on' : ''}">${i < slain ? '✦' : '○'}</span>`).join('');
+    const winTrackHtml = `<span class="wt-slain" title="Slay 3 monsters to win">Slain ${slainPips}</span>`
+        + `<span class="wt-classes" title="Collect 6 different classes to win">Classes <b>${myStats.uniqueClasses}/6</b></span>`;
+
+    // --- My hand ---
+    const handHtml = me.hand.map(c => renderCard(c, true, true, false, isMyTurn)).join('');
+
+    return { oppHtml, monstersHtml, discardHtml, partyHtml, leaderHtml, winTrackHtml, handHtml };
+}
+
+
+
+// Current board-shell orientation ('landscape' | 'portrait'). The persistent
+// panel nodes live in index.html as the LANDSCAPE shell; the portrait shell and
+// the re-shell-on-flip path arrive in Phase 5. Tracking the mode here gives that
+// later work a single seam and lets renderBoard stay a pure fragment-apply pass.
+let currentBoardShellMode = 'landscape';
+
+function ensureBoardShell() {
+    // Landscape uses the static index.html shell — nothing to (re)build. When the
+    // portrait shell lands (Phase 5) this is where a real flip will swap the
+    // arrangement of the persistent nodes, and ONLY on an actual category change.
+    const mode = (window.innerWidth <= window.innerHeight) ? 'portrait' : 'landscape';
+    if (mode !== currentBoardShellMode && mode === 'landscape') {
+        currentBoardShellMode = 'landscape';
+    }
+    return currentBoardShellMode;
+}
+
+
+
+// Write `html` into `el` only when it differs from what we last wrote there.
+// renderBoard runs on EVERY server broadcast, but most board regions are unchanged
+// between broadcasts; rewriting innerHTML anyway destroys and recreates the DOM and
+// can drop an in-flight tap (the same class of bug as the opponent-modal rebuild,
+// but for the board regions — it made the 3-player targeting flow flaky). The
+// generated HTML string IS the signature: identical string => identical DOM, so
+// skipping the write is always safe and never leaves stale UI. The fingerprint is
+// stashed on the node itself, so a shell swap (new node on rotation) re-renders.
+function setRegionHtml(el, html) {
+    if (!el) return;
+    if (el._lastHtmlSig === html) return;
+    el._lastHtmlSig = html;
+    el.innerHTML = html;
+}
 
 function renderBoard(data) {
 
@@ -2341,69 +2480,15 @@ function renderBoard(data) {
         targetBanner?.classList.add('hidden');
     }
 
+    // Build all shared board fragments once (Phase 4), then write each into its
+    // persistent panel node below. ensureBoardShell() keeps the landscape shell
+    // (and, from Phase 5, swaps to portrait only on an actual orientation flip).
+    ensureBoardShell();
+    const boardParts = buildBoardParts(data, { me, isMyTurn, myTargetMode, currentPendingAction });
+
     // Opponents Bar (Chips)
 
-    if (opponentsBar) {
-
-        opponentsBar.innerHTML = '';
-
-
-
-
-
-        data.playerOrder.forEach(id => {
-
-            if (id === myId) return;
-
-            const opp = data.players[id];
-
-            if (!opp) return;
-
-
-
-            const displayName = getPlayerName(id);
-
-            const stats = calculateWinStats(opp);
-
-            
-
-            let chipClass = "opponent-chip";
-
-            let chipClick = `onclick="openOpponentModal('${id}')"`;
-
-            let chipTitle = `title="Click to view cards"`;
-
-
-
-            if (myTargetMode && currentPendingAction && ['FORCE_DISCARD_TARGET', 'CONDITIONAL_PULL', 'PUMA_PULL', 'LOOK_AND_PULL'].includes(currentPendingAction.type)) {
-
-                chipClass += " valid-target";
-
-                chipClick = `onclick="selectTarget('${id}')"`;
-
-                chipTitle = `title="Click to select this player as a target"`;
-
-            }
-
-
-
-            opponentsBar.innerHTML += `
-
-                <div class="${chipClass}" ${chipClick} ${chipTitle}>
-
-                    <span class="opponent-chip-name">${displayName}</span>
-
-                    <span class="opponent-chip-stats">AP: ${opp.ap}/3 | Hand: ${opp.hand.length}</span>
-
-                    <span class="opponent-chip-win">🏆 Monsters: <span class="win-stat-highlight">${stats.monsters}/3</span> | Classes: <span class="win-stat-highlight">${stats.uniqueClasses}/6</span></span>
-
-                </div>
-
-            `;
-
-        });
-
-    }
+    setRegionHtml(opponentsBar, boardParts.oppHtml);
 
 
 
@@ -2421,7 +2506,17 @@ function renderBoard(data) {
 
     // Center Board
 
-    activeMonsters.innerHTML = (data.activeMonsters || []).map(m => renderCard(m, false, false, true, isMyTurn)).join('');
+    // Monsters are now always on-board (Phase 6), so guard the rebuild: only
+    // rewrite when something affecting their display actually changed (the monster
+    // set, whose turn it is, or the party/AP that decides attackability). Without
+    // this the always-visible monster cards would re-render on every broadcast and
+    // could drop an in-flight attack tap — the same churn fix as the opponent modal.
+    const partySig = `${me.leader && me.leader.class || ''}|${(me.party || []).map(c => c.class).sort().join(',')}`;
+    const monstersSig = `${(data.activeMonsters || []).map(m => m.id).join(',')}|${data.state}|${isMyTurn}|${me.ap}|${partySig}`;
+    if (monstersSig !== window._monstersSig) {
+        window._monstersSig = monstersSig;
+        activeMonsters.innerHTML = boardParts.monstersHtml;
+    }
 
     
 
@@ -2443,94 +2538,69 @@ function renderBoard(data) {
 
     
 
-    const safeDiscardPile = data.discardPile || [];
-    if (safeDiscardPile.length > 0) {
-
-        const topDiscard = safeDiscardPile[safeDiscardPile.length - 1];
-
-        // The whole pile is tappable to open the read-only viewer. The inner card
-        // has pointer-events:none so the tap reaches the wrapper (not the generic
-        // card-inspect handler).
-        discardPile.innerHTML = `
-
-            <div onclick="openDiscardViewer()" title="View discard pile" style="cursor:pointer; position:relative;">
-
-                <div style="pointer-events:none;">${renderCard(topDiscard, false, false, false, false)}</div>
-
-                <div style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-top:5px; position:absolute; bottom:-25px; width:120px;">Discard: ${safeDiscardPile.length}</div>
-
-            </div>
-
-        `;
-
-    } else {
-
-        discardPile.innerHTML = '<div class="card empty-slot">Discard</div>';
-
-    }
+    setRegionHtml(discardPile, boardParts.discardHtml);
 
 
 
     // My Area
 
-    let myPartyHtml = me.leader ? renderCard(me.leader, true, false, false, isMyTurn) : '';
+    setRegionHtml(playerParty, boardParts.partyHtml);
 
-    if (me.party && me.party.length > 0) {
-
-        const sortedMyParty = [...me.party].sort((a, b) => {
-
-            const classA = a.class || '';
-
-            const classB = b.class || '';
-
-            return classA.localeCompare(classB);
-
-        });
-
-        myPartyHtml += sortedMyParty.map(c => renderCard(c, true, false, false, isMyTurn)).join('');
-
-    }
-
-    if (me.slainMonsters.length > 0) {
-
-        myPartyHtml += `<div class="slain-monsters-container">
-
-            <h3>Slain (${me.slainMonsters.length}/3)</h3>
-
-            <div class="slain-monsters-list">
-
-                ${me.slainMonsters.map(m => `<div class="slain-monster-icon" style="background-image:url('${m.imageUrl}')" title="${m.name}"></div>`).join('')}
-
-            </div>
-
-        </div>`;
-
-    }
-
-    playerParty.innerHTML = myPartyHtml;
+    // Party leader — raised on the tray (own slot), not in the party row.
+    setRegionHtml(document.getElementById('leader-slot'), boardParts.leaderHtml);
 
 
 
     // Update local player win tracker
 
-    const myStats = calculateWinStats(me);
-
     const myWinTracker = document.getElementById('player-win-tracker');
 
-    if (myWinTracker) {
+    setRegionHtml(myWinTracker, boardParts.winTrackHtml);
 
-        const myName = me.name ? me.name : 'Player (You)';
-
-        myWinTracker.innerHTML = `Monsters: <span class="win-stat-highlight">${myStats.monsters}/3</span> | Classes: <span class="win-stat-highlight">${myStats.uniqueClasses}/6</span>`;
-
+    // AP gems (Phase 7): one amber gem per current AP, from the real me.ap (can be
+    // 4 with Mega Slime — show a 4th slot only then, otherwise a 3-slot track).
+    const apGemsEl = document.getElementById('ap-gems');
+    if (apGemsEl) {
+        const ap = me.ap || 0;
+        const slots = ap > 3 ? 4 : 3;
+        const apHtml = `<span class="ap-gems-label">AP</span>` +
+            Array.from({ length: slots }, (_, i) => `<span class="ap-gem${i < ap ? ' on' : ''}"></span>`).join('');
+        setRegionHtml(apGemsEl, apHtml);
     }
 
+    // Reward toast (Phase 7): celebrate when MY slain count grows. Client-side
+    // only — reads slainMonsters, fires no socket events. Guarded by a remembered
+    // count so it shows once per slay, not on every re-render/rotation.
+    const slainNow = me.slainMonsters ? me.slainMonsters.length : 0;
+    if (window._lastSlainShown === undefined) window._lastSlainShown = slainNow;
+    if (slainNow > window._lastSlainShown) {
+        const newest = me.slainMonsters[me.slainMonsters.length - 1];
+        showRewardToast(newest && newest.name);
+    }
+    window._lastSlainShown = slainNow;
 
-
-    playerHand.innerHTML = me.hand.map(c => renderCard(c, true, true, false, isMyTurn)).join('');
+    setRegionHtml(playerHand, boardParts.handHtml);
 
     applyMobileStacking();
 }
+
+// Brief celebratory banner shown when the local player slays a monster (Phase 7).
+let _rewardToastTimer = null;
+function showRewardToast(monsterName) {
+    const toast = document.getElementById('reward-toast');
+    if (!toast) return;
+    const nameEl = document.getElementById('reward-toast-name');
+    if (nameEl) nameEl.textContent = monsterName || '';
+    toast.classList.remove('hidden');
+    toast.classList.add('show');
+    triggerHaptic([30, 40, 30]);
+    if (_rewardToastTimer) clearTimeout(_rewardToastTimer);
+    _rewardToastTimer = setTimeout(() => {
+        toast.classList.remove('show');
+        toast.classList.add('hidden');
+    }, 2800);
+}
+window.showRewardToast = showRewardToast;
 
 
 
@@ -3709,6 +3779,20 @@ function showNotification(msg) {
     // console, rather than as transient floating toasts.
     logEvent(msg);
 }
+
+// Phase 5.4: show/hide the game log/chat (the ☰ button). Hidden by default; the
+// `chat-open` class on <body> drives a floating panel via CSS. No socket changes
+// and no change to how events are written into the log — visibility only.
+window.toggleGameMenu = function(forceOpen) {
+    const open = typeof forceOpen === 'boolean'
+        ? forceOpen
+        : !document.body.classList.contains('chat-open');
+    document.body.classList.toggle('chat-open', open);
+    if (open) {
+        const log = document.getElementById('event-log');
+        if (log) log.scrollTop = log.scrollHeight; // newest in view on open
+    }
+};
 
 // Collapse/expand the game chat. Collapsed shows only the latest ~2 lines; tap
 // the header (or the collapsed log) to expand into the full scrollable history.

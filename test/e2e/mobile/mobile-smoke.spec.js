@@ -5,9 +5,11 @@ const { startMobileGame, isWithinViewport, MOBILE_VIEWPORT, rollLeader } = requi
 const { injectCard, addToDiscard, passChallenge, rollDice, passModifiers, passOpponentModifiers, trackContext } = require('../helpers/gameSetup');
 
 // ---------------------------------------------------------------------------
-// 1. Rotation lock: portrait shows overlay; rotating to landscape hides it
+// 1. Orientation unlock (Phase 5): the rotation lock is removed. The overlay
+//    must stay hidden in BOTH portrait and landscape, the board must carry the
+//    matching mode class, and the lobby must be reachable in portrait.
 // ---------------------------------------------------------------------------
-test('Rotation lock overlay appears in portrait and clears in landscape', async ({ browser }) => {
+test('Rotation lock overlay never blocks — portrait and landscape both playable', async ({ browser }) => {
     const ctx = trackContext(await browser.newContext({
         viewport: { width: 390, height: 844 }, // portrait iPhone dimensions
         hasTouch: true,
@@ -17,23 +19,26 @@ test('Rotation lock overlay appears in portrait and clears in landscape', async 
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(400);
 
-    // Portrait: overlay must block the UI
+    // Portrait: overlay must NOT block; board carries the .portrait mode class.
     const overlayPortrait = await page.locator('#rotation-lock-overlay').evaluate(
         el => el && !el.classList.contains('hidden') && getComputedStyle(el).display !== 'none',
     ).catch(() => false);
-    expect(overlayPortrait, 'Rotation lock overlay should be visible in portrait').toBe(true);
+    expect(overlayPortrait, 'Rotation lock overlay must stay hidden in portrait').toBe(false);
+    await expect(page.locator('#game-board')).toHaveClass(/portrait/);
 
-    // Resize to landscape
+    // Lobby must be reachable in portrait (no blocking overlay).
+    await expect(page.locator('#lobby-modal')).toBeVisible({ timeout: 5_000 });
+
+    // Resize to landscape: overlay still hidden, board flips to .landscape.
     await page.setViewportSize({ width: 844, height: 390 });
     await page.waitForTimeout(400);
 
-    // Landscape: overlay must be gone, lobby must be accessible
     const overlayLandscape = await page.locator('#rotation-lock-overlay').evaluate(
         el => el && !el.classList.contains('hidden') && getComputedStyle(el).display !== 'none',
     ).catch(() => false);
     expect(overlayLandscape, 'Rotation lock overlay should be hidden in landscape').toBe(false);
+    await expect(page.locator('#game-board')).toHaveClass(/landscape/);
 
-    // Back in landscape the lobby must be accessible (the lobby element is #lobby-modal).
     await expect(page.locator('#lobby-modal')).toBeVisible({ timeout: 5_000 });
     await ctx.close();
 });
@@ -176,12 +181,12 @@ test('Dice overlay roll button is within viewport on mobile', async ({ browser }
 // ---------------------------------------------------------------------------
 // 8. Board modal shows 3 monsters on mobile
 // ---------------------------------------------------------------------------
-test('Board modal shows 3 monsters on mobile viewport', async ({ browser }) => {
+test('3 monsters are shown on-board on mobile viewport', async ({ browser }) => {
     const errors = [];
     const { host, ctx1, ctx2 } = await startMobileGame(browser);
     host.on('pageerror', e => errors.push(e.message));
 
-    await host.locator('#view-board-btn').tap();
+    // Monsters are always on the board now (no BOARD button / modal needed).
     await expect(host.locator('#active-monsters .card')).toHaveCount(3, { timeout: 8_000 });
 
     expect(errors).toEqual([]);
@@ -194,7 +199,7 @@ test('Board modal shows 3 monsters on mobile viewport', async ({ browser }) => {
 test('Action bar buttons are all within the 844×390 mobile viewport', async ({ browser }) => {
     const { host, ctx1, ctx2 } = await startMobileGame(browser);
 
-    for (const id of ['#view-board-btn', '#draw-card-btn', '#end-turn-btn']) {
+    for (const id of ['#draw-card-btn', '#end-turn-btn']) {
         const fits = await isWithinViewport(host.locator(id));
         expect(fits, `${id} must be within viewport on mobile`).toBe(true);
     }
@@ -348,12 +353,9 @@ test('Discard-pile viewer opens and lists all discarded cards on mobile', async 
     await addToDiscard(host, 'card_030');
     await addToDiscard(host, 'card_016');
 
-    // The discard pile lives inside the board modal — open it first.
-    await host.locator('#view-board-btn').tap();
-    await expect(host.locator('#board-modal')).not.toHaveClass(/hidden/, { timeout: 5_000 });
-
-    // Tap the discard pile to open the read-only viewer. Force — the visible card
-    // inside has pointer-events:none, so a normal tap's hit-test is ambiguous.
+    // The discard pile is now always visible on the board (Phase 6) — no need to
+    // open the board modal first. Tap it to open the read-only viewer. Force — the
+    // visible card inside has pointer-events:none, so a normal tap is ambiguous.
     await host.locator('#discard-pile').tap({ force: true });
     await expect(host.locator('#discard-viewer-modal')).not.toHaveClass(/hidden/, { timeout: 5_000 });
     await expect(host.locator('#discard-viewer-content .card')).toHaveCount(2, { timeout: 5_000 });

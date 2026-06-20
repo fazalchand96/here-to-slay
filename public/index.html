@@ -157,8 +157,37 @@
     <div id="app-container" class="app-container hidden">
     <!-- Game Board -->
     <div id="game-board" class="game-board">
+        <!-- PORTRAIT-ONLY top bar: win-track + menu (hidden in landscape via CSS) -->
+        <div id="board-top-bar">
+            <div id="player-win-tracker"></div>
+            <div id="ap-gems" aria-label="Action points"></div>
+        </div>
+        <!-- Floating menu toggle (both orientations): show/hide the game log -->
+        <button id="game-menu-btn" type="button" aria-label="Toggle game log" onclick="toggleGameMenu()">&#9776;</button>
+
         <!-- TOP ROW: Opponents Bar -->
         <div id="opponents-bar"></div>
+
+        <!-- ON-BOARD center: monsters + deck/discard, always visible (Phase 6).
+             Moved out of #board-modal so the board no longer depends on the BOARD
+             button for visibility. The nodes keep their ids/classes (cached refs
+             + e2e selectors intact); positioned per orientation via CSS. -->
+        <div id="board-center">
+            <div class="deck-area">
+                <div class="card card-back" id="main-deck">
+                    <span>Main Deck</span>
+                </div>
+                <div class="card-container" id="discard-pile">
+                    <div class="card empty-slot">Discard</div>
+                </div>
+            </div>
+            <div class="monsters-area">
+                <div class="area-label">Monsters</div>
+                <div class="card-container" id="active-monsters">
+                    <!-- Monster cards -->
+                </div>
+            </div>
+        </div>
 
         <!-- ROW 3: Action Bar -->
         <div class="action-bar" id="player-controls">
@@ -177,6 +206,18 @@
                 <button id="end-turn-btn" class="action-btn primary" disabled title="End Turn"><div class="action-icon">END<br><span> </span></div></button>
             </div>
         </div>
+
+        <!-- PORTRAIT-ONLY gold battlefield divider (hidden in landscape via CSS) -->
+        <div id="portrait-divider"></div>
+
+        <!-- Wooden tray backdrop (spans the bottom row of the landscape/portrait
+             shells, behind the leader + hand + action buttons). Painted by CSS;
+             empty by design. -->
+        <div id="landscape-tray-bg"></div>
+
+        <!-- Raised Party Leader slot — the leader renders here (on the tray),
+             not as the first card in #player-party. Populated by renderBoard. -->
+        <div id="leader-slot"></div>
 
         <!-- ROW 4: Player Area -->
         <div id="player-zone">
@@ -383,11 +424,21 @@
             <div id="inspector-modal-details" style="text-align: center; margin-bottom: 12px;">
                 <h2 id="inspector-modal-name" style="font-size: 1.4rem; margin-bottom: 4px;">Card Name</h2>
                 <h4 id="inspector-modal-type" style="color: var(--accent); margin-bottom: 8px; font-size: 0.9rem;">Card Type</h4>
-                <p id="inspector-modal-description" style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.45; text-align: left; padding: 10px; background: rgba(0,0,0,0.25); border-radius: 8px; margin: 0;"></p>
+                <p id="inspector-modal-description" style="color: var(--card-ink); font-size: 0.95rem; line-height: 1.45; text-align: left; padding: 10px; background: rgba(62,42,24,0.08); border: 1px solid rgba(62,42,24,0.15); border-radius: 8px; margin: 0;"></p>
             </div>
             <div id="inspector-modal-actions" style="display: flex; flex-direction: column; gap: 10px; justify-content: center;">
                 <!-- Dynamic actions injected here -->
             </div>
+        </div>
+    </div>
+
+    <!-- Reward toast (Phase 7): brief celebratory banner when YOU slay a monster.
+         Purely client-side — detected from slainMonsters growth, no socket wiring. -->
+    <div id="reward-toast" class="hidden">
+        <div id="reward-toast-inner">
+            <div class="reward-toast-burst">⚔️</div>
+            <div class="reward-toast-title">Monster Slain!</div>
+            <div id="reward-toast-name"></div>
         </div>
     </div>
 
@@ -397,19 +448,7 @@
             <button class="close-btn" onclick="document.getElementById('board-modal').classList.add('hidden')">&times;</button>
             <h2 style="margin-bottom:15px;">The Board</h2>
             <div id="board-modal-content" style="display:flex; flex-direction:column; gap:20px;">
-                <div class="deck-area">
-                    <div class="card card-back" id="main-deck">
-                        <span>Main Deck</span>
-                    </div>
-                    <div class="card-container" id="discard-pile">
-                        <div class="card empty-slot">Discard</div>
-                    </div>
-                </div>
-                <div class="monsters-area">
-                    <div class="card-container" id="active-monsters">
-                        <!-- Monster cards -->
-                    </div>
-                </div>
+                <p style="opacity:0.75; text-align:center; margin:0;">Monsters, the deck and the discard pile are now shown directly on the board.</p>
                 <div id="global-discard-pool" class="hidden" style="border: 2px dashed #ffd700; padding: 10px; margin-left: 20px;">
                     <h3>Discard Pool</h3>
                     <div id="pool-cards" class="card-container"></div>

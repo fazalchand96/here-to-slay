@@ -124,8 +124,7 @@ test('no JS errors thrown during game start and initial render (renderBoard cras
 test('3 monsters are shown on the board after game start', async ({ browser }) => {
     const { host, ctx1, ctx2 } = await startTwoPlayerGame(browser);
 
-    // Open the board modal
-    await host.click('#view-board-btn');
+    // Monsters are always on the board now (no BOARD button / modal needed).
     const monsters = host.locator('#active-monsters .card');
     await expect(monsters).toHaveCount(3, { timeout: 8_000 });
 
