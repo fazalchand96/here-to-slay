@@ -96,6 +96,15 @@ Verified: mobile-smoke 14/14, gameplay.spec 6/6, both orientations spot-checked.
 - Both new keyframes are transform/filter only and covered by the `prefers-reduced-motion` guard.
 - **Skipped (and why):** hand-fan-on-hover — user already likes the static fan, and a hover-spread shifts click targets (e2e flake risk). Modal **exit** transitions — would need to defer `.hidden` on every close path; tests assert immediate hide → higher risk, low reward vs the entrance we already added.
 
+### 5b-3: sound + haptics pass
+Goal was "everything should have a sound + haptics." Only `dice.ogg` ever shipped — `slash/magic/card_drop.ogg` were referenced but missing (silently 404'd). Instead of sourcing/licensing ~20 audio files, added a **Web Audio synth engine** (`Sound` IIFE near the top of app.js) — procedural blip/noise/arp recipes, no asset files, offline-safe. Verified: all 21 recipes run without throwing, mobile-smoke 14/14, no pageerrors.
+- `playSound(name)` keeps its signature: plays a real file if one exists (`dice.ogg`), else synthesizes. `sfx` map trimmed to just `dice`.
+- **Global press layer**: one capture-phase `pointerdown` listener unlocks the AudioContext (autoplay policy) and plays a light `tap` + 8ms haptic on any `button/.card/.action-btn/.opponent-chip/[onclick]/.clickable`. This is what gives "everything" feedback; specific actions layer richer sounds on top.
+- Semantic hooks added: `cardDrop` (playCard), `slash`+haptic (attack), `draw` (draw/reload btns), `confirm` (end turn), `skill` (useSkillLater), `equip` (item lands on hero), `target` (selectTarget), `challenge` (playChallenge + `challenge_pending`), `modifier` (playModifier + `modifier_played`), `coin` (slay reward toast), `turn` (becameMyTurn), `open` (inspector), `win`/`lose` (game_over — compares `data.winnerName` to my name since server only sends winnerName).
+- **Mute toggle**: `#mute-btn` (🔊/🔇) added left of the ☰ menu; `window.toggleMute` → `Sound.toggleMute()`, persisted in `localStorage['hts-muted']`. Mute silences **both** sound and haptics (`triggerHaptic` early-returns when muted).
+- To add a new sound: add a recipe to the `recipes` map, call `playSound('name')`. To swap a synth sound for a real file: drop the file in `public/sounds/`, add it to `sfx`, precache it in `sw.js`.
+- sw bumped `hts-v6` → `hts-v7`.
+
 ## 6. TODO / next (for the new chat)
 
 1. **Use the `emil-design-eng` skill** for any further polish. The obvious candidates are done (5b, 5b-2). Remaining/optional: modal **exit** transitions (needs JS deferral on close paths — see skip note), hand-fan-on-hover (user likes current fan), victory-screen choreography. Good candidates: card hover/lift/select, hand fan on hover, dice-roll motion, modal enter/exit (challenge/inspector/victory), turn-change cue, monster-slain reward, AP-gem fill, page/orientation transitions. (`review-animations` skill exists for critiquing motion — it's manual-invoke only.)

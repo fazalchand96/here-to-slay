@@ -22,27 +22,128 @@ const socket = io();
 window._socket = socket;
 
 // --- AUDIO MANAGER ---
+// Real audio files (only the ones that actually ship on disk). Everything else
+// is synthesized at runtime by the Web Audio engine below — no asset files to
+// source/license, works offline, and every action gets its own distinct sound.
 const sfx = {
-    dice: new Audio('/sounds/dice.ogg'),
-    slash: new Audio('/sounds/slash.ogg'),
-    magic: new Audio('/sounds/magic.ogg'),
-    cardDrop: new Audio('/sounds/card_drop.ogg')
+    dice: new Audio('/sounds/dice.ogg')
 };
-
-// Prevent crashes if files are missing and set default volumes
 Object.values(sfx).forEach(audio => {
     audio.volume = 0.6;
     audio.addEventListener('error', () => { audio.src = ''; }); // Silence missing files
 });
 
-function playSound(name) {
-    if (sfx[name] && sfx[name].src) {
-        sfx[name].currentTime = 0; // Reset to start for rapid playback
-        sfx[name].play().catch(e => { /* Ignore autoplay restrictions */ });
+// Procedural sound engine (Web Audio). Lazily created; must be unlocked by a
+// user gesture (handled by the global pointerdown listener near the bottom).
+const Sound = (() => {
+    let ctx = null, master = null;
+    let muted = false;
+    try { muted = localStorage.getItem('hts-muted') === '1'; } catch (e) {}
+
+    function init() {
+        if (ctx) return ctx;
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        ctx = new AC();
+        master = ctx.createGain();
+        master.gain.value = 0.5;
+        master.connect(ctx.destination);
+        return ctx;
     }
+    function unlock() {
+        const c = init();
+        if (c && c.state === 'suspended') c.resume();
+    }
+
+    // A single enveloped oscillator "blip".
+    function blip(freq, { type = 'sine', dur = 0.12, vol = 0.3, attack = 0.004, slideTo = null, when = 0 } = {}) {
+        const c = init(); if (!c) return;
+        const t = c.currentTime + when;
+        const osc = c.createOscillator();
+        const g = c.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, t);
+        if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(vol, t + attack);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        osc.connect(g); g.connect(master);
+        osc.start(t); osc.stop(t + dur + 0.02);
+    }
+    // Filtered, decaying noise burst (whooshes, slashes, paper slides).
+    function noise({ dur = 0.18, vol = 0.25, type = 'highpass', freq = 800, freqEnd = null, when = 0 } = {}) {
+        const c = init(); if (!c) return;
+        const t = c.currentTime + when;
+        const frames = Math.max(1, Math.floor(c.sampleRate * dur));
+        const buf = c.createBuffer(1, frames, c.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < frames; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / frames);
+        const src = c.createBufferSource(); src.buffer = buf;
+        const filt = c.createBiquadFilter(); filt.type = type;
+        filt.frequency.setValueAtTime(freq, t);
+        if (freqEnd) filt.frequency.exponentialRampToValueAtTime(freqEnd, t + dur);
+        const g = c.createGain(); g.gain.setValueAtTime(vol, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        src.connect(filt); filt.connect(g); g.connect(master);
+        src.start(t); src.stop(t + dur + 0.02);
+    }
+    function arp(freqs, { stagger = 0.06, ...opts } = {}) {
+        freqs.forEach((f, i) => blip(f, { ...opts, when: (opts.when || 0) + i * stagger }));
+    }
+
+    const recipes = {
+        tap:       () => blip(420, { type: 'triangle', dur: 0.05, vol: 0.11 }),
+        open:      () => blip(520, { type: 'sine', dur: 0.12, vol: 0.18, slideTo: 760 }),
+        close:     () => blip(540, { type: 'sine', dur: 0.10, vol: 0.14, slideTo: 320 }),
+        confirm:   () => { blip(523, { type: 'triangle', dur: 0.09, vol: 0.2 }); blip(784, { type: 'triangle', dur: 0.13, vol: 0.16, when: 0.07 }); },
+        cardDrop:  () => noise({ dur: 0.16, vol: 0.3, type: 'lowpass', freq: 1400, freqEnd: 300 }),
+        draw:      () => noise({ dur: 0.22, vol: 0.22, type: 'highpass', freq: 600, freqEnd: 2600 }),
+        slash:     () => { noise({ dur: 0.18, vol: 0.34, type: 'highpass', freq: 1200, freqEnd: 400 }); blip(180, { type: 'sawtooth', dur: 0.12, vol: 0.2, slideTo: 60, when: 0.02 }); },
+        attack:    () => recipes.slash(),
+        magic:     () => arp([660, 990, 1320], { type: 'sine', dur: 0.4, vol: 0.13, stagger: 0.05 }),
+        skill:     () => { blip(659, { type: 'triangle', dur: 0.1, vol: 0.18 }); blip(988, { type: 'triangle', dur: 0.16, vol: 0.15, when: 0.08 }); },
+        challenge: () => { blip(330, { type: 'sawtooth', dur: 0.18, vol: 0.24, slideTo: 220 }); blip(247, { type: 'sawtooth', dur: 0.22, vol: 0.18, when: 0.1 }); },
+        modifier:  () => blip(880, { type: 'triangle', dur: 0.18, vol: 0.17, slideTo: 1320 }),
+        target:    () => blip(700, { type: 'sine', dur: 0.06, vol: 0.15 }),
+        coin:      () => { blip(988, { type: 'square', dur: 0.08, vol: 0.16 }); blip(1319, { type: 'square', dur: 0.14, vol: 0.14, when: 0.06 }); },
+        equip:     () => { blip(1318, { type: 'square', dur: 0.05, vol: 0.14 }); blip(1568, { type: 'square', dur: 0.08, vol: 0.12, when: 0.04 }); },
+        turn:      () => { blip(587, { type: 'sine', dur: 0.14, vol: 0.2 }); blip(880, { type: 'sine', dur: 0.2, vol: 0.16, when: 0.1 }); },
+        error:     () => { blip(200, { type: 'sawtooth', dur: 0.16, vol: 0.2 }); blip(150, { type: 'sawtooth', dur: 0.2, vol: 0.18, when: 0.08 }); },
+        join:      () => blip(660, { type: 'sine', dur: 0.12, vol: 0.16, slideTo: 880 }),
+        win:       () => arp([523, 659, 784, 1047], { type: 'triangle', dur: 0.5, vol: 0.2, stagger: 0.12 }),
+        lose:      () => arp([392, 330, 262], { type: 'triangle', dur: 0.5, vol: 0.2, stagger: 0.14 }),
+        dice:      () => noise({ dur: 0.3, vol: 0.3, type: 'bandpass', freq: 1500 }) // synth fallback; dice.ogg used when present
+    };
+
+    return {
+        unlock,
+        play(name) {
+            if (muted) return;
+            const r = recipes[name];
+            if (r) { try { r(); } catch (e) { /* never let audio break the game */ } }
+        },
+        toggleMute() {
+            muted = !muted;
+            try { localStorage.setItem('hts-muted', muted ? '1' : '0'); } catch (e) {}
+            return muted;
+        },
+        isMuted() { return muted; }
+    };
+})();
+
+// Public API (unchanged signature): prefer a real audio file when one ships,
+// otherwise synthesize. Existing playSound('dice'/'slash'/'magic') calls keep working.
+function playSound(name) {
+    const file = sfx[name];
+    if (file && file.src) {
+        try { file.currentTime = 0; file.play().catch(() => {}); } catch (e) {}
+        return;
+    }
+    Sound.play(name);
 }
 
 function triggerHaptic(pattern) {
+    if (Sound.isMuted()) return; // one "silence" switch covers sound + vibration
     if ('vibrate' in navigator) {
         try {
             navigator.vibrate(pattern);
@@ -51,6 +152,22 @@ function triggerHaptic(pattern) {
         }
     }
 }
+
+// Global press layer: unlock the audio engine on the first gesture, and give a
+// light tap + micro-haptic to every interactive element so the whole UI feels
+// responsive. Specific actions layer their own richer sound on top. Uses
+// pointerdown (fires before click) and is capture-phase so it still runs even if
+// a handler stops propagation. Passive — never blocks scrolling/tapping.
+document.addEventListener('pointerdown', (e) => {
+    Sound.unlock();
+    const el = e.target.closest(
+        'button, .card, .action-btn, .opponent-chip, .tavern-leader-card, [onclick], .clickable'
+    );
+    if (el && !el.disabled && !el.classList.contains('disabled')) {
+        playSound('tap');
+        triggerHaptic(8);
+    }
+}, { capture: true, passive: true });
 
 
 function renderDicePips(value) {
@@ -1346,6 +1463,12 @@ socket.on('gameStateUpdate', (data) => {
 
 socket.on('game_over', (data) => {
 
+    // Win/lose sting. game_over only carries winnerName, so compare it to mine.
+    const myName = getPlayerName(socket.id);
+    const iWon = data.winnerName && myName && data.winnerName === myName;
+    playSound(iWon ? 'win' : 'lose');
+    triggerHaptic(iWon ? [60, 50, 60, 50, 120] : [120, 60, 120]);
+
     // Hide game board and show victory modal
 
     appContainer?.classList.add('hidden');
@@ -1618,6 +1741,7 @@ function renderBoard(data) {
     const becameMyTurn = isMyTurn && (!previousGameState || previousGameState.activePlayerSocketId !== myId);
     if (becameMyTurn) {
         triggerHaptic(100);
+        playSound('turn');
         // One-shot pop on the turn badge (it's revealed later in this same render
         // pass), then drop the class so the idle pulse resumes.
         if (turnIndicator) {
@@ -2610,6 +2734,7 @@ function showRewardToast(monsterName) {
     if (nameEl) nameEl.textContent = monsterName || '';
     toast.classList.remove('hidden');
     toast.classList.add('show');
+    playSound('coin');
     triggerHaptic([30, 40, 30]);
     if (_rewardToastTimer) clearTimeout(_rewardToastTimer);
     _rewardToastTimer = setTimeout(() => {
@@ -3143,7 +3268,8 @@ socket.on('challenge_individual_roll', (data) => {
 
 
 socket.on('modifier_played', (data) => {
-    playSound('magic'); // <-- ADD THIS
+    playSound('modifier');
+    triggerHaptic(20);
     const stagingArea = document.getElementById('modifier-staging-area');
 
     const cardEl = document.createElement('div');
@@ -3196,7 +3322,9 @@ socket.on('rollResult', (data) => {
 
 socket.on('challenge_pending', (data) => {
 
+    playSound('challenge');
 
+    triggerHaptic([20, 40, 20]);
 
     const challengeModalElement = document.getElementById('challenge-modal');
 
@@ -3804,6 +3932,22 @@ function showNotification(msg) {
 // Phase 5.4: show/hide the game log/chat (the ☰ button). Hidden by default; the
 // `chat-open` class on <body> drives a floating panel via CSS. No socket changes
 // and no change to how events are written into the log — visibility only.
+// Silence / unsilence all sound + haptics. Persists via Sound (localStorage).
+window.toggleMute = function() {
+    const muted = Sound.toggleMute();
+    syncMuteBtn();
+    if (!muted) { Sound.unlock(); playSound('tap'); } // confirm we're back on
+};
+function syncMuteBtn() {
+    const btn = document.getElementById('mute-btn');
+    if (!btn) return;
+    const muted = Sound.isMuted();
+    btn.classList.toggle('is-muted', muted);
+    btn.innerHTML = muted ? '&#128263;' : '&#128266;'; // 🔇 / 🔊
+    btn.setAttribute('aria-pressed', String(muted));
+}
+syncMuteBtn();
+
 window.toggleGameMenu = function(forceOpen) {
     const open = typeof forceOpen === 'boolean'
         ? forceOpen
@@ -3873,6 +4017,7 @@ window.skipOptionalAction = function() {
 
 function playCard(id) {
     triggerHaptic([20, 30, 20]);
+    playSound('cardDrop');
     if (latestGameState && latestGameState.state === 'WAITING_FOR_HAND_SELECTION') {
 
         socket.emit('play_from_hand', { cardId: id });
@@ -4072,7 +4217,9 @@ function useSkillLater(id) {
 
     if (!context || !context.card) return;
 
-    
+    playSound('skill');
+
+    triggerHaptic([15, 25, 15]);
 
     pendingHeroSkillCard = context.card;
 
@@ -4489,7 +4636,8 @@ window.startLeaderSkillTargeting = function() {
 
 
 function attackMonster(id) {
-    playSound('slash'); // <-- ADD THIS
+    playSound('slash');
+    triggerHaptic([30, 50, 40]);
     socket.emit('attackMonster', id);
 
 }
@@ -4497,6 +4645,10 @@ function attackMonster(id) {
 
 
 function selectTarget(id) {
+
+    playSound('target');
+
+    triggerHaptic(15);
 
     socket.emit('target_selected', id);
 
@@ -4508,6 +4660,7 @@ function selectTarget(id) {
 
 function playModifier(id) {
     triggerHaptic([20, 30, 20]);
+    playSound('modifier');
     if (latestGameState && latestGameState.state === 'WAITING_FOR_MODIFIERS' && latestGameState.pendingRoll && latestGameState.pendingRoll.type === 'CHALLENGE') {
 
         const activeName = getPlayerName(latestGameState.pendingRoll.activeId);
@@ -4576,6 +4729,7 @@ function submitChallengeModifier(cardId, targetRoll) {
 
 function playChallenge(id) {
     triggerHaptic([20, 30, 20]);
+    playSound('challenge');
     socket.emit('play_challenge', id);
 }
 
@@ -4601,6 +4755,10 @@ endTurnBtn.addEventListener('click', () => {
 
     }
 
+    playSound('confirm');
+
+    triggerHaptic(25);
+
     socket.emit('end_turn');
 
 });
@@ -4609,6 +4767,10 @@ endTurnBtn.addEventListener('click', () => {
 
 drawCardBtn.addEventListener('click', () => {
 
+    playSound('draw');
+
+    triggerHaptic(15);
+
     socket.emit('draw_card_action');
 
 });
@@ -4616,6 +4778,10 @@ drawCardBtn.addEventListener('click', () => {
 
 
 discardDrawBtn.addEventListener('click', () => {
+
+    playSound('draw');
+
+    triggerHaptic(15);
 
     socket.emit('discard_and_draw_five_action');
 
@@ -4772,6 +4938,8 @@ window.inspectCard = function(cardId) {
 
 
     const card = context.card;
+
+    playSound('open');
 
 
 
@@ -5263,6 +5431,10 @@ window.inspectCard = function(cardId) {
                     socket.emit('submit_penalty_sacrifice', { targetHeroId: card.id });
 
                 } else if (isLocalTargeting) {
+
+                    playSound('equip');
+
+                    triggerHaptic([15, 20, 25]);
 
                     if (equipFromHandSelection) {
 

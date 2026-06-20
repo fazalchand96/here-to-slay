@@ -3411,7 +3411,8 @@ input:focus-visible,
 
 /* Floating ☰ toggle — visible in BOTH orientations (it's a direct #game-board
    child now, not inside the portrait-only top bar). */
-#game-menu-btn {
+#game-menu-btn,
+#mute-btn {
     position: fixed !important;
     top: 8px !important;
     right: 10px !important;
@@ -3426,6 +3427,19 @@ input:focus-visible,
     border: 2px solid var(--wood-dark) !important;
     border-radius: 8px !important;
     box-shadow: var(--shadow-card) !important;
+    transition: transform 0.12s var(--ease-out), filter 0.12s ease !important;
+}
+/* Sit the mute toggle just left of the ☰ menu button. */
+#mute-btn {
+    right: 56px !important;
+}
+#mute-btn:active,
+#game-menu-btn:active {
+    transform: scale(0.92) !important;
+}
+#mute-btn.is-muted {
+    filter: grayscale(1) brightness(0.8) !important;
+    opacity: 0.75 !important;
 }
 
 /* Chat hidden by default; shown as a floating panel when body.chat-open. */
