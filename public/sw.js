@@ -2,7 +2,7 @@
 // NOTE: bump CACHE_VERSION whenever the app shell (HTML/JS/CSS) changes so old
 // caches are purged on activate. A stale shell can serve outdated JS and break
 // the app (e.g. "io is not defined" when an old index.html/app.js is served).
-const CACHE_VERSION = 'hts-v7';
+const CACHE_VERSION = 'hts-v8';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
@@ -13,6 +13,8 @@ const PRECACHE_ASSETS = [
   '/tabletop-bg.jpg',
   '/tavern-bg.jpg',
   '/sounds/dice.ogg',
+  // Add recorded SFX here as you enable them in app.js SOUND_FILES, e.g.
+  // '/sounds/slash.ogg', '/sounds/win.ogg', so they're cached for offline play.
   'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap'
 ];
 

@@ -22,15 +22,43 @@ const socket = io();
 window._socket = socket;
 
 // --- AUDIO MANAGER ---
-// Real audio files (only the ones that actually ship on disk). Everything else
-// is synthesized at runtime by the Web Audio engine below — no asset files to
-// source/license, works offline, and every action gets its own distinct sound.
-const sfx = {
-    dice: new Audio('/sounds/dice.ogg')
+// The synth engine below covers every sound procedurally. To upgrade any one of
+// them to a richer RECORDED file, do TWO things:
+//   1. drop the file in public/sounds/  (any of .ogg/.mp3/.wav/.m4a)
+//   2. uncomment its line in SOUND_FILES below (filename incl. extension)
+// That's it — the file then auto-overrides the synth for that sound, and a
+// missing/failed file silently falls back to synth. Also add the path to
+// PRECACHE_ASSETS in sw.js so it's available offline. Per-name volume can be
+// given as [filename, volume]; a bare string uses the default 0.6.
+const SOUND_FILES = {
+    dice: 'dice.ogg',          // shipped
+    // tap: 'tap.ogg',         // careful: plays on every press — keep it very short
+    // open: 'open.ogg',
+    // close: 'close.ogg',
+    // confirm: 'confirm.ogg',
+    // cardDrop: 'card_drop.ogg',
+    // draw: 'draw.ogg',
+    // slash: 'slash.ogg',     // used for attacks
+    // magic: 'magic.ogg',
+    // skill: 'skill.ogg',
+    // challenge: 'challenge.ogg',
+    // modifier: 'modifier.ogg',
+    // target: 'target.ogg',
+    // coin: 'coin.ogg',       // slay reward
+    // equip: 'equip.ogg',
+    // turn: 'turn.ogg',       // your-turn cue
+    // error: 'error.ogg',
+    // join: 'join.ogg',
+    // win: 'win.ogg',
+    // lose: 'lose.ogg'
 };
-Object.values(sfx).forEach(audio => {
-    audio.volume = 0.6;
-    audio.addEventListener('error', () => { audio.src = ''; }); // Silence missing files
+const sfx = {};
+Object.entries(SOUND_FILES).forEach(([name, spec]) => {
+    const [file, vol] = Array.isArray(spec) ? spec : [spec, 0.6];
+    const audio = new Audio('/sounds/' + file);
+    audio.volume = vol;
+    audio.addEventListener('error', () => { audio.src = ''; }); // missing file → synth fallback
+    sfx[name] = audio;
 });
 
 // Procedural sound engine (Web Audio). Lazily created; must be unlocked by a
