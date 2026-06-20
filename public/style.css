@@ -3866,7 +3866,7 @@ body.landscape #game-board {
     grid-template-columns: 96px 1fr 96px !important;
     grid-template-rows: auto auto auto auto 1fr auto !important;
     grid-template-areas:
-        "opp     win     win"
+        "opp     opp     win"
         "mons    mons    mons"
         "deck    party   ap"
         "draw    party   redraw"
@@ -3902,7 +3902,10 @@ body.landscape #opponents-bar {
     height: auto !important;
     overflow-x: auto !important;
     background: transparent !important;
-    padding: 0 !important;
+    /* Right pad keeps chips clear of the fixed win-track/buttons cluster in the
+       top-right, so a chip's clickable area never lands under them (multi-opponent
+       targeting). The opp grid area spans the first two columns. */
+    padding: 0 150px 0 0 !important;
 }
 /* Win-track + turn indicator float fixed in the top-right (stacked), so they
    don't claim grid-row height on the short mobile-landscape viewport. */
