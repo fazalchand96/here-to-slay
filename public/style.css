@@ -3357,7 +3357,7 @@ input:focus-visible,
     gap: 10px !important;
     width: 100% !important;
     flex: 0 0 auto !important;
-    padding: 4px 48px 4px 10px !important; /* right pad clears the fixed ☰ button */
+    padding: 4px 100px 4px 10px !important; /* right pad clears the fixed 🔊 mute + ☰ menu buttons */
     box-sizing: border-box !important;
     background: rgba(0, 0, 0, 0.35) !important;
     border-radius: var(--r-pill) !important;
@@ -3771,16 +3771,39 @@ body.landscape #player-party .card.card-leader { transform-origin: bottom left; 
 #opponent-modal .card-type, #opponent-modal .card-info,
 #discard-pile .card-type, #discard-pile .card-info,
 #discard-viewer-content .card-type, #discard-viewer-content .card-info,
-#challenge-card-display .card-type, #challenge-card-display .card-info {
+#challenge-card-display .card-type, #challenge-card-display .card-info,
+#dice-monster-preview .card-type, #dice-monster-preview .card-info {
     display: none !important;
 }
 #player-party .card-img, #player-hand .card-img, #active-monsters .card-img,
 #leader-slot .card-img, #opponent-modal .card-img, #discard-pile .card-img,
-#discard-viewer-content .card-img, #challenge-card-display .card-img {
+#discard-viewer-content .card-img, #challenge-card-display .card-img,
+#dice-monster-preview .card-img {
     background-size: contain !important;
     background-position: center !important;
     background-repeat: no-repeat !important;
     background-color: #14110a !important;
+}
+
+/* Attacked-monster preview inside the dice overlay (shown to everyone during the
+   roll + modifier window). Compact so it never crowds out the dice/PASS button. */
+#dice-monster-preview .card {
+    height: clamp(90px, 18vh, 130px) !important;
+    max-height: clamp(90px, 18vh, 130px) !important;
+    min-height: 90px !important;
+    width: auto !important;
+    cursor: default !important;
+    flex: 0 0 auto !important;
+}
+#dice-monster-preview .card:hover {
+    transform: none !important;
+    box-shadow: var(--shadow-card) !important;
+}
+.dice-monster-req {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--warning);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
 /* Challenge prompt: show the played card LARGE so it's actually readable (it was
@@ -3868,7 +3891,7 @@ body.landscape #opponents-bar {
 body.landscape #player-win-tracker {
     position: fixed !important;
     top: 8px !important;
-    right: 52px !important; /* clear the fixed ☰ menu button */
+    right: 102px !important; /* clear BOTH the fixed 🔊 mute (right:56) and ☰ menu (right:10) buttons */
     z-index: 9600 !important;
     background: rgba(0, 0, 0, 0.45) !important;
     border: 1px solid var(--wood-dark) !important;
@@ -3928,6 +3951,17 @@ body.landscape #board-center .deck-area .card {
     min-height: 46px !important;
 }
 body.landscape #draw-card-btn { grid-area: draw !important; }
+/* The discard "Discard: N" caption is absolutely positioned (bottom:-25px,
+   width:120px) for the roomy default layout; in the tight landscape rail that
+   wide caption overlapped the DRAW button. Pin it compactly under the thumbnail. */
+body.landscape .discard-count {
+    position: static !important;
+    width: auto !important;
+    bottom: auto !important;
+    margin-top: 2px !important;
+    font-size: 0.5rem !important;
+    line-height: 1 !important;
+}
 
 /* --- Center: party (centered, wraps) --- */
 body.landscape #party-zone {

@@ -242,6 +242,32 @@ function renderDicePips(value) {
     return html;
 }
 
+// Show WHICH monster an attack roll is targeting (+ its slay requirement) in the
+// dice overlay. The overlay covers the board, so without this an opponent can't
+// tell what's being attacked and can't decide whether to play a modifier. No-op
+// (and clears) for non-attack rolls.
+function renderDiceAttackTarget(data) {
+    const preview = document.getElementById('dice-monster-preview');
+    if (!preview) return;
+    const pr = data && data.pendingRoll;
+    const mon = (pr && pr.type === 'ATTACK')
+        ? (data.activeMonsters || []).find(m => m.id === pr.targetId)
+        : null;
+    if (!mon) { preview.innerHTML = ''; preview.style.display = 'none'; return; }
+    const rollerName = (data.players[pr.rollerId] && data.players[pr.rollerId].name) || 'Player';
+    const reasonEl = document.getElementById('dice-reason');
+    if (reasonEl) reasonEl.innerText = `${rollerName} is attacking:`;
+    // Show the roll thresholds so watchers know which way to swing a modifier.
+    const low = mon.rollType === 'LOW_ROLL';
+    const slay = low ? `Slay ≤${mon.slayRoll}` : `Slay ${mon.slayRoll}+`;
+    const pen = (mon.penaltyRoll != null)
+        ? ` · Penalty ${low ? `${mon.penaltyRoll}+` : `≤${mon.penaltyRoll}`}`
+        : '';
+    preview.style.display = 'flex';
+    preview.innerHTML = `${renderCard(mon, false, false, true, false)}`
+        + `<div class="dice-monster-req">🗡 ${slay}${pen}</div>`;
+}
+
 // One-shot landing bounce when a die stops tumbling and shows its final face.
 // Restart-safe (remove → reflow → add) so rapid consecutive rolls re-trigger it.
 function settleDie(el) {
@@ -1714,7 +1740,7 @@ function buildBoardParts(data, ctx) {
         discardHtml = `
             <div onclick="openDiscardViewer()" title="View discard pile" style="cursor:pointer; position:relative;">
                 <div style="pointer-events:none;">${renderCard(topDiscard, false, false, false, false)}</div>
-                <div style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-top:5px; position:absolute; bottom:-25px; width:120px;">Discard: ${safeDiscardPile.length}</div>
+                <div class="discard-count" style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-top:5px; position:absolute; bottom:-25px; width:120px;">Discard: ${safeDiscardPile.length}</div>
             </div>
         `;
     } else {
@@ -2158,6 +2184,8 @@ function renderBoard(data) {
 
         else turnIndicator?.classList.add('hidden');
 
+        renderDiceAttackTarget(data); // keep the attacked-monster preview through the modifier window
+
     } else if (data.state === 'WAITING_TO_ROLL') {
 
         document.body?.classList.remove('target-mode-active');
@@ -2221,7 +2249,9 @@ function renderBoard(data) {
 
             document.getElementById('dice-reason').innerText = `Rolling ${reasonStr}...`;
 
-            
+            renderDiceAttackTarget(data); // name + show the targeted monster (attacks only)
+
+
 
             // Check passives
 
@@ -2323,7 +2353,7 @@ function renderBoard(data) {
 
         document.getElementById('dice-reason').innerText = 'Rolling for Challenge!';
 
-        
+        renderDiceAttackTarget(data); // clears any stale monster preview (challenge != attack)
 
         const pRoll = data.pendingRoll;
 
