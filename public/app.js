@@ -881,11 +881,11 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
 
             glowClass += ' valid-target valid-target-equip';
 
-        } else if (isLocalTargeting && !inHand && card.type === 'Hero Card'
-                   && (isCurseEquip() ? !isMine : isMine)) {
+        } else if (isLocalTargeting && !inHand && card.type === 'Hero Card') {
 
-            // Cursed items go on an OPPONENT's hero (harmful), normal items on your
-            // own (beneficial). Use a red "steal" glow for curses to signal intent.
+            // Any item — normal or cursed — may be equipped to ANY hero on the board
+            // (your own or an opponent's). Keep a red "steal" glow for curses to signal
+            // their harmful intent, and the regular equip glow for normal items.
             glowClass += isCurseEquip() ? ' valid-target valid-target-steal' : ' valid-target valid-target-equip';
 
         } else if (myTargetMode && !inHand && isMine && currentPendingAction.type === 'PENALTY' && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE' && card.type === 'Hero Card') {
@@ -1763,7 +1763,7 @@ function buildBoardParts(data, ctx) {
         partyHtml += `<div class="slain-monsters-container">
             <h3>Slain (${me.slainMonsters.length}/3)</h3>
             <div class="slain-monsters-list">
-                ${me.slainMonsters.map(m => `<div class="slain-monster-icon" style="background-image:url('${m.imageUrl}')" title="${m.name}"></div>`).join('')}
+                ${me.slainMonsters.map(m => `<div class="slain-monster-icon" data-id="${m.id}" onclick="inspectCard('${m.id}')" style="background-image:url('${m.imageUrl}'); cursor:pointer;" title="${m.name}"></div>`).join('')}
             </div>
         </div>`;
     }
@@ -2686,6 +2686,11 @@ function renderBoard(data) {
 
         const isRequiredToAct = data.pendingGlobalAction && data.pendingGlobalAction.pendingPlayerIds.includes(myId);
 
+        // Re-show the discard/give/sacrifice prompt from state (not just the one-shot
+        // socket event) so a refresh or dropped packet mid-action can't strand the
+        // table waiting on this player. renderGlobalActionPrompt no-ops if it's already open.
+        if (isRequiredToAct) renderGlobalActionPrompt(data.pendingGlobalAction);
+
 
 
         if (isMyTurn || isRequiredToAct) {
@@ -2759,16 +2764,38 @@ function renderBoard(data) {
 
     const globalDiscardPool = document.getElementById('global-discard-pool');
 
-    if (data.state === 'WAITING_FOR_GLOBAL_ACTION' && data.pendingGlobalAction && data.pendingGlobalAction.submittedCards) {
+    const gaPool = data.pendingGlobalAction;
+    if (gaPool && gaPool.type === 'MULTI_DISCARD_AND_CHOOSE' && gaPool.awaitingChoice && gaPool.submittedCards) {
 
-        const poolCards = document.getElementById('pool-cards');
+        // Beary Wise: every opponent has discarded into the pool; the initiator picks
+        // one to keep. Render this from broadcastState (not just the one-shot
+        // global_action_resolution event) so a dropped packet or a refresh can't
+        // soft-lock the game. The initiator gets Select buttons; everyone else watches.
+        const iChoose = gaPool.initiatorId === myId;
+        const poolSig = `${gaPool.submittedCards.map(c => c.id).join(',')}|${iChoose}`;
 
-        poolCards.innerHTML = (data.pendingGlobalAction.submittedCards || []).map(c => renderCard(c, false, false, false, false)).join('');
-
+        if (poolSig !== window._gaPoolSig) {
+            window._gaPoolSig = poolSig;
+            const poolCards = document.getElementById('pool-cards');
+            poolCards.innerHTML = gaPool.submittedCards.map(c => {
+                const btn = iChoose
+                    ? `<button class="action-btn inline attack" onclick="resolveGlobalAction('${c.id}')">Select</button>`
+                    : '';
+                return `<div class="card glow-target">
+                        <div class="card-img" style="background-image: url('${c.imageUrl}')"></div>
+                        <div class="card-info">
+                            <div class="card-name">${c.name}</div>
+                            <div class="card-type">${c.type}</div>
+                        </div>
+                        ${btn}
+                    </div>`;
+            }).join('');
+        }
         globalDiscardPool?.classList.remove('hidden');
 
-    } else if (!data.pendingGlobalAction) {
+    } else {
 
+        window._gaPoolSig = null;
         globalDiscardPool?.classList.add('hidden');
 
     }
@@ -3837,9 +3864,14 @@ window.selectPeekCard = function(cardId, skillId) {
 
 
 
-socket.on('global_action_requested', (action) => {
+function renderGlobalActionPrompt(action) {
 
-    if (action.pendingPlayerIds.includes(myId)) {
+    if (action && action.pendingPlayerIds && action.pendingPlayerIds.includes(myId)) {
+
+        // Don't rebuild if the prompt is already open (a re-broadcast must not clobber
+        // an in-flight selection).
+        const openModal = document.getElementById('mandatory-discard-modal');
+        if (openModal && !openModal.classList.contains('hidden')) return;
 
         if (action.type === 'MULTI_DISCARD_AND_CHOOSE' || action.type === 'MULTI_DISCARD' || action.type === 'MULTI_GIVE') {
 
@@ -3941,7 +3973,11 @@ socket.on('global_action_requested', (action) => {
 
     }
 
-});
+}
+
+// Server pushes this once when the action starts; broadcastState also calls
+// renderGlobalActionPrompt so the prompt survives a refresh / dropped packet.
+socket.on('global_action_requested', renderGlobalActionPrompt);
 
 
 
@@ -4256,8 +4292,8 @@ function startEquipTargeting(cardId, fromHandSelection = false) {
     document.body?.classList.add('target-mode-active');
 
     targetBannerText.innerText = context.card.type === 'Cursed Item Card'
-        ? "Select an OPPONENT's Hero to curse with this item."
-        : "Select a Hero on the board to equip this item.";
+        ? "Select any Hero on the board to curse with this item."
+        : "Select any Hero on the board to equip this item.";
 
     targetBannerText.innerHTML += ` <button onclick="cancelEquipTargeting()" style="margin-left: 10px; padding: 5px 10px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>`;
 
@@ -5001,6 +5037,10 @@ function findCardContext(id) {
 
         if (card) return { card, location: 'hand', owner: playerId };
 
+        card = (p.slainMonsters || []).find(c => c.id === id);
+
+        if (card) return { card, location: 'slain', owner: playerId };
+
     }
 
     
@@ -5465,8 +5505,8 @@ window.inspectCard = function(cardId) {
 
         } else if (isLocalTargeting) {
 
-            // Cursed items target an opponent's hero; normal items target your own.
-            if (context.location === 'party' && card.type === 'Hero Card' && (isCurseEquip() ? !isMine : isMine)) isValid = true;
+            // Any item (normal or cursed) may be equipped to ANY hero on the board.
+            if (context.location === 'party' && card.type === 'Hero Card') isValid = true;
 
         } else if (isSelfItemTargeting) {
 
@@ -5778,8 +5818,7 @@ function handleTargetingClick(cardEl, cardId) {
 
         const context = findCardContext(cardId);
 
-        if (context && context.location === 'party' && context.card.type === 'Hero Card'
-            && (isCurseEquip() ? context.owner !== myId : context.owner === myId)) {
+        if (context && context.location === 'party' && context.card.type === 'Hero Card') {
 
             if (equipFromHandSelection) {
 

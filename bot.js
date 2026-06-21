@@ -512,7 +512,7 @@ function handleGameState(data) {
             }
         }
         // Initiator resolving MULTI_DISCARD_AND_CHOOSE choice pool
-        if (ga.initiatorId === myId && ga.submittedCards && ga.submittedCards.length > 0 && ga.type === 'MULTI_DISCARD_AND_CHOOSE') {
+        if (ga.initiatorId === myId && ga.awaitingChoice && ga.submittedCards && ga.submittedCards.length > 0 && ga.type === 'MULTI_DISCARD_AND_CHOOSE') {
             if (!isThinking) {
                 isThinking = true;
                 setTimeout(() => {

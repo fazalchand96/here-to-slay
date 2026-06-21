@@ -1334,51 +1334,58 @@ io.on('connection', (socket) => {
         
         if (!ga.pendingPlayerIds.includes(socket.id)) return;
 
-        if (ga.type === 'MULTI_DISCARD' || ga.type === 'MULTI_DISCARD_AND_CHOOSE' || ga.type === 'MULTI_GIVE') {
-            const cardIndex = player.hand.findIndex(c => c.id === data.cardId);
-            if (cardIndex !== -1) {
-                const discarded = player.hand.splice(cardIndex, 1)[0];
-                ga.submittedCards.push(discarded);
-                
-                // Remove player from pending list
-                ga.pendingPlayerIds = ga.pendingPlayerIds.filter(id => id !== socket.id);
-                
-                if (ga.type === 'MULTI_GIVE') { gameState.players[ga.initiatorId].hand.push(discarded); io.emit('message', `${getPlayerName(gameState, player.id)} gave a card to ${getPlayerName(gameState, ga.initiatorId)}.`); } else { io.emit('message', `${getPlayerName(gameState, player.id)} submitted their discard.`); }
-            }
-        } else if (ga.type === 'MULTI_SACRIFICE') {
+        if (ga.type === 'MULTI_SACRIFICE') {
             const heroIndex = player.party.findIndex(h => h.id === data.targetHeroId);
-            if (heroIndex !== -1) {
-                const sacrificed = player.party.splice(heroIndex, 1)[0];
-                if (sacrificed.equippedItem) {
-                    gameState.discardPile.push(sacrificed.equippedItem);
-                    sacrificed.equippedItem = null;
-                }
-                gameState.discardPile.push(sacrificed);
-                
-                // Remove player from pending list
-                ga.pendingPlayerIds = ga.pendingPlayerIds.filter(id => id !== socket.id);
-                
-                io.emit('message', `${getPlayerName(gameState, player.id)} sacrificed a Hero.`);
+            if (heroIndex === -1) return; // not a hero this player owns — ignore
+            const sacrificed = player.party.splice(heroIndex, 1)[0];
+            if (sacrificed.equippedItem) {
+                gameState.discardPile.push(sacrificed.equippedItem);
+                sacrificed.equippedItem = null;
+            }
+            gameState.discardPile.push(sacrificed);
+            ga.pendingPlayerIds = ga.pendingPlayerIds.filter(id => id !== socket.id);
+            io.emit('message', `${getPlayerName(gameState, player.id)} sacrificed a Hero.`);
+        } else {
+            // Card-based global actions: MULTI_DISCARD, MULTI_DISCARD_AND_CHOOSE, MULTI_GIVE.
+            const cardIndex = player.hand.findIndex(c => c.id === data.cardId);
+            if (cardIndex === -1) return; // card not in hand — ignore, keep them pending
+            const card = player.hand.splice(cardIndex, 1)[0];
+            ga.pendingPlayerIds = ga.pendingPlayerIds.filter(id => id !== socket.id);
+
+            if (ga.type === 'MULTI_GIVE') {
+                // Greedy Cheeks: the card goes straight to the initiator's hand.
+                gameState.players[ga.initiatorId].hand.push(card);
+                io.emit('message', `${getPlayerName(gameState, player.id)} gave a card to ${getPlayerName(gameState, ga.initiatorId)}.`);
+            } else if (ga.type === 'MULTI_DISCARD') {
+                // Tough Teddy etc.: a plain forced discard, no one takes it.
+                gameState.discardPile.push(card);
+                io.emit('message', `${getPlayerName(gameState, player.id)} discarded a card.`);
+            } else {
+                // MULTI_DISCARD_AND_CHOOSE (Beary Wise): pool it for the initiator to pick from.
+                ga.submittedCards.push(card);
+                io.emit('message', `${getPlayerName(gameState, player.id)} discarded into the pool.`);
             }
         }
-        
-        // Check if everyone is done
+
+        // Everyone has acted — settle the action.
         if (ga.pendingPlayerIds.length === 0) {
-            if (ga.type === 'MULTI_DISCARD' || ga.type === 'MULTI_DISCARD_AND_CHOOSE' || ga.type === 'MULTI_GIVE') {
-                io.to(ga.initiatorId).emit('global_action_resolution', {
-                    type: ga.type,
-                    submittedCards: ga.submittedCards
-                });
-                io.emit('message', `All choices collected. Waiting for ${getPlayerName(gameState, ga.initiatorId)} to choose a card.`);
-                gameState.state = 'PLAYING';
+            if (ga.type === 'MULTI_DISCARD_AND_CHOOSE' && ga.submittedCards.length > 0) {
+                // Beary Wise: the initiator now picks one card from the pool. Stay in
+                // WAITING_FOR_GLOBAL_ACTION and flag awaitingChoice so the pick UI is
+                // reconstructable from broadcastState — a dropped one-shot or a refresh
+                // must not soft-lock the game.
+                ga.awaitingChoice = true;
+                io.to(ga.initiatorId).emit('global_action_resolution', { type: ga.type, submittedCards: ga.submittedCards });
+                io.emit('message', `All cards collected. Waiting for ${getPlayerName(gameState, ga.initiatorId)} to choose a card.`);
             } else {
-                // Resolve immediately for sacrifices
-                if (ga.type === 'MULTI_GIVE') io.emit('message', `All cards collected for Greedy Cheeks!`); else io.emit('message', `Global action fully resolved!`);
+                // MULTI_DISCARD / MULTI_GIVE / MULTI_SACRIFICE (and AND_CHOOSE with an
+                // empty pool) need no choice — return straight to play.
                 resetToPlayingState();
                 gameState.pendingGlobalAction = null;
+                io.emit('message', `Global action resolved.`);
             }
         }
-        
+
         broadcastState();
     });
 
@@ -1387,15 +1394,16 @@ io.on('connection', (socket) => {
         const ga = gameState.pendingGlobalAction;
         const player = gameState.players[socket.id];
         
-        if ((ga.type === 'MULTI_DISCARD' || ga.type === 'MULTI_DISCARD_AND_CHOOSE') && socket.id === ga.initiatorId) {
+        // Only the Beary-Wise choose step accepts a pick, and only from the initiator.
+        if (ga.type === 'MULTI_DISCARD_AND_CHOOSE' && ga.awaitingChoice && socket.id === ga.initiatorId && player) {
             const cardIndex = ga.submittedCards.findIndex(c => c.id === cardId);
             if (cardIndex !== -1) {
                 const chosen = ga.submittedCards.splice(cardIndex, 1)[0];
                 player.hand.push(chosen);
-                
+
                 // Discard the rest
                 ga.submittedCards.forEach(c => gameState.discardPile.push(c));
-                
+
                 io.emit('message', `${getPlayerName(gameState, player.id)} chose ${chosen.name} from the discards!`);
                 resetToPlayingState();
                 gameState.pendingGlobalAction = null;
@@ -1655,14 +1663,20 @@ io.on('connection', (socket) => {
         if (cardIndex !== -1) {
             const card = player.hand[cardIndex];
             if (gameState.pendingAction.allowedTypes.includes(card.type)) {
+                // Capture follow-up draw count, then clear the PLAY_FROM_HAND action.
+                // It has been consumed; leaving it set makes resolvePendingCard mistake
+                // it for a Magic follow-up (forcing PLAYING and clobbering a Hero's
+                // skill-roll prompt — Hook / Quick Draw / Fuzzy Cheeks).
+                const thenDraw = gameState.pendingAction.thenDraw || 0;
+                gameState.pendingAction = null;
                 player.hand.splice(cardIndex, 1);
                 gameState.pendingCard = card;
-                
-                if (gameState.pendingAction.thenDraw && gameState.mainDeck.length > 0) {
-                    for(let i=0; i<gameState.pendingAction.thenDraw; i++) {
+
+                if (thenDraw && gameState.mainDeck.length > 0) {
+                    for(let i=0; i<thenDraw; i++) {
                         if(gameState.mainDeck.length > 0) player.hand.push(gameState.mainDeck.pop());
                     }
-                    io.emit('message', `${getPlayerName(gameState, player.id)} drew ${gameState.pendingAction.thenDraw} extra card(s)!`);
+                    io.emit('message', `${getPlayerName(gameState, player.id)} drew ${thenDraw} extra card(s)!`);
                 }
 
                 gameState.pendingChallenge = {
