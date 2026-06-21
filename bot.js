@@ -573,7 +573,23 @@ socket.on('dice_roll_pending', (data) => {
                         targetRoll = Math.random() < 0.5 ? 'ACTIVE' : 'CHALLENGER';
                     }
                 }
-                socket.emit('submit_modifier_action', { action: 'PLAY', cardId: chosenCard.id, targetRoll });
+
+                // Players now choose the value (e.g. +1 vs -3). Pick by intent: boost
+                // the roll the bot wants to win, hurt the one it wants to lose.
+                const values = Array.isArray(chosenCard.modifier_values) ? chosenCard.modifier_values : [];
+                let helpingSelf;
+                if (data.isChallenge) {
+                    const mySide = (myId === data.activeId) ? 'ACTIVE'
+                                 : (myId === data.challengerId) ? 'CHALLENGER' : null;
+                    helpingSelf = mySide ? (targetRoll === mySide) : false; // 3rd party: hinder whichever side
+                } else {
+                    helpingSelf = (myId === data.rollerId);
+                }
+                const modValue = (values.length > 1)
+                    ? (helpingSelf ? Math.max(...values) : Math.min(...values))
+                    : values[0];
+
+                socket.emit('submit_modifier_action', { action: 'PLAY', cardId: chosenCard.id, targetRoll, modValue });
             } else {
                 console.log(`[${botName}] Modifier phase: Passing modifiers.`);
                 socket.emit('pass_modifiers');

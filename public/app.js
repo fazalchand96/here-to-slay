@@ -4790,72 +4790,92 @@ function selectTarget(id) {
 
 
 
+// Modifier cards carry a `modifier_values` array — e.g. [1, -3] for "+1/-3", or a
+// single [4] / [-4]. The player ALWAYS chooses which value to apply (you may even
+// put a minus on your own roll), and on a challenge which of the two rolls to hit.
 function playModifier(id) {
     triggerHaptic([20, 30, 20]);
     playSound('modifier');
-    if (latestGameState && latestGameState.state === 'WAITING_FOR_MODIFIERS' && latestGameState.pendingRoll && latestGameState.pendingRoll.type === 'CHALLENGE') {
 
-        const activeName = getPlayerName(latestGameState.pendingRoll.activeId);
+    closeInspectorModal();
+    inspectorPanel?.classList.add('hidden-mobile');
 
-        const challengerName = getPlayerName(latestGameState.pendingRoll.challengerId);
+    const ctx = findCardContext(id);
+    const card = ctx && ctx.card;
+    const values = (card && Array.isArray(card.modifier_values)) ? card.modifier_values : [];
+    const pr = latestGameState && latestGameState.pendingRoll;
+    const isChallenge = latestGameState && latestGameState.state === 'WAITING_FOR_MODIFIERS'
+        && pr && pr.type === 'CHALLENGE';
 
-        
-
-        // Hide other modals just in case
-
-        closeInspectorModal();
-
-        inspectorPanel?.classList.add('hidden-mobile');
-
-        
-
-        // We'll reuse the targetBanner for a quick UI prompt
-
-        document.body?.classList.add('target-mode-active');
-
-        const targetBanner = document.getElementById('target-banner');
-
-        const targetBannerText = document.getElementById('target-banner-text');
-
-        
-
-        if (targetBanner && targetBannerText) {
-
-            targetBannerText.innerHTML = `
-
-                <div style="font-size: 1.2rem; margin-bottom: 10px; color: var(--text-main);">Select which roll to modify:</div>
-
-                <button class="action-btn" style="margin: 0 10px; background: var(--accent);" onclick="submitChallengeModifier('${id}', 'ACTIVE')">${activeName}</button>
-
-                <button class="action-btn" style="margin: 0 10px; background: var(--danger);" onclick="submitChallengeModifier('${id}', 'CHALLENGER')">${challengerName}</button>
-
-                <button class="action-btn" style="margin: 0 10px; background: #475569;" onclick="cancelSkillTargeting()">Cancel</button>
-
-            `;
-
-            targetBanner.classList.remove('hidden');
-
-        }
-
+    if (isChallenge) {
+        // First pick which roll to modify, then (if two values) which value.
+        showModifierRollChoice(id, values);
+    } else if (values.length <= 1) {
+        // Single-value modifier — nothing to choose.
+        socket.emit('submit_modifier_action', { action: 'PLAY', cardId: id, modValue: values[0] });
     } else {
-
-        socket.emit('submit_modifier_action', { action: 'PLAY', cardId: id });
-
-        inspectorPanel?.classList.add('hidden-mobile');
-
+        showModifierValueChoice(id, values, null);
     }
-
 }
 
+// Format a signed modifier value as a button label: positive gets an explicit '+'.
+function modValueLabel(v) { return v > 0 ? `+${v}` : `${v}`; }
 
+// Challenge step 1: choose which of the two rolls the modifier lands on.
+function showModifierRollChoice(id, values) {
+    const activeName = getPlayerName(latestGameState.pendingRoll.activeId);
+    const challengerName = getPlayerName(latestGameState.pendingRoll.challengerId);
+    document.body?.classList.add('target-mode-active');
+    const banner = document.getElementById('target-banner');
+    const text = document.getElementById('target-banner-text');
+    if (!banner || !text) return;
+    text.innerHTML = `
+        <div style="font-size: 1.2rem; margin-bottom: 10px; color: var(--text-main);">Which roll to modify?</div>
+        <button class="action-btn" style="margin: 0 10px; background: var(--accent);" onclick="modifierRollPicked('${id}', 'ACTIVE')">${activeName}</button>
+        <button class="action-btn" style="margin: 0 10px; background: var(--danger);" onclick="modifierRollPicked('${id}', 'CHALLENGER')">${challengerName}</button>
+        <button class="action-btn" style="margin: 0 10px; background: #475569;" onclick="cancelSkillTargeting()">Cancel</button>
+    `;
+    banner.classList.remove('hidden');
+}
 
-function submitChallengeModifier(cardId, targetRoll) {
+// A roll side was chosen for a challenge modifier — advance to the value choice,
+// or submit straight away for a single-value card.
+window.modifierRollPicked = function(id, targetRoll) {
+    const ctx = findCardContext(id);
+    const values = (ctx && ctx.card && Array.isArray(ctx.card.modifier_values)) ? ctx.card.modifier_values : [];
+    if (values.length <= 1) {
+        submitModifierChoice(id, values[0], targetRoll);
+    } else {
+        showModifierValueChoice(id, values, targetRoll);
+    }
+};
 
-    socket.emit('submit_modifier_action', { action: 'PLAY', cardId: cardId, targetRoll: targetRoll });
+// Choose which value (+ or -) to apply. `targetRoll` is null for a normal roll, or
+// 'ACTIVE'/'CHALLENGER' for a challenge.
+function showModifierValueChoice(id, values, targetRoll) {
+    document.body?.classList.add('target-mode-active');
+    const banner = document.getElementById('target-banner');
+    const text = document.getElementById('target-banner-text');
+    if (!banner || !text) return;
+    const targetArg = targetRoll ? `'${targetRoll}'` : 'null';
+    const buttons = values.map(v => {
+        const bg = v > 0 ? '#10b981' : 'var(--danger)';
+        return `<button class="action-btn" style="margin: 0 10px; background: ${bg};" onclick="submitModifierChoice('${id}', ${v}, ${targetArg})">${modValueLabel(v)}</button>`;
+    }).join('');
+    text.innerHTML = `
+        <div style="font-size: 1.2rem; margin-bottom: 10px; color: var(--text-main);">Apply which modifier?</div>
+        ${buttons}
+        <button class="action-btn" style="margin: 0 10px; background: #475569;" onclick="cancelSkillTargeting()">Cancel</button>
+    `;
+    banner.classList.remove('hidden');
+}
 
+window.submitModifierChoice = function(cardId, value, targetRoll) {
+    const payload = { action: 'PLAY', cardId: cardId, modValue: value };
+    if (targetRoll) payload.targetRoll = targetRoll;
+    socket.emit('submit_modifier_action', payload);
     cancelSkillTargeting();
-
-}
+};
 
 
 

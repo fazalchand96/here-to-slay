@@ -1551,18 +1551,26 @@ io.on('connection', (socket) => {
                 const card = player.hand[cardIndex];
                 if (card.type === 'Modifier Card') {
                     registerCardPlayed(card);
-                    let modValue = 0;
-                const match = card.name.match(/([+-]\d)/g);
-                if (match) {
-                    if (gameState.pendingRoll.type === 'CHALLENGE') {
-                        let isPos = false;
-                        if (data.targetRoll === 'ACTIVE' && socket.id === gameState.pendingRoll.activeId) isPos = true;
-                        if (data.targetRoll === 'CHALLENGER' && socket.id === gameState.pendingRoll.challengerId) isPos = true;
-                        modValue = (match.length > 1) ? (isPos ? Math.max(parseInt(match[0]), parseInt(match[1])) : Math.min(parseInt(match[0]), parseInt(match[1]))) : parseInt(match[0]);
-                    } else {
-                        modValue = (match.length > 1) ? ((socket.id === gameState.pendingRoll.rollerId) ? parseInt(match[0]) : parseInt(match[1])) : parseInt(match[0]);
-                    }
+
+                // The player explicitly chooses which value to apply (a "+1/-3" card
+                // can be played as +1 OR -3, on any roll — even a minus on your own).
+                // Validate the chosen value against the card's allowed values; fall
+                // back to the sole value for single-value cards (+4 / -4).
+                let allowed = Array.isArray(card.modifier_values) ? card.modifier_values : [];
+                if (allowed.length === 0) {
+                    const match = card.name.match(/([+-]?\d+)/g);
+                    if (match) allowed = match.map(Number);
                 }
+                let modValue;
+                if (typeof data.modValue === 'number' && allowed.includes(data.modValue)) {
+                    modValue = data.modValue;
+                } else if (allowed.length === 1) {
+                    modValue = allowed[0];
+                } else {
+                    // No valid choice supplied — refuse rather than guess a sign.
+                    return;
+                }
+
                 if (player.leader && player.leader.effect_id === 'LEADER_GUARDIAN') {
                     if (modValue > 0) modValue += 1; else if (modValue < 0) modValue -= 1;
                 }
@@ -1598,9 +1606,12 @@ io.on('connection', (socket) => {
                     gameState.pendingRoll.modifierTotal = (gameState.pendingRoll.modifierTotal || 0) + modValue;
                     gameState.pendingRoll.currentRoll += modValue;
                     
-                    // ABYSS QUEEN LOGIC
+                    // ABYSS QUEEN LOGIC — offsets an OPPONENT's *harmful* modifier on
+                    // the roller. Now that players choose the sign, only fire it when
+                    // the opponent actually played a negative value (a friendly +N from
+                    // an opponent shouldn't also hand out a bonus +1).
                     const rollingPlayerId = gameState.pendingRoll.rollerId;
-                    if (socket.id !== rollingPlayerId) {
+                    if (socket.id !== rollingPlayerId && modValue < 0) {
                         const rollingPlayer = gameState.players[rollingPlayerId];
                         if (rollingPlayer && rollingPlayer.slainMonsters && rollingPlayer.slainMonsters.some(m => m.effect_id === 'MONSTER_ABYSS_QUEEN')) {
                             gameState.pendingRoll.currentRoll += 1;
