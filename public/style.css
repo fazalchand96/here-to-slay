@@ -1816,7 +1816,9 @@ body {
 .valid-target-equip .card-face { border-color: var(--gold) !important; }
 
 .attackable-monster {
-    box-shadow: 0 0 5px 1px var(--danger) !important; /* tight red ring, no wide bleed */
+    /* Plain solid-red border (the card's wooden frame turns red) — no glow bleed. */
+    background: var(--danger) !important;
+    box-shadow: var(--shadow-card) !important;
     animation: tgtPulse 1.4s ease-in-out infinite !important;
 }
 .attackable-monster .card-face { border-color: var(--danger) !important; }
