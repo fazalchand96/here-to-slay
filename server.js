@@ -564,9 +564,9 @@ function resolvePendingRoll() {
 
         let outcomeMsg = `${cName} CHALLENGED! ${aName} final total ${aFinal}. ${cName} final total ${cFinal}. `;
 
-        // Official rule: the challenged player (the one who played the card) wins
-        // ties. The challenge only succeeds if the challenger rolls STRICTLY higher.
-        if (cFinal > aFinal) {
+        // House rule: ties go to the CHALLENGER. The challenge succeeds unless the
+        // challenged player (the one who played the card) rolls STRICTLY higher.
+        if (cFinal >= aFinal) {
             outcomeMsg += `Challenge SUCCEEDS! ${pRoll.cardInDispute.name} is discarded.`;
             gameState.discardPile.push(pRoll.cardInDispute);
             io.emit('rollResult', { message: outcomeMsg });
