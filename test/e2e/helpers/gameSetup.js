@@ -75,6 +75,26 @@ async function startGame(browser) {
     return { host, p2, ctx1, ctx2 };
 }
 
+// Start an N-player game (2..6). Returns { host, players: [p2..pN], pages: [host,...] }.
+// Each player rolls a leader from the shared depleting pool, then the host starts.
+async function startGameNPlayers(browser, n = 6) {
+    const pages = [];
+    for (let i = 0; i < n; i++) {
+        const ctx = await newTrackedContext(browser);
+        const page = await ctx.newPage();
+        await page.goto('/', { waitUntil: 'domcontentloaded' });
+        await rollLeader(page, i === 0 ? 'HostPlayer' : `Guest${i}`);
+        pages.push(page);
+    }
+    const host = pages[0];
+    await expect(host.locator('#start-game-btn')).not.toHaveClass(/hidden/, { timeout: 12_000 });
+    await host.click('#start-game-btn', { force: true });
+    for (const page of pages) {
+        await expect(page.locator('#app-container')).not.toHaveClass(/hidden/, { timeout: 15_000 });
+    }
+    return { host, players: pages.slice(1), pages };
+}
+
 // ---------------------------------------------------------------------------
 // Card injection (uses the debug_inject_card / debug_add_to_discard handlers)
 // ---------------------------------------------------------------------------
@@ -87,6 +107,14 @@ async function injectCard(page, cardId) {
 async function addToDiscard(page, cardId) {
     await page.evaluate((id) => window._socket.emit('debug_add_to_discard', { cardId: id }), cardId);
     await page.waitForTimeout(300);
+}
+
+// Replace a player's hand with an exact set of card ids (in order). Used to make
+// random pulls / peeks deterministic by controlling an opponent's hand. Call on
+// the page whose hand you want to set (e.g. p2 before the host pulls from them).
+async function setHand(page, cardIds) {
+    await page.evaluate((ids) => window._socket.emit('debug_set_hand', { cardIds: ids }), cardIds);
+    await page.waitForTimeout(400);
 }
 
 // ---------------------------------------------------------------------------
@@ -248,11 +276,13 @@ async function ensureP2HasHero(p2Page, heroCardId = 'card_016') {
 
 module.exports = {
     startGame,
+    startGameNPlayers,
     newTrackedContext,
     trackContext,
     closeTrackedContexts,
     injectCard,
     addToDiscard,
+    setHand,
     playCardFromHand,
     clickFirstValidTarget,
     p2DoAction,

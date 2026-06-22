@@ -1717,11 +1717,13 @@ function buildBoardParts(data, ctx) {
             chipTitle = `title="Click to select this player as a target"`;
         }
 
+        // Stacked + compact so all opponents (up to 5) fit the bar without horizontal
+        // scroll: name on top, a single icon line below (✋ hand, 🏆 slain, 🎴 classes —
+        // denominators dropped to save width; the full breakdown is in the opponent modal).
         oppHtml += `
                 <div class="${chipClass}" ${chipClick} ${chipTitle}>
                     <span class="opponent-chip-name">${displayName}</span>
-                    <span class="opponent-chip-stats">AP: ${opp.ap}/3 | Hand: ${opp.hand.length}</span>
-                    <span class="opponent-chip-win">🏆 Monsters: <span class="win-stat-highlight">${stats.monsters}/3</span> | Classes: <span class="win-stat-highlight">${stats.uniqueClasses}/6</span></span>
+                    <span class="opponent-chip-stats">✋${opp.hand.length} 🏆<span class="win-stat-highlight">${stats.monsters}</span> 🎴<span class="win-stat-highlight">${stats.uniqueClasses}</span></span>
                 </div>
             `;
     });
@@ -5886,15 +5888,27 @@ function handleTargetingClick(cardEl, cardId) {
 
         if (context && context.location === 'party' && context.owner === myId && context.card.equippedItem) {
 
-            socket.emit('use_hero_skill', {
+            if (latestGameState && latestGameState.state === 'WAITING_FOR_SKILL_TARGET') {
 
-                cardId: pendingHeroSkillCard.id,
+                // Deferred self-item targeting (Holy Curselifter played + used the same
+                // turn): the roll already happened, so the server is waiting on a target.
+                // It only accepts submit_skill_target here — use_hero_skill is rejected
+                // outside PLAYING/PROMPT_SKILL_ROLL, which silently dropped the pick.
+                socket.emit('submit_skill_target', { targetHeroId: context.card.id });
 
-                isFree: false,
+            } else {
 
-                targetHeroId: context.card.id
+                socket.emit('use_hero_skill', {
 
-            });
+                    cardId: pendingHeroSkillCard.id,
+
+                    isFree: false,
+
+                    targetHeroId: context.card.id
+
+                });
+
+            }
 
             cancelSkillTargeting();
 

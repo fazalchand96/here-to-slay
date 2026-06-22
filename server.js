@@ -1026,6 +1026,18 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Test-only: replace the caller's hand with the given card ids (in order), so
+    // e2e specs can make random pulls / peeks / trades deterministic by controlling
+    // exactly what an opponent (or the caller) is holding.
+    socket.on('debug_set_hand', ({ cardIds } = {}) => {
+        const player = gameState.players[socket.id];
+        if (!player || !Array.isArray(cardIds)) return;
+        player.hand = cardIds
+            .map(id => { const c = ALL_CARDS.find(x => x.id === id); return c ? { ...c } : null; })
+            .filter(Boolean);
+        broadcastState();
+    });
+
     // Test-only: force the next skill/attack roll to specific dice (defaults to
     // 6+6=12) so effect-asserting e2e tests don't depend on random roll success.
     socket.on('debug_force_next_roll', ({ roll1 = 6, roll2 = 6 } = {}) => {

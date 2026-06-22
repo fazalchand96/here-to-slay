@@ -518,7 +518,49 @@ body {
     max-height: 50px !important;
 }
 
-#center-board { 
+/* Fit up to 5 opponents in the bar without relying on horizontal scroll: chips
+   flex-shrink to share the available width and their long name truncates. The
+   compact ✋/🏆/🎴 stats stay fixed-size so they never get clipped. Higher
+   specificity (id + class) than the base .opponent-chip rule, so this wins. */
+#opponents-bar .opponent-chip {
+    flex: 1 1 0 !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    min-width: 0 !important;
+    max-width: 150px !important;
+    gap: 1px !important;
+    padding: 3px 6px !important;
+    overflow: hidden !important;
+}
+#opponents-bar .opponent-chip-name {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 100% !important;
+    font-size: 0.66rem !important;
+    letter-spacing: -0.2px !important;
+}
+#opponents-bar .opponent-chip-stats {
+    border-left: none !important;
+    padding-left: 0 !important;
+    white-space: nowrap !important;
+    font-size: 0.68rem !important;
+}
+
+/* Landscape has horizontal room (now that chip content is compact), so keep chips
+   on ONE line. The stacked/column layout made the bar taller and pushed it down
+   over the monsters row below it — single-line keeps the bar short. Portrait stays
+   stacked (its chips are too narrow for one line). */
+body.landscape #opponents-bar .opponent-chip {
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 5px !important;
+    max-width: 170px !important;
+}
+body.landscape #opponents-bar .opponent-chip-name { flex-shrink: 1 !important; }
+body.landscape #opponents-bar .opponent-chip-stats { flex-shrink: 0 !important; }
+
+#center-board {
     grid-column: 1 / 2 !important;
     grid-row: 2 !important;
     display: flex !important;
@@ -3354,8 +3396,10 @@ input:focus-visible,
     flex-direction: column !important;
     grid-template-columns: none !important;
     grid-template-rows: none !important;
-    gap: 8px !important;
-    padding: 6px !important;
+    /* Tight gap so the column fits the viewport height on shorter phones (it scales
+       up a touch on tall screens). */
+    gap: clamp(2px, 0.6dvh, 8px) !important;
+    padding: 4px !important;
     height: 100dvh !important;
     overflow-x: hidden !important;
     overflow-y: auto !important;
@@ -3866,7 +3910,9 @@ body.landscape #player-party .card.card-leader { transform-origin: bottom left; 
 body.landscape #game-board {
     display: grid !important;
     grid-template-columns: 96px 1fr 96px !important;
-    grid-template-rows: auto auto auto auto 1fr auto !important;
+    /* Row 1 is a fixed 34px for the opponent bar — `auto` under-sized it (~19px) so
+       the bar overflowed down onto the monsters strip in row 2. */
+    grid-template-rows: 34px auto auto auto 1fr auto !important;
     grid-template-areas:
         "opp     opp     win"
         "mons    mons    mons"
@@ -4234,10 +4280,26 @@ body.landscape #portrait-divider { display: none !important; }
 #game-board.portrait #player-party .card { margin-left: 0 !important; }
 
 /* Bigger cards in portrait (overrides the 85px portrait-media default) so the
-   full card art reads well. Width follows the 2.5:3.5 aspect-ratio. */
-#game-board.portrait #player-hand .card    { height: 132px !important; max-height: 132px !important; }
-#game-board.portrait #player-party .card   { height: 104px !important; max-height: 104px !important; }
-#game-board.portrait #active-monsters .card{ height: 104px !important; max-height: 104px !important; min-height: 104px !important; }
+   full card art reads well. Width follows the 2.5:3.5 aspect-ratio.
+   Heights are viewport-relative — min(px, Ndvh) — so tall phones (≈915px, Pixel 7)
+   keep the full design size while shorter screens (iPhone SE 667, narrow Android
+   360×800/360×640) shrink the cards to keep the hand + END button on-screen instead
+   of pushing them below the fold. */
+#game-board.portrait #player-hand .card    { height: min(132px, 14dvh) !important; max-height: min(132px, 14dvh) !important; }
+#game-board.portrait #player-party .card   { height: min(104px, 10.5dvh) !important; max-height: min(104px, 10.5dvh) !important; }
+#game-board.portrait #active-monsters .card{ height: min(104px, 10.5dvh) !important; max-height: min(104px, 10.5dvh) !important; min-height: 0 !important; }
+
+/* Extra compression on short phones (iPhone SE 667, small/old Android ≤700px tall):
+   shrink the leader badge, cards and gaps a bit more so the hand + END button stay
+   on-screen instead of falling below the fold. Taller phones are unaffected. */
+@media (max-height: 700px) {
+    #game-board.portrait { gap: 1px !important; padding: 3px !important; }
+    #game-board.portrait #leader-slot { margin: 1px auto !important; }
+    #game-board.portrait #leader-slot .card { transform: translateY(-2px) scale(0.9) !important; }
+    #game-board.portrait #player-hand .card  { height: 11.5dvh !important; max-height: 11.5dvh !important; }
+    #game-board.portrait #player-party .card,
+    #game-board.portrait #active-monsters .card { height: 9dvh !important; max-height: 9dvh !important; }
+}
 #game-board.portrait #leader-slot .card    { height: 120px !important; max-height: 120px !important; }
 
 /* Action buttons — pinned to the bottom (margin-top:auto), clean (no wood band).

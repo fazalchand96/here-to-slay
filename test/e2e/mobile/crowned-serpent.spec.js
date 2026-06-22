@@ -32,8 +32,9 @@ test('Crowned Serpent: owner draws when any player plays a Modifier', async ({ b
     const hostBefore = await host.evaluate(() => window.latestGameState.players[window.myId].hand.length);
     const p2Before = await p2.evaluate(() => window.latestGameState.players[window.myId].hand.length);
 
-    // Opponent plays a modifier on the host's roll.
-    await p2.evaluate((id) => window._socket.emit('submit_modifier_action', { action: 'PLAY', cardId: id }), MODIFIER);
+    // Opponent plays a modifier on the host's roll. Players now choose which value
+    // to apply — card_079 is +1/-3, so the opponent picks -3 to hurt the host's roll.
+    await p2.evaluate((id) => window._socket.emit('submit_modifier_action', { action: 'PLAY', cardId: id, modValue: -3 }), MODIFIER);
     await host.waitForTimeout(500);
 
     const hostAfter = await host.evaluate(() => window.latestGameState.players[window.myId].hand.length);

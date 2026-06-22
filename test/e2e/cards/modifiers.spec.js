@@ -65,6 +65,13 @@ test(`${name} (${effectId}): can be played during modifier phase`, async ({ brow
     await expect(host.locator('#inspector-modal')).toBeVisible({ timeout: 5_000 });
     await host.locator('#inspector-modal-actions button').filter({ hasText: /Play Modifier/i }).first().click();
 
+    // Two-value modifiers (+N/-N) now prompt for WHICH value to apply; single-value
+    // cards (+4 / -4) apply immediately. If the choice banner appears, pick a value.
+    const valueBtn = host.locator('#target-banner button').filter({ hasText: /^[+-]\d/ }).first();
+    if (await valueBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+        await valueBtn.click({ force: true });
+    }
+
     // The modifier was actually played — it left the hand.
     await expect.poll(async () => host.evaluate((cid) => {
         const me = window.latestGameState.players[window.myId];
