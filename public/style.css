@@ -411,6 +411,14 @@ body {
     pointer-events: auto !important;
 }
 
+/* Portrait: the opponent bar sits below a header row, so the chips run ~38–76px
+   from the top — the 65px banner covered their lower half. Since the chips ARE
+   the tap targets for player-target skills (Sharp Fox, Plundering Puma, Forced
+   Discard, etc.), drop the banner just below the bar so it never overlaps them. */
+body.portrait #target-banner {
+    top: 82px !important;
+}
+
 .glow-target {
     box-shadow: 0 0 20px 5px var(--danger) !important;
     cursor: crosshair !important;
