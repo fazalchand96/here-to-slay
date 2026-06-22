@@ -547,18 +547,20 @@ body {
     font-size: 0.68rem !important;
 }
 
-/* Landscape has horizontal room (now that chip content is compact), so keep chips
-   on ONE line. The stacked/column layout made the bar taller and pushed it down
-   over the monsters row below it — single-line keeps the bar short. Portrait stays
-   stacked (its chips are too narrow for one line). */
+/* Landscape: stack name over stats (column) so the name gets the chip's FULL
+   width instead of sharing a single line with the fixed-width ✋🏆🎴 stats. At
+   6 players each chip is only ~70px wide, and single-line left the name ~8px
+   ("GU…"); stacked it gets the whole ~70px (~10–11 chars). Tight padding +
+   line-height keep both lines inside the fixed 34px opp row. */
 body.landscape #opponents-bar .opponent-chip {
-    flex-direction: row !important;
-    align-items: center !important;
-    gap: 5px !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    gap: 0 !important;
+    padding: 2px 6px !important;
     max-width: 170px !important;
+    line-height: 1.15 !important;
 }
-body.landscape #opponents-bar .opponent-chip-name { flex-shrink: 1 !important; }
-body.landscape #opponents-bar .opponent-chip-stats { flex-shrink: 0 !important; }
 
 #center-board {
     grid-column: 1 / 2 !important;
