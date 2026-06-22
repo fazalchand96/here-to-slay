@@ -1,19 +1,33 @@
-# Session Handoff — 2026-06-22
+# Session Handoff — 2026-06-22 (updated)
 
 Quick-start context for the next chat. Read this first, then verify against the
 current code (it may have moved on).
 
 ## Where things stand RIGHT NOW
 
-- **Branch:** `main` (also keep `ui-rework` in sync — the deploy mirrors both).
-- **Last commit:** `316366e` — "Fix Holy Curselifter; responsive 6-player +
-  small-screen UI; add card/screen tests".
-- **Committed locally but NOT pushed/deployed.** `origin/main` is behind by this
-  commit. To go live you must push (see Deploy below).
-- **Service worker cache:** `hts-v20` (bump on any further client change:
+- **Branch:** `main` (also keep `ui-rework` in sync — the deploy mirrors both;
+  both now exist on the remote and point at the same commit).
+- **Last commit:** `72f66c9` — "Landscape opponent chips: stack name over stats
+  so long names show in full".
+- **All commits PUSHED + DEPLOYED.** `origin/main` is up to date (`origin/main..HEAD`
+  is empty). Render auto-deploys from `origin/main`.
+- **Service worker cache:** `hts-v21` (bump on any further client change:
   `public/app.js` / `index.html` / `style.css`).
 
-## What this session did (all in commit 316366e)
+## What the latest session did (commit 72f66c9)
+
+- **Landscape opponent chips no longer truncate long names ("GU…").** At 6
+  players each chip is only ~70px wide; the single-line layout made the name
+  share that width with the fixed `✋🏆🎴` stats, leaving it ~8px. Now the
+  landscape chip stacks name-over-stats (column) like portrait, so the name gets
+  the chip's full width. Tight `padding: 2px 6px` + `line-height: 1.15` +
+  `gap: 0` keep both lines inside the fixed 34px opp row (no overflow onto the
+  monsters strip — the reason stacking had been avoided before).
+  (`public/style.css`, `body.landscape #opponents-bar .opponent-chip`.)
+  Verified on Pixel 7 landscape (915×412, 6 players): all 5 names render in full,
+  none clipped (incl. 11-char "Bartholomew"); `opponent-modal-stable` e2e passes.
+
+## What the prior session did (all in commit 316366e)
 
 1. **Holy Curselifter bug (real fix).** Played + used the same turn, it silently
    did nothing. The deferred self-item targeting state is `WAITING_FOR_SKILL_TARGET`,
@@ -60,8 +74,8 @@ current code (it may have moved on).
 - The 2 magic e2e flakes (Forced Exchange / Winds of Change) are a TEST-harness
   issue, not card bugs — worth fixing the spec's challenge-pass step if you care
   about a green board.
-- Landscape opponent chips truncate long names to "GU…" (single-line, tight).
-  Functional (position-ordered + tap opens modal) but could be polished.
+- ~~Landscape opponent chips truncate long names to "GU…".~~ DONE in 72f66c9
+  (stacked name-over-stats; see above).
 - Auto-applied "may" effects (Plundering Puma "that player may draw", Decoy,
   Bloodwing, Crowned Serpent) are auto-resolved, not prompted — turn into real
   choices if desired (in the spirit of the modifier/item choice work).
