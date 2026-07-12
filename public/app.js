@@ -1081,6 +1081,9 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
     const monsterRequirement = (isMonster || card.type === 'Monster Card')
         ? `<div class="monster-requirement-badge">Req: ${card.requirement || 'None'}</div>`
         : '';
+    const boardCardName = (isMonster || card.type === 'Monster Card' || card.type === 'Hero Card')
+        ? `<div class="board-card-name" title="${card.name || ''}">${card.name || 'Unknown'}</div>`
+        : '';
     // Per-class / per-type accent that tints the frame border + type ribbon (--cc).
     const CLASS_TINT = { Fighter: 'var(--class-fighter)', Bard: 'var(--class-bard)', Guardian: 'var(--class-guardian)', Ranger: 'var(--class-ranger)', Thief: 'var(--class-thief)', Wizard: 'var(--class-wizard)' };
     const TYPE_TINT = { 'Item Card': 'var(--gold)', 'Cursed Item Card': 'var(--class-wizard)', 'Magic Card': 'var(--class-wizard)', 'Modifier Card': '#5aa8b8', 'Challenge Card': '#e07a4a' };
@@ -1141,6 +1144,7 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
         <div class="card${variantClass} type-${typeSlug}${classSlug ? ` class-${classSlug}` : ''}${artClass(card)} ${glowClass}" id="${card.id}" data-id="${card.id}" title="${detailTitle}" style="--cc:${cardTint}; ${card.artUrl ? '' : artCropStyle(card.id)} ${inlineStyle}">
             <div class="card-req">${badgeVal}</div>
             ${monsterRequirement}
+            ${boardCardName}
             ${equippedBadge}
             <div class="card-face">
                 <div class="card-type">${card.type}</div>

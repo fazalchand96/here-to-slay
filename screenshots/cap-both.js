@@ -2,7 +2,8 @@
 // (CAP_PORT env, default 3100). Outputs to OUT_L / OUT_P env paths.
 const { chromium } = require('@playwright/test');
 
-const PARTY = ['card_016', 'card_024', 'card_032', 'card_040'];
+const PARTY = (process.env.CAP_PARTY || 'card_016,card_024,card_032,card_040')
+  .split(',').map(id => id.trim()).filter(Boolean);
 const PORT = process.env.CAP_PORT || '3100';
 const URL = `http://127.0.0.1:${PORT}`;
 const OUT_L = process.env.OUT_L || 'screenshots/game-landscape.png';
