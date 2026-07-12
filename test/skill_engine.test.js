@@ -244,28 +244,29 @@ test('Decoy Doll absorbs a DESTROY — the Hero survives and the Doll is discard
     assert.ok(gs.discardPile.includes(doll));   // doll discarded
 });
 
-test('Decoy Doll absorbs a STEAL — the Hero stays put and the Doll is discarded', () => {
+test('Decoy Doll does not absorb a STEAL', () => {
     const doll = card('Decoy Doll', 'Item Card', { effect_id: 'ITEM_DECOY' });
     const target = hero('Target', { id: 't1', equippedItem: doll });
     const bob = player('bob', { party: [target] });
     const alice = player('alice');
     const gs = makeState([alice, bob]);
     executeSkill(gs, makeIo(), 'STEAL_HERO', 'alice', 'kn', { targetPlayerId: 'bob', targetHeroId: 't1' });
-    assert.equal(bob.party.length, 1);          // not stolen
-    assert.equal(alice.party.length, 0);
-    assert.equal(target.equippedItem, null);    // doll consumed
-    assert.ok(gs.discardPile.includes(doll));
+    assert.equal(bob.party.length, 0);
+    assert.ok(alice.party.includes(target));
+    assert.equal(target.equippedItem, doll);
+    assert.ok(!gs.discardPile.includes(doll));
 });
 
-test('Meowzio: Decoy Doll stops the steal but the card pull still happens', () => {
+test('Meowzio: Decoy Doll does not stop the steal or card pull', () => {
     const doll = card('Decoy Doll', 'Item Card', { effect_id: 'ITEM_DECOY' });
     const victim = hero('Victim', { id: 'v1', equippedItem: doll });
     const bob = player('bob', { party: [victim], hand: [card('x', 'Item Card')] });
     const alice = player('alice', { party: [hero('Meowzio', { id: 'mz' })] });
     const gs = makeState([alice, bob]);
     executeSkill(gs, makeIo(), 'SKILL_MEOWZIO', 'alice', 'mz', { targetPlayerId: 'bob', targetHeroId: 'v1' });
-    assert.equal(bob.party.length, 1);    // hero saved by the doll
-    assert.equal(alice.hand.length, 1);   // but the pull still happened
+    assert.equal(bob.party.length, 0);
+    assert.ok(alice.party.includes(victim));
+    assert.equal(alice.hand.length, 1);   // the pull still happened
     assert.equal(bob.hand.length, 0);
 });
 
@@ -473,11 +474,23 @@ test('MAGIC_EXCHANGE queues an EXCHANGE_STEP_1 targeting action', () => {
     assert.equal(gs.pendingAction.playerToChoose, 'alice');
 });
 
-test('MAGIC_WINDS_CHANGE queues a RETURN_ITEM action', () => {
-    const p = player('alice');
+test('MAGIC_WINDS_CHANGE queues a RETURN_ITEM action when an item is equipped', () => {
+    const equipped = hero('Bearer', { equippedItem: card('Ring', 'Item Card') });
+    const p = player('alice', { party: [equipped] });
     const gs = makeState([p]);
     executeMagic(gs, makeIo(), 'MAGIC_WINDS_CHANGE', 'alice', null);
     assert.equal(gs.pendingAction.type, 'RETURN_ITEM');
+});
+
+test('MAGIC_WINDS_CHANGE fizzles (no pendingAction) when nothing is equipped', () => {
+    // Regression: it used to queue RETURN_ITEM with no legal target and no
+    // skip, soft-locking the game (found by the mobile-UI harness).
+    const p = player('alice', { party: [hero('Bare')] });
+    const gs = makeState([p]);
+    const io = makeIo();
+    executeMagic(gs, io, 'MAGIC_WINDS_CHANGE', 'alice', null);
+    assert.equal(gs.pendingAction, null);
+    assert.match(String(io.find('rollResult').payload.message), /fizzles/);
 });
 
 test('MAGIC_DESTRUCTIVE with cards queues discard-then-destroy', () => {
@@ -565,13 +578,15 @@ test('SKILL_FUZZY_CHEEKS draws 1 and opens an OPTIONAL hero play-from-hand', () 
     assert.equal(gs.pendingAction.optional, true);
 });
 
-test('SKILL_HOOK draws 1 and opens an OPTIONAL item play-from-hand', () => {
-    const p = player('alice', { party: [hero('Hook', { id: 'hk' })] });
+test('SKILL_HOOK opens item play-from-hand before drawing', () => {
+    const item = card('sword', 'Item Card');
+    const p = player('alice', { party: [hero('Hook', { id: 'hk' })], hand: [item] });
     const gs = makeState([p], { mainDeck: [card('d', 'Hero Card')] });
     executeSkill(gs, makeIo(), 'SKILL_HOOK', 'alice', 'hk', null);
     assert.equal(p.hand.length, 1);
     assert.deepEqual(gs.pendingAction.allowedTypes, ['Item Card']);
-    assert.equal(gs.pendingAction.optional, true);
+    assert.equal(gs.pendingAction.thenDraw, 1);
+    assert.equal(gs.pendingAction.optional, undefined);
 });
 
 test('SKILL_QUICK_DRAW opens an optional item play-from-hand when a DRAWN card is an Item', () => {

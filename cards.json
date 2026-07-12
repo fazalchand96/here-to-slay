@@ -11,7 +11,8 @@
     "effect_id": "MONSTER_ABYSS_QUEEN",
     "penaltyAction": "SACRIFICE_HERO",
     "rewardAction": "NONE",
-    "rollType": "HIGH_ROLL"
+    "rollType": "HIGH_ROLL",
+    "quantity": 1
   },
   {
     "name": "Anuran Cauldron",
@@ -25,13 +26,14 @@
     "effect_id": "MONSTER_ANURAN_CAULDRON",
     "penaltyAction": "SACRIFICE_HERO",
     "rewardAction": "NONE",
-    "rollType": "HIGH_ROLL"
+    "rollType": "HIGH_ROLL",
+    "quantity": 1
   },
   {
     "name": "Artic Aries",
     "type": "Monster Card",
     "requirement": "1 Hero",
-    "effect": "Each time you successfully roll to use a Hero card's effect, you may DRAW a card.",
+    "effect": "Each time you successfully roll to use a Hero's effect, DRAW a card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/f/f7/HtS-Base-210-2E.png/200px-HtS-Base-210-2E.png",
     "slayRoll": 10,
     "penaltyRoll": 6,
@@ -39,7 +41,8 @@
     "effect_id": "MONSTER_ARTIC_ARIES",
     "penaltyAction": "SACRIFICE_HERO",
     "rewardAction": "NONE",
-    "rollType": "HIGH_ROLL"
+    "rollType": "HIGH_ROLL",
+    "quantity": 1
   },
   {
     "name": "Bloodwing",
@@ -53,7 +56,8 @@
     "effect_id": "MONSTER_BLOODWING",
     "penaltyAction": "SACRIFICE_HERO",
     "rewardAction": "NONE",
-    "rollType": "HIGH_ROLL"
+    "rollType": "HIGH_ROLL",
+    "quantity": 1
   },
   {
     "name": "Corrupted Sabretooth",
@@ -67,7 +71,8 @@
     "effect_id": "MONSTER_CORRUPTED_SABRETOOTH",
     "penaltyAction": "SACRIFICE_HERO",
     "rewardAction": "DRAW_1",
-    "rollType": "HIGH_ROLL"
+    "rollType": "HIGH_ROLL",
+    "quantity": 1
   },
   {
     "name": "Crowned Serpent",
@@ -81,7 +86,8 @@
     "effect_id": "MONSTER_CROWNED_SERPENT",
     "penaltyAction": "SACRIFICE_HERO",
     "rewardAction": "NONE",
-    "rollType": "HIGH_ROLL"
+    "rollType": "HIGH_ROLL",
+    "quantity": 1
   },
   {
     "name": "Dark Dragon King",
@@ -95,7 +101,8 @@
     "effect_id": "MONSTER_DARK_DRAGON_KING",
     "penaltyAction": "DISCARD_2",
     "rewardAction": "NONE",
-    "rollType": "HIGH_ROLL"
+    "rollType": "HIGH_ROLL",
+    "quantity": 1
   },
   {
     "name": "Dracos",
@@ -109,13 +116,14 @@
     "effect_id": "MONSTER_DRACOS",
     "penaltyAction": "SACRIFICE_HERO",
     "rewardAction": "DRAW_1",
-    "rollType": "LOW_ROLL"
+    "rollType": "LOW_ROLL",
+    "quantity": 1
   },
   {
     "name": "Malamammoth",
     "type": "Monster Card",
     "requirement": "1 Ranger, 1 Hero",
-    "effect": "Each time you DRAW an Item card, you may play it immediately.",
+    "effect": "Each time you DRAW an item card, you may play it immediately",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/a/a7/HtS-Base-214-2E.png/200px-HtS-Base-214-2E.png",
     "slayRoll": 8,
     "penaltyRoll": 4,
@@ -123,13 +131,14 @@
     "effect_id": "MONSTER_MALAMAMMOTH",
     "penaltyAction": "DISCARD_2",
     "rewardAction": "NONE",
-    "rollType": "HIGH_ROLL"
+    "rollType": "HIGH_ROLL",
+    "quantity": 1
   },
   {
     "name": "Mega Slime",
     "type": "Monster Card",
     "requirement": "4 Heroes",
-    "effect": "You may spend an extra action point on each of your turns.\n\n(Specific Rule: Once defeated, you gain the monster ability. You may spend the extra action on the turn it is defeated.)",
+    "effect": "You may spend an extra action point on each of your turns.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/f/f6/HtS-Base-208-2E.png/200px-HtS-Base-208-2E.png",
     "slayRoll": 8,
     "penaltyRoll": 7,
@@ -137,7 +146,8 @@
     "effect_id": "MONSTER_MEGA_SLIME",
     "penaltyAction": "SACRIFICE_HERO",
     "rewardAction": "DRAW_2",
-    "rollType": "HIGH_ROLL"
+    "rollType": "HIGH_ROLL",
+    "quantity": 1
   },
   {
     "name": "Orthus",
@@ -151,7 +161,8 @@
     "effect_id": "MONSTER_ORTHUS",
     "penaltyAction": "DISCARD_2",
     "rewardAction": "NONE",
-    "rollType": "HIGH_ROLL"
+    "rollType": "HIGH_ROLL",
+    "quantity": 1
   },
   {
     "name": "Rex Major",
@@ -159,13 +170,14 @@
     "requirement": "1 Guardian, 1 Hero",
     "effect": "Each time you DRAW a Modifier card, you may reveal it and DRAW a second card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/a/a3/HtS-Base-215-2E.png/200px-HtS-Base-215-2E.png",
-    "slayRoll": 9,
-    "penaltyRoll": 6,
+    "slayRoll": 8,
+    "penaltyRoll": 4,
     "id": "card_012",
     "effect_id": "MONSTER_REX_MAJOR",
     "penaltyAction": "DISCARD_2",
     "rewardAction": "NONE",
-    "rollType": "HIGH_ROLL"
+    "rollType": "HIGH_ROLL",
+    "quantity": 1
   },
   {
     "name": "Terratuga",
@@ -179,7 +191,8 @@
     "effect_id": "MONSTER_TERRATUGA",
     "penaltyAction": "SACRIFICE_HERO",
     "rewardAction": "NONE",
-    "rollType": "HIGH_ROLL"
+    "rollType": "HIGH_ROLL",
+    "quantity": 1
   },
   {
     "name": "Titan Wyvern",
@@ -193,13 +206,14 @@
     "effect_id": "MONSTER_TITAN_WYVERN",
     "penaltyAction": "DISCARD_2",
     "rewardAction": "NONE",
-    "rollType": "HIGH_ROLL"
+    "rollType": "HIGH_ROLL",
+    "quantity": 1
   },
   {
     "name": "Warworn Owlbear",
     "type": "Monster Card",
     "requirement": "1 Thief, 1 Hero",
-    "effect": "Item cards you play cannot be challenged.",
+    "effect": "Item cards you play cannot be challenged",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/8/8e/HtS-Base-209-2E.png/200px-HtS-Base-209-2E.png",
     "slayRoll": 8,
     "penaltyRoll": 4,
@@ -207,7 +221,8 @@
     "effect_id": "MONSTER_WARWORN_OWLBEAR",
     "penaltyAction": "DISCARD_2",
     "rewardAction": "NONE",
-    "rollType": "HIGH_ROLL"
+    "rollType": "HIGH_ROLL",
+    "quantity": 1
   },
   {
     "name": "Bad Axe",
@@ -218,7 +233,8 @@
     "class": "Fighter",
     "roll_requirement": 8,
     "skill_id": "DESTROY_HERO",
-    "id": "card_016"
+    "id": "card_016",
+    "quantity": 1
   },
   {
     "name": "Bear Claw",
@@ -229,7 +245,8 @@
     "class": "Fighter",
     "roll_requirement": 7,
     "skill_id": "SKILL_BEAR_CLAW",
-    "id": "card_017"
+    "id": "card_017",
+    "quantity": 1
   },
   {
     "name": "Beary Wise",
@@ -240,7 +257,8 @@
     "class": "Fighter",
     "roll_requirement": 7,
     "skill_id": "SKILL_BEARY_WISE",
-    "id": "card_018"
+    "id": "card_018",
+    "quantity": 1
   },
   {
     "name": "Fury Knuckle",
@@ -251,7 +269,8 @@
     "class": "Fighter",
     "roll_requirement": 5,
     "skill_id": "SKILL_FURY_KNUCKLE",
-    "id": "card_019"
+    "id": "card_019",
+    "quantity": 1
   },
   {
     "name": "Heavy Bear",
@@ -262,7 +281,8 @@
     "class": "Fighter",
     "roll_requirement": 5,
     "skill_id": "SKILL_HEAVY_BEAR",
-    "id": "card_020"
+    "id": "card_020",
+    "quantity": 1
   },
   {
     "name": "Pan Chucks",
@@ -273,7 +293,8 @@
     "class": "Fighter",
     "roll_requirement": 8,
     "skill_id": "SKILL_PAN_CHUCKS",
-    "id": "card_021"
+    "id": "card_021",
+    "quantity": 1
   },
   {
     "name": "Qi Bear",
@@ -284,7 +305,8 @@
     "class": "Fighter",
     "roll_requirement": 10,
     "skill_id": "SKILL_QI_BEAR",
-    "id": "card_022"
+    "id": "card_022",
+    "quantity": 1
   },
   {
     "name": "Tough Teddy",
@@ -295,7 +317,8 @@
     "class": "Fighter",
     "roll_requirement": 4,
     "skill_id": "SKILL_TOUGH_TEDDY",
-    "id": "card_023"
+    "id": "card_023",
+    "quantity": 1
   },
   {
     "name": "Dodgy Dealer",
@@ -306,7 +329,8 @@
     "class": "Bard",
     "roll_requirement": 9,
     "skill_id": "TRADE_HANDS",
-    "id": "card_024"
+    "id": "card_024",
+    "quantity": 1
   },
   {
     "name": "Fuzzy Cheeks",
@@ -317,7 +341,8 @@
     "class": "Bard",
     "roll_requirement": 8,
     "skill_id": "SKILL_FUZZY_CHEEKS",
-    "id": "card_025"
+    "id": "card_025",
+    "quantity": 1
   },
   {
     "name": "Greedy Cheeks",
@@ -328,7 +353,8 @@
     "class": "Bard",
     "roll_requirement": 8,
     "skill_id": "SKILL_GREEDY_CHEEKS",
-    "id": "card_026"
+    "id": "card_026",
+    "quantity": 1
   },
   {
     "name": "Lucky Bucky",
@@ -339,7 +365,8 @@
     "class": "Bard",
     "roll_requirement": 7,
     "skill_id": "SKILL_LUCKY_BUCKY",
-    "id": "card_027"
+    "id": "card_027",
+    "quantity": 1
   },
   {
     "name": "Mellow Dee",
@@ -350,7 +377,8 @@
     "class": "Bard",
     "roll_requirement": 7,
     "skill_id": "DRAW_AND_PLAY",
-    "id": "card_028"
+    "id": "card_028",
+    "quantity": 1
   },
   {
     "name": "Napping Nibbles",
@@ -361,7 +389,8 @@
     "class": "Bard",
     "roll_requirement": 2,
     "skill_id": "SKILL_NAPPING_NIBBLES",
-    "id": "card_029"
+    "id": "card_029",
+    "quantity": 1
   },
   {
     "name": "Peanut",
@@ -372,7 +401,8 @@
     "class": "Bard",
     "roll_requirement": 7,
     "skill_id": "DRAW_2_CARDS",
-    "id": "card_030"
+    "id": "card_030",
+    "quantity": 1
   },
   {
     "name": "Tipsy Tootie",
@@ -383,7 +413,8 @@
     "class": "Bard",
     "roll_requirement": 6,
     "skill_id": "SKILL_TIPSY_TOOTIE",
-    "id": "card_031"
+    "id": "card_031",
+    "quantity": 1
   },
   {
     "name": "Calming Voice",
@@ -394,7 +425,8 @@
     "class": "Guardian",
     "roll_requirement": 9,
     "skill_id": "SKILL_CALMING_VOICE",
-    "id": "card_032"
+    "id": "card_032",
+    "quantity": 1
   },
   {
     "name": "Guiding Light",
@@ -405,7 +437,8 @@
     "class": "Guardian",
     "roll_requirement": 7,
     "skill_id": "SKILL_GUIDING_LIGHT",
-    "id": "card_033"
+    "id": "card_033",
+    "quantity": 1
   },
   {
     "name": "Holy Curselifter",
@@ -416,7 +449,8 @@
     "class": "Guardian",
     "roll_requirement": 5,
     "skill_id": "SKILL_HOLY_CURSELIFTER",
-    "id": "card_034"
+    "id": "card_034",
+    "quantity": 1
   },
   {
     "name": "Iron Resolve",
@@ -427,7 +461,8 @@
     "class": "Guardian",
     "roll_requirement": 8,
     "skill_id": "SKILL_IRON_RESOLVE",
-    "id": "card_035"
+    "id": "card_035",
+    "quantity": 1
   },
   {
     "name": "Mighty Blade",
@@ -438,7 +473,8 @@
     "class": "Guardian",
     "roll_requirement": 8,
     "skill_id": "SKILL_MIGHTY_BLADE",
-    "id": "card_036"
+    "id": "card_036",
+    "quantity": 1
   },
   {
     "name": "Radiant Horn",
@@ -449,7 +485,8 @@
     "class": "Guardian",
     "roll_requirement": 6,
     "skill_id": "SKILL_RADIANT_HORN",
-    "id": "card_037"
+    "id": "card_037",
+    "quantity": 1
   },
   {
     "name": "Vibrant Glow",
@@ -460,7 +497,8 @@
     "class": "Guardian",
     "roll_requirement": 9,
     "skill_id": "SKILL_VIBRANT_GLOW",
-    "id": "card_038"
+    "id": "card_038",
+    "quantity": 1
   },
   {
     "name": "Wise Shield",
@@ -471,7 +509,8 @@
     "class": "Guardian",
     "roll_requirement": 6,
     "skill_id": "SKILL_WISE_SHIELD",
-    "id": "card_039"
+    "id": "card_039",
+    "quantity": 1
   },
   {
     "name": "Bullseye",
@@ -482,7 +521,8 @@
     "class": "Ranger",
     "roll_requirement": 7,
     "skill_id": "SKILL_BULLSEYE",
-    "id": "card_040"
+    "id": "card_040",
+    "quantity": 1
   },
   {
     "name": "Hook",
@@ -493,7 +533,8 @@
     "class": "Ranger",
     "roll_requirement": 6,
     "skill_id": "SKILL_HOOK",
-    "id": "card_041"
+    "id": "card_041",
+    "quantity": 1
   },
   {
     "name": "Lookie Rookie",
@@ -504,7 +545,8 @@
     "class": "Ranger",
     "roll_requirement": 5,
     "skill_id": "SKILL_LOOKIE_ROOKIE",
-    "id": "card_042"
+    "id": "card_042",
+    "quantity": 1
   },
   {
     "name": "Quick Draw",
@@ -515,7 +557,8 @@
     "class": "Ranger",
     "roll_requirement": 8,
     "skill_id": "SKILL_QUICK_DRAW",
-    "id": "card_043"
+    "id": "card_043",
+    "quantity": 1
   },
   {
     "name": "Serious Grey",
@@ -526,7 +569,8 @@
     "class": "Ranger",
     "roll_requirement": 9,
     "skill_id": "SKILL_SERIOUS_GREY",
-    "id": "card_044"
+    "id": "card_044",
+    "quantity": 1
   },
   {
     "name": "Sharp Fox",
@@ -537,7 +581,8 @@
     "class": "Ranger",
     "roll_requirement": 5,
     "skill_id": "SKILL_SHARP_FOX",
-    "id": "card_045"
+    "id": "card_045",
+    "quantity": 1
   },
   {
     "name": "Wildshot",
@@ -548,7 +593,8 @@
     "class": "Ranger",
     "roll_requirement": 8,
     "skill_id": "SKILL_WILDSHOT",
-    "id": "card_046"
+    "id": "card_046",
+    "quantity": 1
   },
   {
     "name": "Wily Red",
@@ -559,7 +605,8 @@
     "class": "Ranger",
     "roll_requirement": 10,
     "skill_id": "SKILL_WILY_RED",
-    "id": "card_047"
+    "id": "card_047",
+    "quantity": 1
   },
   {
     "name": "Kit Napper",
@@ -570,7 +617,8 @@
     "class": "Thief",
     "roll_requirement": 9,
     "skill_id": "STEAL_HERO",
-    "id": "card_048"
+    "id": "card_048",
+    "quantity": 1
   },
   {
     "name": "Meowzio",
@@ -581,7 +629,8 @@
     "class": "Thief",
     "roll_requirement": 10,
     "skill_id": "SKILL_MEOWZIO",
-    "id": "card_049"
+    "id": "card_049",
+    "quantity": 1
   },
   {
     "name": "Plundering Puma",
@@ -592,7 +641,8 @@
     "class": "Thief",
     "roll_requirement": 6,
     "skill_id": "SKILL_PLUNDERING_PUMA",
-    "id": "card_050"
+    "id": "card_050",
+    "quantity": 1
   },
   {
     "name": "Shurikitty",
@@ -603,7 +653,8 @@
     "class": "Thief",
     "roll_requirement": 9,
     "skill_id": "SKILL_SHURIKITTY",
-    "id": "card_051"
+    "id": "card_051",
+    "quantity": 1
   },
   {
     "name": "Silent Shadow",
@@ -614,7 +665,8 @@
     "class": "Thief",
     "roll_requirement": 8,
     "skill_id": "SKILL_SILENT_SHADOW",
-    "id": "card_052"
+    "id": "card_052",
+    "quantity": 1
   },
   {
     "name": "Slippery Paws",
@@ -625,7 +677,8 @@
     "class": "Thief",
     "roll_requirement": 6,
     "skill_id": "SKILL_SLIPPERY_PAWS",
-    "id": "card_053"
+    "id": "card_053",
+    "quantity": 1
   },
   {
     "name": "Sly Pickings",
@@ -636,7 +689,8 @@
     "class": "Thief",
     "roll_requirement": 6,
     "skill_id": "SKILL_SLY_PICKINGS",
-    "id": "card_054"
+    "id": "card_054",
+    "quantity": 1
   },
   {
     "name": "Smooth Mimimeow",
@@ -647,7 +701,8 @@
     "class": "Thief",
     "roll_requirement": 7,
     "skill_id": "SKILL_SMOOTH_MIMIMEOW",
-    "id": "card_055"
+    "id": "card_055",
+    "quantity": 1
   },
   {
     "name": "Bun Bun",
@@ -658,7 +713,8 @@
     "class": "Wizard",
     "roll_requirement": 5,
     "skill_id": "SKILL_BUN_BUN",
-    "id": "card_056"
+    "id": "card_056",
+    "quantity": 1
   },
   {
     "name": "Buttons",
@@ -669,7 +725,8 @@
     "class": "Wizard",
     "roll_requirement": 6,
     "skill_id": "SKILL_BUTTONS",
-    "id": "card_057"
+    "id": "card_057",
+    "quantity": 1
   },
   {
     "name": "Fluffy",
@@ -680,7 +737,8 @@
     "class": "Wizard",
     "roll_requirement": 10,
     "skill_id": "SKILL_FLUFFY",
-    "id": "card_058"
+    "id": "card_058",
+    "quantity": 1
   },
   {
     "name": "Hopper",
@@ -691,7 +749,8 @@
     "class": "Wizard",
     "roll_requirement": 7,
     "skill_id": "SKILL_HOPPER",
-    "id": "card_059"
+    "id": "card_059",
+    "quantity": 1
   },
   {
     "name": "Snowball",
@@ -702,7 +761,8 @@
     "class": "Wizard",
     "roll_requirement": 6,
     "skill_id": "SKILL_SNOWBALL",
-    "id": "card_060"
+    "id": "card_060",
+    "quantity": 1
   },
   {
     "name": "Spooky",
@@ -713,7 +773,8 @@
     "class": "Wizard",
     "roll_requirement": 10,
     "skill_id": "SKILL_SPOOKY",
-    "id": "card_061"
+    "id": "card_061",
+    "quantity": 1
   },
   {
     "name": "Whiskers",
@@ -724,7 +785,8 @@
     "class": "Wizard",
     "roll_requirement": 11,
     "skill_id": "SKILL_WHISKERS",
-    "id": "card_062"
+    "id": "card_062",
+    "quantity": 1
   },
   {
     "name": "Wiggles",
@@ -735,749 +797,818 @@
     "class": "Wizard",
     "roll_requirement": 10,
     "skill_id": "SKILL_WIGGLES",
-    "id": "card_063"
+    "id": "card_063",
+    "quantity": 1
   },
   {
     "name": "Bard Mask",
     "type": "Item Card",
-    "requirement": "None",
-    "effect": "Equipped Hero card is considered that class instead of its original class.",
+    "requirement": null,
+    "effect": "The equipped Hero card is considered a Bard instead of its original class.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/9/98/HtS-Base-004-2E.png/200px-HtS-Base-004-2E.png",
     "id": "card_064",
-    "description": "Equipped Hero card is considered that class instead of its original class.",
-    "effect_id": "ITEM_MASK"
+    "description": "The equipped Hero card is considered a Bard instead of its original class.",
+    "effect_id": "ITEM_MASK",
+    "quantity": 1
   },
   {
     "name": "Decoy Doll",
     "type": "Item Card",
-    "requirement": "None",
-    "effect": "If this Hero card would be destroyed or stolen, you may DESTROY Decoy Doll instead.",
+    "requirement": null,
+    "effect": "If the equipped Hero card would be sacrificed or destroyed, move Decoy Doll to the discard pile instead.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/c/ca/HtS-Base-012-2E.png/200px-HtS-Base-012-2E.png",
     "id": "card_065",
-    "description": "If this Hero card would be destroyed or stolen, you may DESTROY Decoy Doll instead.",
-    "effect_id": "ITEM_DECOY"
+    "description": "If the equipped Hero card would be sacrificed or destroyed, move Decoy Doll to the discard pile instead.",
+    "effect_id": "ITEM_DECOY",
+    "quantity": 1
   },
   {
     "name": "Fighter Mask",
     "type": "Item Card",
-    "requirement": "None",
-    "effect": "Equipped Hero card is considered that class instead of its original class.",
+    "requirement": null,
+    "effect": "The equipped Hero card is considered a Fighter instead of its original class.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/6/67/HtS-Base-007-2E.png/200px-HtS-Base-007-2E.png",
     "id": "card_066",
-    "description": "Equipped Hero card is considered that class instead of its original class.",
-    "effect_id": "ITEM_MASK"
+    "description": "The equipped Hero card is considered a Fighter instead of its original class.",
+    "effect_id": "ITEM_MASK",
+    "quantity": 1
   },
   {
     "name": "Guardian Mask",
     "type": "Item Card",
-    "requirement": "None",
-    "effect": "Equipped Hero card is considered that class instead of its original class.",
+    "requirement": null,
+    "effect": "The equipped Hero card is considered a Guardian instead of its original class.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/f/f3/HtS-Base-008-2E.png/200px-HtS-Base-008-2E.png",
     "id": "card_067",
-    "description": "Equipped Hero card is considered that class instead of its original class.",
-    "effect_id": "ITEM_MASK"
+    "description": "The equipped Hero card is considered a Guardian instead of its original class.",
+    "effect_id": "ITEM_MASK",
+    "quantity": 1
   },
   {
     "name": "Particularly Rusty Coin",
     "type": "Item Card",
-    "requirement": "None",
+    "requirement": null,
     "effect": "If you unsuccessfully roll to use the equipped Hero card's effect, DRAW a card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/5/55/HtS-Base-011-2E.png/200px-HtS-Base-011-2E.png",
     "id": "card_068",
     "description": "If you unsuccessfully roll to use the equipped Hero card's effect, DRAW a card.",
-    "effect_id": "ITEM_COIN_RUSTY"
+    "effect_id": "ITEM_COIN_RUSTY",
+    "quantity": 2
   },
   {
     "name": "Particularly Rusty Coin",
     "type": "Item Card",
-    "requirement": "None",
+    "requirement": null,
     "effect": "If you unsuccessfully roll to use the equipped Hero card's effect, DRAW a card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/5/55/HtS-Base-011-2E.png/200px-HtS-Base-011-2E.png",
     "id": "card_069",
     "description": "If you unsuccessfully roll to use the equipped Hero card's effect, DRAW a card.",
-    "effect_id": "ITEM_COIN_RUSTY"
+    "effect_id": "ITEM_COIN_RUSTY",
+    "quantity": 2
   },
   {
     "name": "Ranger Mask",
     "type": "Item Card",
-    "requirement": "None",
-    "effect": "Equipped Hero card is considered that class instead of its original class.",
+    "requirement": null,
+    "effect": "The equipped Hero card is considered a Ranger instead of its original class.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/6/69/HtS-Base-005-2E.png/200px-HtS-Base-005-2E.png",
     "id": "card_070",
-    "description": "Equipped Hero card is considered that class instead of its original class.",
-    "effect_id": "ITEM_MASK"
+    "description": "The equipped Hero card is considered a Ranger instead of its original class.",
+    "effect_id": "ITEM_MASK",
+    "quantity": 1
   },
   {
     "name": "Really Big Ring",
     "type": "Item Card",
-    "requirement": "None",
+    "requirement": null,
     "effect": "Each time you roll to use the equipped Hero card's effect, +2 to your roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/d/d8/HtS-Base-010-2E.png/200px-HtS-Base-010-2E.png",
     "id": "card_071",
     "description": "Each time you roll to use the equipped Hero card's effect, +2 to your roll.",
-    "effect_id": "ITEM_RING"
+    "effect_id": "ITEM_RING",
+    "quantity": 2
   },
   {
     "name": "Really Big Ring",
     "type": "Item Card",
-    "requirement": "None",
+    "requirement": null,
     "effect": "Each time you roll to use the equipped Hero card's effect, +2 to your roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/d/d8/HtS-Base-010-2E.png/200px-HtS-Base-010-2E.png",
     "id": "card_072",
     "description": "Each time you roll to use the equipped Hero card's effect, +2 to your roll.",
-    "effect_id": "ITEM_RING"
+    "effect_id": "ITEM_RING",
+    "quantity": 2
   },
   {
     "name": "Thief Mask",
     "type": "Item Card",
-    "requirement": "None",
-    "effect": "Equipped Hero card is considered that class instead of its original class.",
+    "requirement": null,
+    "effect": "The equipped Hero card is considered a Thief instead of its original class.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/7/79/HtS-Base-009-2E.png/200px-HtS-Base-009-2E.png",
     "id": "card_073",
-    "description": "Equipped Hero card is considered that class instead of its original class.",
-    "effect_id": "ITEM_MASK"
+    "description": "The equipped Hero card is considered a Thief instead of its original class.",
+    "effect_id": "ITEM_MASK",
+    "quantity": 1
   },
   {
     "name": "Wizard Mask",
     "type": "Item Card",
-    "requirement": "None",
-    "effect": "Equipped Hero card is considered that class instead of its original class.",
+    "requirement": null,
+    "effect": "The equipped Hero card is considered a Wizard instead of its original class.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/9/98/HtS-Base-006-2E.png/200px-HtS-Base-006-2E.png",
     "id": "card_074",
-    "description": "Equipped Hero card is considered that class instead of its original class.",
-    "effect_id": "ITEM_MASK"
+    "description": "The equipped Hero card is considered a Wizard instead of its original class.",
+    "effect_id": "ITEM_MASK",
+    "quantity": 1
   },
   {
     "name": "Curse of the Snake's Eyes",
     "type": "Cursed Item Card",
-    "requirement": "None",
+    "requirement": null,
     "effect": "Each time you roll to use the equipped Hero card's effect, -2 to your roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/3/38/HtS-Base-002-2E.png/200px-HtS-Base-002-2E.png",
     "id": "card_075",
     "description": "Each time you roll to use the equipped Hero card's effect, -2 to your roll.",
-    "effect_id": "CURSE_SNAKE"
+    "effect_id": "CURSE_SNAKE",
+    "quantity": 2
   },
   {
     "name": "Curse of the Snake's Eyes",
     "type": "Cursed Item Card",
-    "requirement": "None",
+    "requirement": null,
     "effect": "Each time you roll to use the equipped Hero card's effect, -2 to your roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/3/38/HtS-Base-002-2E.png/200px-HtS-Base-002-2E.png",
     "id": "card_076",
     "description": "Each time you roll to use the equipped Hero card's effect, -2 to your roll.",
-    "effect_id": "CURSE_SNAKE"
+    "effect_id": "CURSE_SNAKE",
+    "quantity": 2
   },
   {
     "name": "Sealing Key",
     "type": "Cursed Item Card",
-    "requirement": "None",
-    "effect": "Equipped Hero card cannot use its effect.",
+    "requirement": null,
+    "effect": "You cannot use the equipped Hero card's effect.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/0/06/HtS-Base-001-2E.png/200px-HtS-Base-001-2E.png",
     "id": "card_077",
-    "description": "Equipped Hero card cannot use its effect.",
-    "effect_id": "CURSE_KEY"
+    "description": "You cannot use the equipped Hero card's effect.",
+    "effect_id": "CURSE_KEY",
+    "quantity": 1
   },
   {
     "name": "Suspiciously Shiny Coin",
     "type": "Cursed Item Card",
-    "requirement": "None",
+    "requirement": null,
     "effect": "If you successfully roll to use the equipped Hero card's effect, DISCARD a card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/6/6c/HtS-Base-003-2E.png/200px-HtS-Base-003-2E.png",
     "id": "card_078",
     "description": "If you successfully roll to use the equipped Hero card's effect, DISCARD a card.",
-    "effect_id": "CURSE_COIN_SHINY"
+    "effect_id": "CURSE_COIN_SHINY",
+    "quantity": 1
   },
   {
     "name": "Modifier +1/-3",
     "type": "Modifier Card",
-    "requirement": "None",
-    "effect": "+1 or -3 to that roll.",
+    "requirement": null,
+    "effect": "Play this card after any player (including you) rolls the dice. +1 or -3 to that roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/6/6c/HtS-Base-024-2E.png/200px-HtS-Base-024-2E.png",
     "id": "card_079",
-    "description": "+1 or -3 to that roll.",
+    "description": "Play this card after any player (including you) rolls the dice. +1 or -3 to that roll.",
     "effect_id": "MOD_1_3",
     "modifier_values": [
       1,
       -3
-    ]
+    ],
+    "quantity": 4
   },
   {
     "name": "Modifier +1/-3",
     "type": "Modifier Card",
-    "requirement": "None",
-    "effect": "+1 or -3 to that roll.",
+    "requirement": null,
+    "effect": "Play this card after any player (including you) rolls the dice. +1 or -3 to that roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/6/6c/HtS-Base-024-2E.png/200px-HtS-Base-024-2E.png",
     "id": "card_080",
-    "description": "+1 or -3 to that roll.",
+    "description": "Play this card after any player (including you) rolls the dice. +1 or -3 to that roll.",
     "effect_id": "MOD_1_3",
     "modifier_values": [
       1,
       -3
-    ]
+    ],
+    "quantity": 4
   },
   {
     "name": "Modifier +1/-3",
     "type": "Modifier Card",
-    "requirement": "None",
-    "effect": "+1 or -3 to that roll.",
+    "requirement": null,
+    "effect": "Play this card after any player (including you) rolls the dice. +1 or -3 to that roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/6/6c/HtS-Base-024-2E.png/200px-HtS-Base-024-2E.png",
     "id": "card_081",
-    "description": "+1 or -3 to that roll.",
+    "description": "Play this card after any player (including you) rolls the dice. +1 or -3 to that roll.",
     "effect_id": "MOD_1_3",
     "modifier_values": [
       1,
       -3
-    ]
+    ],
+    "quantity": 4
   },
   {
     "name": "Modifier +1/-3",
     "type": "Modifier Card",
-    "requirement": "None",
-    "effect": "+1 or -3 to that roll.",
+    "requirement": null,
+    "effect": "Play this card after any player (including you) rolls the dice. +1 or -3 to that roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/6/6c/HtS-Base-024-2E.png/200px-HtS-Base-024-2E.png",
     "id": "card_082",
-    "description": "+1 or -3 to that roll.",
+    "description": "Play this card after any player (including you) rolls the dice. +1 or -3 to that roll.",
     "effect_id": "MOD_1_3",
     "modifier_values": [
       1,
       -3
-    ]
+    ],
+    "quantity": 4
   },
   {
     "name": "Modifier +2/-2",
     "type": "Modifier Card",
-    "requirement": "None",
-    "effect": "+2 or -2 to that roll.",
+    "requirement": null,
+    "effect": "Play this card after any player (including you) rolls the dice. +2 or -2 to that roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/e/e4/HtS-Base-021-2E.png/200px-HtS-Base-021-2E.png",
     "id": "card_083",
-    "description": "+2 or -2 to that roll.",
+    "description": "Play this card after any player (including you) rolls the dice. +2 or -2 to that roll.",
     "effect_id": "MOD_2_2",
     "modifier_values": [
       2,
       -2
-    ]
+    ],
+    "quantity": 9
   },
   {
     "name": "Modifier +2/-2",
     "type": "Modifier Card",
-    "requirement": "None",
-    "effect": "+2 or -2 to that roll.",
+    "requirement": null,
+    "effect": "Play this card after any player (including you) rolls the dice. +2 or -2 to that roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/e/e4/HtS-Base-021-2E.png/200px-HtS-Base-021-2E.png",
     "id": "card_084",
-    "description": "+2 or -2 to that roll.",
+    "description": "Play this card after any player (including you) rolls the dice. +2 or -2 to that roll.",
     "effect_id": "MOD_2_2",
     "modifier_values": [
       2,
       -2
-    ]
+    ],
+    "quantity": 9
   },
   {
     "name": "Modifier +2/-2",
     "type": "Modifier Card",
-    "requirement": "None",
-    "effect": "+2 or -2 to that roll.",
+    "requirement": null,
+    "effect": "Play this card after any player (including you) rolls the dice. +2 or -2 to that roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/e/e4/HtS-Base-021-2E.png/200px-HtS-Base-021-2E.png",
     "id": "card_085",
-    "description": "+2 or -2 to that roll.",
+    "description": "Play this card after any player (including you) rolls the dice. +2 or -2 to that roll.",
     "effect_id": "MOD_2_2",
     "modifier_values": [
       2,
       -2
-    ]
+    ],
+    "quantity": 9
   },
   {
     "name": "Modifier +2/-2",
     "type": "Modifier Card",
-    "requirement": "None",
-    "effect": "+2 or -2 to that roll.",
+    "requirement": null,
+    "effect": "Play this card after any player (including you) rolls the dice. +2 or -2 to that roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/e/e4/HtS-Base-021-2E.png/200px-HtS-Base-021-2E.png",
     "id": "card_086",
-    "description": "+2 or -2 to that roll.",
+    "description": "Play this card after any player (including you) rolls the dice. +2 or -2 to that roll.",
     "effect_id": "MOD_2_2",
     "modifier_values": [
       2,
       -2
-    ]
+    ],
+    "quantity": 9
   },
   {
     "name": "Modifier +2/-2",
     "type": "Modifier Card",
-    "requirement": "None",
-    "effect": "+2 or -2 to that roll.",
+    "requirement": null,
+    "effect": "Play this card after any player (including you) rolls the dice. +2 or -2 to that roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/e/e4/HtS-Base-021-2E.png/200px-HtS-Base-021-2E.png",
     "id": "card_087",
-    "description": "+2 or -2 to that roll.",
+    "description": "Play this card after any player (including you) rolls the dice. +2 or -2 to that roll.",
     "effect_id": "MOD_2_2",
     "modifier_values": [
       2,
       -2
-    ]
+    ],
+    "quantity": 9
   },
   {
     "name": "Modifier +2/-2",
     "type": "Modifier Card",
-    "requirement": "None",
-    "effect": "+2 or -2 to that roll.",
+    "requirement": null,
+    "effect": "Play this card after any player (including you) rolls the dice. +2 or -2 to that roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/e/e4/HtS-Base-021-2E.png/200px-HtS-Base-021-2E.png",
     "id": "card_088",
-    "description": "+2 or -2 to that roll.",
+    "description": "Play this card after any player (including you) rolls the dice. +2 or -2 to that roll.",
     "effect_id": "MOD_2_2",
     "modifier_values": [
       2,
       -2
-    ]
+    ],
+    "quantity": 9
   },
   {
     "name": "Modifier +2/-2",
     "type": "Modifier Card",
-    "requirement": "None",
-    "effect": "+2 or -2 to that roll.",
+    "requirement": null,
+    "effect": "Play this card after any player (including you) rolls the dice. +2 or -2 to that roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/e/e4/HtS-Base-021-2E.png/200px-HtS-Base-021-2E.png",
     "id": "card_089",
-    "description": "+2 or -2 to that roll.",
+    "description": "Play this card after any player (including you) rolls the dice. +2 or -2 to that roll.",
     "effect_id": "MOD_2_2",
     "modifier_values": [
       2,
       -2
-    ]
+    ],
+    "quantity": 9
   },
   {
     "name": "Modifier +2/-2",
     "type": "Modifier Card",
-    "requirement": "None",
-    "effect": "+2 or -2 to that roll.",
+    "requirement": null,
+    "effect": "Play this card after any player (including you) rolls the dice. +2 or -2 to that roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/e/e4/HtS-Base-021-2E.png/200px-HtS-Base-021-2E.png",
     "id": "card_090",
-    "description": "+2 or -2 to that roll.",
+    "description": "Play this card after any player (including you) rolls the dice. +2 or -2 to that roll.",
     "effect_id": "MOD_2_2",
     "modifier_values": [
       2,
       -2
-    ]
+    ],
+    "quantity": 9
   },
   {
     "name": "Modifier +2/-2",
     "type": "Modifier Card",
-    "requirement": "None",
-    "effect": "+2 or -2 to that roll.",
+    "requirement": null,
+    "effect": "Play this card after any player (including you) rolls the dice. +2 or -2 to that roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/e/e4/HtS-Base-021-2E.png/200px-HtS-Base-021-2E.png",
     "id": "card_091",
-    "description": "+2 or -2 to that roll.",
+    "description": "Play this card after any player (including you) rolls the dice. +2 or -2 to that roll.",
     "effect_id": "MOD_2_2",
     "modifier_values": [
       2,
       -2
-    ]
+    ],
+    "quantity": 9
   },
   {
     "name": "Modifier +3/-1",
     "type": "Modifier Card",
-    "requirement": "None",
-    "effect": "+3 or -1 to that roll.",
+    "requirement": null,
+    "effect": "Play this card after any player (including you) rolls the dice. +3 or -1 to that roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/d/d0/HtS-Base-025-2E.png/200px-HtS-Base-025-2E.png",
     "id": "card_092",
-    "description": "+3 or -1 to that roll.",
+    "description": "Play this card after any player (including you) rolls the dice. +3 or -1 to that roll.",
     "effect_id": "MOD_3_1",
     "modifier_values": [
       3,
       -1
-    ]
+    ],
+    "quantity": 4
   },
   {
     "name": "Modifier +3/-1",
     "type": "Modifier Card",
-    "requirement": "None",
-    "effect": "+3 or -1 to that roll.",
+    "requirement": null,
+    "effect": "Play this card after any player (including you) rolls the dice. +3 or -1 to that roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/d/d0/HtS-Base-025-2E.png/200px-HtS-Base-025-2E.png",
     "id": "card_093",
-    "description": "+3 or -1 to that roll.",
+    "description": "Play this card after any player (including you) rolls the dice. +3 or -1 to that roll.",
     "effect_id": "MOD_3_1",
     "modifier_values": [
       3,
       -1
-    ]
+    ],
+    "quantity": 4
   },
   {
     "name": "Modifier +3/-1",
     "type": "Modifier Card",
-    "requirement": "None",
-    "effect": "+3 or -1 to that roll.",
+    "requirement": null,
+    "effect": "Play this card after any player (including you) rolls the dice. +3 or -1 to that roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/d/d0/HtS-Base-025-2E.png/200px-HtS-Base-025-2E.png",
     "id": "card_094",
-    "description": "+3 or -1 to that roll.",
+    "description": "Play this card after any player (including you) rolls the dice. +3 or -1 to that roll.",
     "effect_id": "MOD_3_1",
     "modifier_values": [
       3,
       -1
-    ]
+    ],
+    "quantity": 4
   },
   {
     "name": "Modifier +3/-1",
     "type": "Modifier Card",
-    "requirement": "None",
-    "effect": "+3 or -1 to that roll.",
+    "requirement": null,
+    "effect": "Play this card after any player (including you) rolls the dice. +3 or -1 to that roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/d/d0/HtS-Base-025-2E.png/200px-HtS-Base-025-2E.png",
     "id": "card_095",
-    "description": "+3 or -1 to that roll.",
+    "description": "Play this card after any player (including you) rolls the dice. +3 or -1 to that roll.",
     "effect_id": "MOD_3_1",
     "modifier_values": [
       3,
       -1
-    ]
+    ],
+    "quantity": 4
   },
   {
     "name": "Modifier +4",
     "type": "Modifier Card",
-    "requirement": "None",
-    "effect": "+4 to that roll.",
+    "requirement": null,
+    "effect": "Play this card after any player (including you) rolls the dice. +4 to that roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/2/28/HtS-Base-023-2E.png/200px-HtS-Base-023-2E.png",
     "id": "card_096",
-    "description": "+4 to that roll.",
+    "description": "Play this card after any player (including you) rolls the dice. +4 to that roll.",
     "effect_id": "MOD_4",
     "modifier_values": [
       4
-    ]
+    ],
+    "quantity": 4
   },
   {
     "name": "Modifier +4",
     "type": "Modifier Card",
-    "requirement": "None",
-    "effect": "+4 to that roll.",
+    "requirement": null,
+    "effect": "Play this card after any player (including you) rolls the dice. +4 to that roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/2/28/HtS-Base-023-2E.png/200px-HtS-Base-023-2E.png",
     "id": "card_097",
-    "description": "+4 to that roll.",
+    "description": "Play this card after any player (including you) rolls the dice. +4 to that roll.",
     "effect_id": "MOD_4",
     "modifier_values": [
       4
-    ]
+    ],
+    "quantity": 4
   },
   {
     "name": "Modifier +4",
     "type": "Modifier Card",
-    "requirement": "None",
-    "effect": "+4 to that roll.",
+    "requirement": null,
+    "effect": "Play this card after any player (including you) rolls the dice. +4 to that roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/2/28/HtS-Base-023-2E.png/200px-HtS-Base-023-2E.png",
     "id": "card_098",
-    "description": "+4 to that roll.",
+    "description": "Play this card after any player (including you) rolls the dice. +4 to that roll.",
     "effect_id": "MOD_4",
     "modifier_values": [
       4
-    ]
+    ],
+    "quantity": 4
   },
   {
     "name": "Modifier +4",
     "type": "Modifier Card",
-    "requirement": "None",
-    "effect": "+4 to that roll.",
+    "requirement": null,
+    "effect": "Play this card after any player (including you) rolls the dice. +4 to that roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/2/28/HtS-Base-023-2E.png/200px-HtS-Base-023-2E.png",
     "id": "card_099",
-    "description": "+4 to that roll.",
+    "description": "Play this card after any player (including you) rolls the dice. +4 to that roll.",
     "effect_id": "MOD_4",
     "modifier_values": [
       4
-    ]
+    ],
+    "quantity": 4
   },
   {
     "name": "Modifier -4",
     "type": "Modifier Card",
-    "requirement": "None",
-    "effect": "-4 to that roll.",
+    "requirement": null,
+    "effect": "Play this card after any player (including you) rolls the dice. -4 to that roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/f/fd/HtS-Base-022-2E.png/200px-HtS-Base-022-2E.png",
     "id": "card_100",
-    "description": "-4 to that roll.",
+    "description": "Play this card after any player (including you) rolls the dice. -4 to that roll.",
     "effect_id": "MOD_MINUS_4",
     "modifier_values": [
       -4
-    ]
+    ],
+    "quantity": 4
   },
   {
     "name": "Modifier -4",
     "type": "Modifier Card",
-    "requirement": "None",
-    "effect": "-4 to that roll.",
+    "requirement": null,
+    "effect": "Play this card after any player (including you) rolls the dice. -4 to that roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/f/fd/HtS-Base-022-2E.png/200px-HtS-Base-022-2E.png",
     "id": "card_101",
-    "description": "-4 to that roll.",
+    "description": "Play this card after any player (including you) rolls the dice. -4 to that roll.",
     "effect_id": "MOD_MINUS_4",
     "modifier_values": [
       -4
-    ]
+    ],
+    "quantity": 4
   },
   {
     "name": "Modifier -4",
     "type": "Modifier Card",
-    "requirement": "None",
-    "effect": "-4 to that roll.",
+    "requirement": null,
+    "effect": "Play this card after any player (including you) rolls the dice. -4 to that roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/f/fd/HtS-Base-022-2E.png/200px-HtS-Base-022-2E.png",
     "id": "card_102",
-    "description": "-4 to that roll.",
+    "description": "Play this card after any player (including you) rolls the dice. -4 to that roll.",
     "effect_id": "MOD_MINUS_4",
     "modifier_values": [
       -4
-    ]
+    ],
+    "quantity": 4
   },
   {
     "name": "Modifier -4",
     "type": "Modifier Card",
-    "requirement": "None",
-    "effect": "-4 to that roll.",
+    "requirement": null,
+    "effect": "Play this card after any player (including you) rolls the dice. -4 to that roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/f/fd/HtS-Base-022-2E.png/200px-HtS-Base-022-2E.png",
     "id": "card_103",
-    "description": "-4 to that roll.",
+    "description": "Play this card after any player (including you) rolls the dice. -4 to that roll.",
     "effect_id": "MOD_MINUS_4",
     "modifier_values": [
       -4
-    ]
+    ],
+    "quantity": 4
   },
   {
     "name": "Call to the Fallen",
     "type": "Magic Card",
-    "requirement": "None",
+    "requirement": null,
     "effect": "Search the discard pile for a Hero card and add it to your hand.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/3/3b/HtS-Base-019-2E.png/200px-HtS-Base-019-2E.png",
     "id": "card_104",
     "description": "Search the discard pile for a Hero card and add it to your hand.",
-    "effect_id": "MAGIC_CALL_FALLEN"
+    "effect_id": "MAGIC_CALL_FALLEN",
+    "quantity": 1
   },
   {
     "name": "Critical Boost",
     "type": "Magic Card",
-    "requirement": "None",
-    "effect": "Draw 3 cards. Discard 1 card.",
+    "requirement": null,
+    "effect": "DRAW 3 cards and DISCARD a card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/d/d4/HtS-Base-017-2E.png/200px-HtS-Base-017-2E.png",
     "id": "card_105",
-    "description": "Draw 3 cards. Discard 1 card.",
-    "effect_id": "MAGIC_CRIT_BOOST"
+    "description": "DRAW 3 cards and DISCARD a card.",
+    "effect_id": "MAGIC_CRIT_BOOST",
+    "quantity": 2
   },
   {
     "name": "Critical Boost",
     "type": "Magic Card",
-    "requirement": "None",
-    "effect": "Draw 3 cards. Discard 1 card.",
+    "requirement": null,
+    "effect": "DRAW 3 cards and DISCARD a card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/d/d4/HtS-Base-017-2E.png/200px-HtS-Base-017-2E.png",
     "id": "card_106",
-    "description": "Draw 3 cards. Discard 1 card.",
-    "effect_id": "MAGIC_CRIT_BOOST"
+    "description": "DRAW 3 cards and DISCARD a card.",
+    "effect_id": "MAGIC_CRIT_BOOST",
+    "quantity": 2
   },
   {
     "name": "Destructive Spell",
     "type": "Magic Card",
-    "requirement": "None",
+    "requirement": null,
     "effect": "DISCARD a card, then DESTROY a Hero card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/f/f6/HtS-Base-018-2E.png/200px-HtS-Base-018-2E.png",
     "id": "card_107",
     "description": "DISCARD a card, then DESTROY a Hero card.",
-    "effect_id": "MAGIC_DESTRUCTIVE"
+    "effect_id": "MAGIC_DESTRUCTIVE",
+    "quantity": 2
   },
   {
     "name": "Destructive Spell",
     "type": "Magic Card",
-    "requirement": "None",
+    "requirement": null,
     "effect": "DISCARD a card, then DESTROY a Hero card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/f/f6/HtS-Base-018-2E.png/200px-HtS-Base-018-2E.png",
     "id": "card_108",
     "description": "DISCARD a card, then DESTROY a Hero card.",
-    "effect_id": "MAGIC_DESTRUCTIVE"
+    "effect_id": "MAGIC_DESTRUCTIVE",
+    "quantity": 2
   },
   {
     "name": "Enchanted Spell",
     "type": "Magic Card",
-    "requirement": "None",
+    "requirement": null,
     "effect": "+2 to all of your rolls until the end of your turn.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/c/c8/HtS-Base-013-2E.png/200px-HtS-Base-013-2E.png",
     "id": "card_109",
     "description": "+2 to all of your rolls until the end of your turn.",
-    "effect_id": "MAGIC_ENCHANTED"
+    "effect_id": "MAGIC_ENCHANTED",
+    "quantity": 2
   },
   {
     "name": "Enchanted Spell",
     "type": "Magic Card",
-    "requirement": "None",
+    "requirement": null,
     "effect": "+2 to all of your rolls until the end of your turn.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/c/c8/HtS-Base-013-2E.png/200px-HtS-Base-013-2E.png",
     "id": "card_110",
     "description": "+2 to all of your rolls until the end of your turn.",
-    "effect_id": "MAGIC_ENCHANTED"
+    "effect_id": "MAGIC_ENCHANTED",
+    "quantity": 2
   },
   {
     "name": "Entangling Trap",
     "type": "Magic Card",
-    "requirement": "None",
+    "requirement": null,
     "effect": "DISCARD 2 cards, then STEAL a Hero card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/9/9c/HtS-Base-015-2E.png/200px-HtS-Base-015-2E.png",
     "id": "card_111",
     "description": "DISCARD 2 cards, then STEAL a Hero card.",
-    "effect_id": "MAGIC_ENTANGLING"
+    "effect_id": "MAGIC_ENTANGLING",
+    "quantity": 2
   },
   {
     "name": "Entangling Trap",
     "type": "Magic Card",
-    "requirement": "None",
+    "requirement": null,
     "effect": "DISCARD 2 cards, then STEAL a Hero card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/9/9c/HtS-Base-015-2E.png/200px-HtS-Base-015-2E.png",
     "id": "card_112",
     "description": "DISCARD 2 cards, then STEAL a Hero card.",
-    "effect_id": "MAGIC_ENTANGLING"
+    "effect_id": "MAGIC_ENTANGLING",
+    "quantity": 2
   },
   {
     "name": "Forced Exchange",
     "type": "Magic Card",
-    "requirement": "None",
-    "effect": "Choose a Hero card in another player's party. STEAL that Hero card and move a Hero card from your party to that player's party.",
+    "requirement": null,
+    "effect": "Choose a player. STEAL a Hero card from that player's Party, then move a Hero card from your Party to that player's Party.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/c/cb/HtS-Base-020-2E.png/200px-HtS-Base-020-2E.png",
     "id": "card_113",
-    "description": "Choose a Hero card in another player's party. STEAL that Hero card and move a Hero card from your party to that player's party.",
-    "effect_id": "MAGIC_EXCHANGE"
+    "description": "Choose a player. STEAL a Hero card from that player's Party, then move a Hero card from your Party to that player's Party.",
+    "effect_id": "MAGIC_EXCHANGE",
+    "quantity": 1
   },
   {
     "name": "Forceful Winds",
     "type": "Magic Card",
-    "requirement": "None",
-    "effect": "Return every equipped Item card to its respective player's hand.",
+    "requirement": null,
+    "effect": "Return every equipped item card to its respective player's hand.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/4/4d/HtS-Base-014-2E.png/200px-HtS-Base-014-2E.png",
     "id": "card_114",
-    "description": "Return every equipped Item card to its respective player's hand.",
-    "effect_id": "MAGIC_WINDS_FORCE"
+    "description": "Return every equipped item card to its respective player's hand.",
+    "effect_id": "MAGIC_WINDS_FORCE",
+    "quantity": 1
   },
   {
     "name": "Winds of Change",
     "type": "Magic Card",
-    "requirement": "None",
-    "effect": "Return an Item card equipped to a Hero card to your hand, then DRAW a card.",
+    "requirement": null,
+    "effect": "Return an Item card equipped to any player's Hero card to that player's hand, then DRAW a card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/d/d7/HtS-Base-016-2E.png/200px-HtS-Base-016-2E.png",
     "id": "card_115",
-    "description": "Return an Item card equipped to a Hero card to your hand, then DRAW a card.",
-    "effect_id": "MAGIC_WINDS_CHANGE"
+    "description": "Return an Item card equipped to any player's Hero card to that player's hand, then DRAW a card.",
+    "effect_id": "MAGIC_WINDS_CHANGE",
+    "quantity": 2
   },
   {
     "name": "Winds of Change",
     "type": "Magic Card",
-    "requirement": "None",
-    "effect": "Return an Item card equipped to a Hero card to your hand, then DRAW a card.",
+    "requirement": null,
+    "effect": "Return an Item card equipped to any player's Hero card to that player's hand, then DRAW a card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/d/d7/HtS-Base-016-2E.png/200px-HtS-Base-016-2E.png",
     "id": "card_116",
-    "description": "Return an Item card equipped to a Hero card to your hand, then DRAW a card.",
-    "effect_id": "MAGIC_WINDS_CHANGE"
+    "description": "Return an Item card equipped to any player's Hero card to that player's hand, then DRAW a card.",
+    "effect_id": "MAGIC_WINDS_CHANGE",
+    "quantity": 2
   },
   {
     "name": "Challenge",
     "type": "Challenge Card",
-    "requirement": "None",
-    "effect": "No effect text found",
+    "requirement": null,
+    "effect": "You may play this card when another player attempts to play a Hero, Item, or Magic card. CHALLENGE that card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/4/45/HtS-Base-026-2E.png/200px-HtS-Base-026-2E.png",
-    "id": "card_117"
+    "id": "card_117",
+    "quantity": 14
   },
   {
     "name": "Challenge",
     "type": "Challenge Card",
-    "requirement": "None",
-    "effect": "No effect text found",
+    "requirement": null,
+    "effect": "You may play this card when another player attempts to play a Hero, Item, or Magic card. CHALLENGE that card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/4/45/HtS-Base-026-2E.png/200px-HtS-Base-026-2E.png",
-    "id": "card_118"
+    "id": "card_118",
+    "quantity": 14
   },
   {
     "name": "Challenge",
     "type": "Challenge Card",
-    "requirement": "None",
-    "effect": "No effect text found",
+    "requirement": null,
+    "effect": "You may play this card when another player attempts to play a Hero, Item, or Magic card. CHALLENGE that card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/4/45/HtS-Base-026-2E.png/200px-HtS-Base-026-2E.png",
-    "id": "card_119"
+    "id": "card_119",
+    "quantity": 14
   },
   {
     "name": "Challenge",
     "type": "Challenge Card",
-    "requirement": "None",
-    "effect": "No effect text found",
+    "requirement": null,
+    "effect": "You may play this card when another player attempts to play a Hero, Item, or Magic card. CHALLENGE that card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/4/45/HtS-Base-026-2E.png/200px-HtS-Base-026-2E.png",
-    "id": "card_120"
+    "id": "card_120",
+    "quantity": 14
   },
   {
     "name": "Challenge",
     "type": "Challenge Card",
-    "requirement": "None",
-    "effect": "No effect text found",
+    "requirement": null,
+    "effect": "You may play this card when another player attempts to play a Hero, Item, or Magic card. CHALLENGE that card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/4/45/HtS-Base-026-2E.png/200px-HtS-Base-026-2E.png",
-    "id": "card_121"
+    "id": "card_121",
+    "quantity": 14
   },
   {
     "name": "Challenge",
     "type": "Challenge Card",
-    "requirement": "None",
-    "effect": "No effect text found",
+    "requirement": null,
+    "effect": "You may play this card when another player attempts to play a Hero, Item, or Magic card. CHALLENGE that card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/4/45/HtS-Base-026-2E.png/200px-HtS-Base-026-2E.png",
-    "id": "card_122"
+    "id": "card_122",
+    "quantity": 14
   },
   {
     "name": "Challenge",
     "type": "Challenge Card",
-    "requirement": "None",
-    "effect": "No effect text found",
+    "requirement": null,
+    "effect": "You may play this card when another player attempts to play a Hero, Item, or Magic card. CHALLENGE that card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/4/45/HtS-Base-026-2E.png/200px-HtS-Base-026-2E.png",
-    "id": "card_123"
+    "id": "card_123",
+    "quantity": 14
   },
   {
     "name": "Challenge",
     "type": "Challenge Card",
-    "requirement": "None",
-    "effect": "No effect text found",
+    "requirement": null,
+    "effect": "You may play this card when another player attempts to play a Hero, Item, or Magic card. CHALLENGE that card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/4/45/HtS-Base-026-2E.png/200px-HtS-Base-026-2E.png",
-    "id": "card_124"
+    "id": "card_124",
+    "quantity": 14
   },
   {
     "name": "Challenge",
     "type": "Challenge Card",
-    "requirement": "None",
-    "effect": "No effect text found",
+    "requirement": null,
+    "effect": "You may play this card when another player attempts to play a Hero, Item, or Magic card. CHALLENGE that card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/4/45/HtS-Base-026-2E.png/200px-HtS-Base-026-2E.png",
-    "id": "card_125"
+    "id": "card_125",
+    "quantity": 14
   },
   {
     "name": "Challenge",
     "type": "Challenge Card",
-    "requirement": "None",
-    "effect": "No effect text found",
+    "requirement": null,
+    "effect": "You may play this card when another player attempts to play a Hero, Item, or Magic card. CHALLENGE that card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/4/45/HtS-Base-026-2E.png/200px-HtS-Base-026-2E.png",
-    "id": "card_126"
+    "id": "card_126",
+    "quantity": 14
   },
   {
     "name": "Challenge",
     "type": "Challenge Card",
-    "requirement": "None",
-    "effect": "No effect text found",
+    "requirement": null,
+    "effect": "You may play this card when another player attempts to play a Hero, Item, or Magic card. CHALLENGE that card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/4/45/HtS-Base-026-2E.png/200px-HtS-Base-026-2E.png",
-    "id": "card_127"
+    "id": "card_127",
+    "quantity": 14
   },
   {
     "name": "Challenge",
     "type": "Challenge Card",
-    "requirement": "None",
-    "effect": "No effect text found",
+    "requirement": null,
+    "effect": "You may play this card when another player attempts to play a Hero, Item, or Magic card. CHALLENGE that card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/4/45/HtS-Base-026-2E.png/200px-HtS-Base-026-2E.png",
-    "id": "card_128"
+    "id": "card_128",
+    "quantity": 14
   },
   {
     "name": "Challenge",
     "type": "Challenge Card",
-    "requirement": "None",
-    "effect": "No effect text found",
+    "requirement": null,
+    "effect": "You may play this card when another player attempts to play a Hero, Item, or Magic card. CHALLENGE that card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/4/45/HtS-Base-026-2E.png/200px-HtS-Base-026-2E.png",
-    "id": "card_129"
+    "id": "card_129",
+    "quantity": 14
   },
   {
     "name": "Challenge",
     "type": "Challenge Card",
-    "requirement": "None",
-    "effect": "No effect text found",
+    "requirement": null,
+    "effect": "You may play this card when another player attempts to play a Hero, Item, or Magic card. CHALLENGE that card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/4/45/HtS-Base-026-2E.png/200px-HtS-Base-026-2E.png",
-    "id": "card_130"
+    "id": "card_130",
+    "quantity": 14
   },
   {
     "name": "Rule Card",
     "type": "Rule Card",
-    "requirement": "None",
+    "requirement": null,
     "effect": "No effect text found",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/1/12/HtS-Base-000.png/200px-HtS-Base-000.png",
-    "id": "card_131"
+    "id": "card_131",
+    "quantity": 1
   },
   {
     "name": "The Charismatic Song",
@@ -1486,7 +1617,9 @@
     "effect": "Each time you roll to use a Hero card's effect, +1 to your roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/a/a6/HtS-Base-106-pm.png/200px-HtS-Base-106-pm.png",
     "id": "card_132",
-    "effect_id": "LEADER_BARD"
+    "effect_id": "LEADER_BARD",
+    "quantity": 1,
+    "requirement": null
   },
   {
     "name": "The Fist of Reason",
@@ -1495,34 +1628,42 @@
     "effect": "Each time you roll to CHALLENGE, +2 to your roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/4/45/HtS-Base-103-pm.png/200px-HtS-Base-103-pm.png",
     "id": "card_133",
-    "effect_id": "LEADER_FIGHTER"
+    "effect_id": "LEADER_FIGHTER",
+    "quantity": 1,
+    "requirement": null
   },
   {
     "name": "The Protecting Horn",
     "type": "Party Leader",
     "class": "Guardian",
-    "effect": "Each time you play a Modifier card, increase its value by 1 (a +2 becomes +3, a -2 becomes -3).",
+    "effect": "Each time you play a Modifier card on a roll, +1 or -1 to that roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/6/6f/HtS-Base-101-pm.png/200px-HtS-Base-101-pm.png",
     "id": "card_134",
-    "effect_id": "LEADER_GUARDIAN"
+    "effect_id": "LEADER_GUARDIAN",
+    "quantity": 1,
+    "requirement": null
   },
   {
     "name": "The Divine Arrow",
     "type": "Party Leader",
     "class": "Ranger",
-    "effect": "Each time you roll to ATTACK, +1 to your roll.",
+    "effect": "Each time you roll to ATTACK a Monster card, +1 to your roll.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/e/e1/HtS-Base-105-pm.png/200px-HtS-Base-105-pm.png",
     "id": "card_135",
-    "effect_id": "LEADER_RANGER"
+    "effect_id": "LEADER_RANGER",
+    "quantity": 1,
+    "requirement": null
   },
   {
     "name": "The Shadow Claw",
     "type": "Party Leader",
     "class": "Thief",
-    "effect": "Once per turn on your turn, you may spend 1 Action Point to pull a card from another player's hand.",
+    "effect": "Once per turn on your turn, you may spend an action point to pull a card from another player's hand.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/7/7d/HtS-Base-102-pm.png/200px-HtS-Base-102-pm.png",
     "id": "card_136",
-    "effect_id": "LEADER_THIEF"
+    "effect_id": "LEADER_THIEF",
+    "quantity": 1,
+    "requirement": null
   },
   {
     "name": "The Cloaked Sage",
@@ -1531,6 +1672,8 @@
     "effect": "Each time you play a Magic card, DRAW a card.",
     "imageUrl": "https://www.unstablegameswiki.com/images/thumb/c/cb/HtS-Base-104-pm.png/200px-HtS-Base-104-pm.png",
     "id": "card_137",
-    "effect_id": "LEADER_WIZARD"
+    "effect_id": "LEADER_WIZARD",
+    "quantity": 1,
+    "requirement": null
   }
 ]

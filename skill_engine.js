@@ -1,10 +1,9 @@
 const SAFE_MODE = false;
 
-// Decoy Doll (ITEM_DECOY): "If this Hero would be destroyed or stolen, you may
-// DESTROY Decoy Doll instead." Implemented as auto-protect — sacrificing the Doll
-// to save the Hero is always the better choice, so no prompt is needed. Returns
-// true (and consumes the Doll) when it absorbs the destroy/steal, so callers abort.
-function consumeDecoyDoll(gameState, targetHero) {
+// Decoy Doll (ITEM_DECOY): if the equipped Hero would be sacrificed or destroyed,
+// discard the Doll instead. It does not protect against stealing.
+function consumeDecoyDoll(gameState, targetHero, action = 'DESTROY') {
+    if (action === 'STEAL') return false;
     if (targetHero && targetHero.equippedItem && targetHero.equippedItem.effect_id === 'ITEM_DECOY') {
         gameState.discardPile.push(targetHero.equippedItem);
         targetHero.equippedItem = null;
@@ -36,7 +35,7 @@ function resolveDestroyAction(gameState, initiatorId, targetPlayerId, targetHero
     const targetHero = targetPlayer.party[tHeroIndex];
     let actionMessage = '';
 
-    // Decoy Doll absorbs the destroy/steal (incl. a Sabretooth-converted steal).
+    // Decoy Doll absorbs the destroy before Sabretooth can convert it.
     if (consumeDecoyDoll(gameState, targetHero)) {
         return `${initiatorId.substring(0, 4)} hit ${targetPlayerId.substring(0, 4)}'s ${targetHero.name}, but Decoy Doll was destroyed instead — the Hero survives!`;
     }
@@ -279,10 +278,14 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
             actionMessage = `${player.id.substring(0, 4)} drew a card and may play a Hero!`;
             break;
         case 'SKILL_HOOK':
-            drawCards(1, player);
-            gameState.state = 'WAITING_FOR_HAND_SELECTION';
-            gameState.pendingAction = { type: 'PLAY_FROM_HAND', allowedTypes: ['Item Card'], playerToChoose: rollerId, originalActor: rollerId, optional: true };
-            actionMessage = `${player.id.substring(0, 4)} drew a card and may play an Item!`;
+            if (player.hand.some(c => c.type === 'Item Card')) {
+                gameState.state = 'WAITING_FOR_HAND_SELECTION';
+                gameState.pendingAction = { type: 'PLAY_FROM_HAND', allowedTypes: ['Item Card'], playerToChoose: rollerId, originalActor: rollerId, thenDraw: 1 };
+                actionMessage = `${player.id.substring(0, 4)} must play an Item from hand, then draw a card!`;
+            } else {
+                drawCards(1, player);
+                actionMessage = `${player.id.substring(0, 4)} had no Item to play with Hook, so they drew a card.`;
+            }
             break;
         case 'SKILL_QUICK_DRAW': {
             // "DRAW 2 cards. If at least one of those cards is an item card, you may
@@ -430,17 +433,10 @@ case 'DRAW_CARD':
                     const tHeroIndex = tp.party.findIndex(h => h.id === targetData.targetHeroId);
                     if (tHeroIndex !== -1) {
                         const targetHero = tp.party[tHeroIndex];
-                        // Decoy Doll stops the STEAL; the "AND pull a card" still happens.
-                        const decoyed = consumeDecoyDoll(gameState, targetHero);
-                        let msg;
-                        if (decoyed) {
-                            msg = `${player.id.substring(0, 4)} used Meowzio — Decoy Doll saved ${targetHero.name} from the steal`;
-                        } else {
-                            tp.party.splice(tHeroIndex, 1);
-                            targetHero.usedSkillThisTurn = false;
-                            player.party.push(targetHero);
-                            msg = `${player.id.substring(0, 4)} used Meowzio to STEAL ${targetHero.name} from ${tp.id.substring(0, 4)}`;
-                        }
+                        tp.party.splice(tHeroIndex, 1);
+                        targetHero.usedSkillThisTurn = false;
+                        player.party.push(targetHero);
+                        let msg = `${player.id.substring(0, 4)} used Meowzio to STEAL ${targetHero.name} from ${tp.id.substring(0, 4)}`;
                         if (tp.hand.length > 0) {
                             const randIndex = Math.floor(Math.random() * tp.hand.length);
                             const pulled = tp.hand.splice(randIndex, 1)[0];
@@ -473,14 +469,10 @@ case 'DRAW_CARD':
                     const tHeroIndex = tp.party.findIndex(h => h.id === targetData.targetHeroId);
                     if (tHeroIndex !== -1) {
                         const targetHero = tp.party[tHeroIndex];
-                        if (consumeDecoyDoll(gameState, targetHero)) {
-                            actionMessage = `${player.id.substring(0, 4)} used Whiskers, but Decoy Doll saved ${targetHero.name} from the steal!`;
-                        } else {
-                            tp.party.splice(tHeroIndex, 1);
-                            targetHero.usedSkillThisTurn = false;
-                            player.party.push(targetHero);
-                            actionMessage = `${player.id.substring(0, 4)} used Whiskers to STEAL ${targetHero.name} from ${tp.id.substring(0, 4)}`;
-                        }
+                        tp.party.splice(tHeroIndex, 1);
+                        targetHero.usedSkillThisTurn = false;
+                        player.party.push(targetHero);
+                        actionMessage = `${player.id.substring(0, 4)} used Whiskers to STEAL ${targetHero.name} from ${tp.id.substring(0, 4)}`;
                     }
                 }
                 // Now set up the DESTROY half against a second Hero, if one exists.
@@ -517,31 +509,27 @@ case 'DRAW_CARD':
                     const tHeroIndex = tp.party.findIndex(h => h.id === targetData.targetHeroId);
                     if (tHeroIndex !== -1) {
                         const targetHero = tp.party[tHeroIndex];
-                        if (consumeDecoyDoll(gameState, targetHero)) {
-                            actionMessage = `${player.id.substring(0, 4)} used Wiggles, but Decoy Doll saved ${targetHero.name} from the steal!`;
+                        tp.party.splice(tHeroIndex, 1);
+                        targetHero.usedSkillThisTurn = false;
+                        player.party.push(targetHero);
+                        // "...and roll to use its effect immediately." Set up a FREE
+                        // HERO_SKILL roll for the stolen Hero, exactly as the normal
+                        // use_hero_skill flow would. The roller then triggers
+                        // execute_roll; on success the stolen Hero's own skill
+                        // resolves (with deferred targeting if it needs a target).
+                        // Sealing Key (CURSE_KEY) still forbids using the effect.
+                        if (targetHero.equippedItem && targetHero.equippedItem.effect_id === 'CURSE_KEY') {
+                            actionMessage = `${player.id.substring(0, 4)} used Wiggles to STEAL ${targetHero.name}, but it is sealed (Sealing Key) and cannot be used!`;
                         } else {
-                            tp.party.splice(tHeroIndex, 1);
-                            targetHero.usedSkillThisTurn = false;
-                            player.party.push(targetHero);
-                            // "...and roll to use its effect immediately." Set up a FREE
-                            // HERO_SKILL roll for the stolen Hero, exactly as the normal
-                            // use_hero_skill flow would. The roller then triggers
-                            // execute_roll; on success the stolen Hero's own skill
-                            // resolves (with deferred targeting if it needs a target).
-                            // Sealing Key (CURSE_KEY) still forbids using the effect.
-                            if (targetHero.equippedItem && targetHero.equippedItem.effect_id === 'CURSE_KEY') {
-                                actionMessage = `${player.id.substring(0, 4)} used Wiggles to STEAL ${targetHero.name}, but it is sealed (Sealing Key) and cannot be used!`;
-                            } else {
-                                gameState.state = 'WAITING_TO_ROLL';
-                                gameState.pendingRoll = {
-                                    type: 'HERO_SKILL',
-                                    rollerId: rollerId,
-                                    targetHeroId: targetHero.id,
-                                    roll1: 0, roll2: 0, passiveBonus: 0, modifierTotal: 0,
-                                    baseRoll: 0, currentRoll: 0, passedPlayers: []
-                                };
-                                actionMessage = `${player.id.substring(0, 4)} used Wiggles to STEAL ${targetHero.name} — now roll to use its effect immediately!`;
-                            }
+                            gameState.state = 'WAITING_TO_ROLL';
+                            gameState.pendingRoll = {
+                                type: 'HERO_SKILL',
+                                rollerId: rollerId,
+                                targetHeroId: targetHero.id,
+                                roll1: 0, roll2: 0, passiveBonus: 0, modifierTotal: 0,
+                                baseRoll: 0, currentRoll: 0, passedPlayers: []
+                            };
+                            actionMessage = `${player.id.substring(0, 4)} used Wiggles to STEAL ${targetHero.name} — now roll to use its effect immediately!`;
                         }
                     }
                 } else if (tp) {
@@ -592,13 +580,9 @@ case 'DESTROY_HERO':
                     const tHeroIndex = tp.party.findIndex(h => h.id === targetData.targetHeroId);
                     if (tHeroIndex !== -1) {
                         const targetHero = tp.party[tHeroIndex];
-                        if (consumeDecoyDoll(gameState, targetHero)) {
-                            actionMessage = `${player.id.substring(0, 4)} tried to steal ${targetHero.name}, but Decoy Doll was destroyed instead — it stays put!`;
-                        } else {
-                            tp.party.splice(tHeroIndex, 1);
-                            player.party.push(targetHero);
-                            actionMessage = `${player.id.substring(0, 4)} STOLE ${targetHero.name} from ${tp.id.substring(0, 4)}!`;
-                        }
+                        tp.party.splice(tHeroIndex, 1);
+                        player.party.push(targetHero);
+                        actionMessage = `${player.id.substring(0, 4)} STOLE ${targetHero.name} from ${tp.id.substring(0, 4)}!`;
                     }
                 } else if (tp && tp.cannotBeStolen) {
                      actionMessage = `${player.id.substring(0, 4)} tried to steal ${tp.id.substring(0, 4)}'s Hero, but they are protected by Calming Voice!`;
@@ -834,23 +818,18 @@ case 'DESTROY_HERO':
                     const tHeroIndex = tp.party.findIndex(h => h.id === targetData.targetHeroId);
                     if (tHeroIndex !== -1) {
                         const targetHero = tp.party[tHeroIndex];
-                        if (consumeDecoyDoll(gameState, targetHero)) {
-                            // No steal and no swap — the Doll absorbed it; Tipsy stays put.
-                            actionMessage = `${player.id.substring(0, 4)} used Tipsy Tootie, but Decoy Doll saved ${targetHero.name} from the swap!`;
-                        } else {
-                            // 1. Steal the target hero
-                            tp.party.splice(tHeroIndex, 1);
-                            player.party.push(targetHero);
+                        // 1. Steal the target hero
+                        tp.party.splice(tHeroIndex, 1);
+                        player.party.push(targetHero);
 
-                            // 2. Move Tipsy Tootie to their party
-                            const tipsyIndex = player.party.findIndex(h => h.name === 'Tipsy Tootie');
-                            if (tipsyIndex !== -1) {
-                                const tipsy = player.party.splice(tipsyIndex, 1)[0];
-                                tp.party.push(tipsy);
-                            }
-
-                            actionMessage = `${player.id.substring(0, 4)} swapped Tipsy Tootie for ${targetHero.name} from ${tp.id.substring(0, 4)}!`;
+                        // 2. Move Tipsy Tootie to their party
+                        const tipsyIndex = player.party.findIndex(h => h.name === 'Tipsy Tootie');
+                        if (tipsyIndex !== -1) {
+                            const tipsy = player.party.splice(tipsyIndex, 1)[0];
+                            tp.party.push(tipsy);
                         }
+
+                        actionMessage = `${player.id.substring(0, 4)} swapped Tipsy Tootie for ${targetHero.name} from ${tp.id.substring(0, 4)}!`;
                     }
                 } else if (tp && tp.cannotBeStolen) {
                     actionMessage = `${player.id.substring(0, 4)} tried to steal from ${tp.id.substring(0, 4)}, but they are protected!`;
@@ -999,7 +978,15 @@ function executeMagic(gameState, io, effectId, playerId, targetData) {
             actionMessage = `${player.id.substring(0, 4)} cast Forceful Winds! ${itemsReturned} equipped Items returned to hands.`;
             break;
 
-        case 'MAGIC_WINDS_CHANGE':
+        case 'MAGIC_WINDS_CHANGE': {
+            // Guard: with no equipped item anywhere, RETURN_ITEM has no legal
+            // target and no skip — the game soft-locks. Fizzle instead.
+            const anyEquipped = Object.values(gameState.players)
+                .some(p => (p.party || []).some(h => h && h.equippedItem));
+            if (!anyEquipped) {
+                actionMessage = `${player.id.substring(0, 4)} cast Winds of Change, but no Items are equipped — the spell fizzles.`;
+                break;
+            }
             gameState.pendingAction = {
                 type: 'RETURN_ITEM',
                 playerToChoose: playerId,
@@ -1008,6 +995,7 @@ function executeMagic(gameState, io, effectId, playerId, targetData) {
             };
             actionMessage = `${player.id.substring(0, 4)} cast Winds of Change! Select an equipped item to return to your hand.`;
             break;
+        }
     }
     
     io.emit('rollResult', { player: playerId, roll: 0, message: actionMessage });
