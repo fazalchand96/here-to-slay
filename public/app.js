@@ -450,7 +450,7 @@ function closeAllModals() {
     // Keep modals that represent a still-pending REQUIRED action — they're driven
     // by their own events/state and must not be dismissed by a stray PLAYING-state
     // render (e.g. the global-action prompt that appears as a skill resolves).
-    const keepOpen = ['inspector-modal', 'mandatory-discard-modal', 'discard-viewer-modal', 'deck-peek-modal'];
+    const keepOpen = ['inspector-modal', 'mandatory-discard-modal', 'discard-viewer-modal', 'deck-peek-modal', 'global-discard-pool'];
     document.querySelectorAll('.overlay').forEach(el => {
 
         if (!keepOpen.includes(el.id)) {
@@ -647,6 +647,121 @@ const skillPromptNo = document.getElementById('skill-prompt-no');
 
 const modifierModal = document.getElementById('modifier-modal');
 
+let activeDiceSprite = null;
+function startDiceSprite() {
+    const container = document.getElementById('dice-container');
+    activeDiceSprite?.stop();
+    activeDiceSprite = window.playSpriteAnim?.(container, {
+        sheetUrl: 'assets/skin/anim/dice-roll.png',
+        frames: 8,
+        fps: 12,
+        width: 128,
+        height: 128,
+        loop: true,
+        layers: [
+            { className: 'dice-sprite-shadow', zIndex: 0 },
+            { className: 'dice-sprite-main', zIndex: 1 }
+        ]
+    }) || null;
+}
+function stopDiceSprite() {
+    activeDiceSprite?.stop();
+    activeDiceSprite = null;
+}
+
+function playHeroSkillCast({ heroId, heroClass }) {
+    const slug = String(heroClass || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    if (!heroId || !['fighter', 'bard', 'guardian', 'ranger', 'thief', 'wizard'].includes(slug)) return;
+    const card = [...document.querySelectorAll('#player-party .card')]
+        .find(el => el.dataset.id === heroId);
+    if (!card) return;
+    window.playSpriteAnim?.(card, {
+        sheetUrl: `assets/skin/anim/cast-${slug}.png`,
+        frames: 8,
+        fps: 12,
+        width: 128,
+        height: 128,
+        loop: false,
+        layers: [
+            { className: 'cast-sprite-glow', zIndex: 0 },
+            { className: 'cast-sprite-main', zIndex: 1 }
+        ]
+    });
+}
+
+function playMonsterAttackAnim(monsterEl, monsterId) {
+    if (!monsterEl || !/^card_(?:00[1-9]|01[0-5])$/.test(monsterId || '')) return;
+    const strikeToken = (window.monsterStrikeUiToken || 0) + 1;
+    window.monsterStrikeUiToken = strikeToken;
+    clearTimeout(window.monsterStrikeUiTimer);
+    document.body.classList.add('monster-strike-playing');
+    const restoreStrikeUi = () => {
+        if (window.monsterStrikeUiToken !== strikeToken) return;
+        document.body.classList.remove('monster-strike-playing');
+        clearTimeout(window.monsterStrikeUiTimer);
+        window.monsterStrikeUiTimer = null;
+    };
+    // Independent of image loading and animation callbacks: even a 404/corrupt
+    // sheet cannot leave a required target/penalty prompt deferred.
+    window.monsterStrikeUiTimer = setTimeout(restoreStrikeUi, 725);
+    window.playSpriteAnim?.(monsterEl, {
+        sheetUrl: `assets/skin/anim/monster-${monsterId}.png`,
+        frames: 8,
+        fps: 12,
+        width: 128,
+        height: 128,
+        loop: false,
+        onDone: restoreStrikeUi,
+        layers: [
+            { className: 'monster-strike-shadow', zIndex: 0 },
+            { className: 'monster-strike-main', zIndex: 1 }
+        ]
+    });
+}
+
+const MAGIC_BURST_MAP = {
+    MAGIC_CALL_FALLEN: 'draw', MAGIC_CRIT_BOOST: 'draw', MAGIC_WINDS_CHANGE: 'draw',
+    MAGIC_ENCHANTED: 'buff', MAGIC_WINDS_FORCE: 'buff',
+    MAGIC_DESTRUCTIVE: 'damage', MAGIC_ENTANGLING: 'damage', MAGIC_EXCHANGE: 'damage'
+};
+
+function playResolutionBurst(targetEl, kind = 'buff', options = {}) {
+    if (!targetEl) return null;
+    return window.playSpriteAnim?.(targetEl, {
+        sheetUrl: `assets/skin/anim/burst-${kind}.png`, frames: 8, fps: 12,
+        width: 128, height: 128, loop: false,
+        layers: [
+            { className: `resolution-burst-glow resolution-burst-${kind}`, zIndex: 0 },
+            { className: `resolution-burst-main resolution-burst-${kind}`, zIndex: 1 }
+        ],
+        onDone: options.onDone
+    });
+}
+
+function playMagicResolution(card) {
+    if (!card) return;
+    const display = document.createElement('div');
+    display.className = 'magic-resolution-display';
+    display.innerHTML = renderCard(card, false, false, false, false);
+    document.body.appendChild(display);
+    const cleanup = () => display.remove();
+    setTimeout(cleanup, 850);
+    const kind = MAGIC_BURST_MAP[card.effect_id] || (String(card.effect || '').match(/destroy|steal|discard|sacrifice/i) ? 'damage' : 'buff');
+    playResolutionBurst(display.querySelector('.card') || display, kind, { onDone: cleanup });
+}
+
+function playGameoverFinale() {
+    if (!victoryModal) return;
+    window.playSpriteAnim?.(victoryModal, {
+        sheetUrl: 'assets/skin/anim/gameover-finale.png', frames: 8, fps: 10,
+        width: 128, height: 128, loop: false,
+        layers: [
+            { className: 'finale-glow', zIndex: 0 },
+            { className: 'finale-main', zIndex: 1 }
+        ]
+    });
+}
+
 // Build the dice-overlay equation line, itemized so every bonus is labelled with
 // its source (Bard +1, Wise Shield +3, an equipped item, modifiers, ...) instead
 // of collapsing them all into one anonymous "+N". Uses the server's breakdown.
@@ -810,6 +925,35 @@ function cancelDiscardSearch() {
 
 
 
+// Per-card artwork-crop overrides for the frame-template skin. The frame's art
+// window shows a cropped band of the official card image; style.css sets a good
+// per-TYPE default, and only the few cards it frames poorly get an entry here.
+//   pos  -> CSS background-position (e.g. 'center 22%')  [slides the art band]
+//   size -> CSS background-size zoom (e.g. '200%')        [zooms in/out]
+// Review/tune with screenshots/cardsheet.js.
+const ART_CROP = {
+    card_009: { pos: 'center 20%' },   // Malamammoth — head sat near the top edge
+};
+function artCropStyle(id) {
+    const c = ART_CROP[id];
+    if (!c) return '';
+    return (c.pos ? `--art-pos:${c.pos};` : '') + (c.size ? `--art-size:${c.size};` : '');
+}
+
+// Image for a card, everywhere it's drawn (board, hand, inspector, modals,
+// avatars). `artUrl` is the generated illustration — pure art, no baked-in name
+// or rules text — set by the server for cards that have one. Anything without
+// generated art falls back to the old watermarked wiki card scan, which has to
+// be zoom-cropped instead (see ART_CROP / the per-type crops in style.css).
+function cardArt(card) {
+    return (card && (card.artUrl || card.imageUrl)) || '';
+}
+// Marks an element as showing real art, so CSS shows it edge-to-edge (cover)
+// rather than applying the wiki-scan crop.
+function artClass(card) {
+    return card && card.artUrl ? ' has-art' : '';
+}
+
 function renderCard(card, isMine = false, inHand = false, isMonster = false, isMyTurn = false, inlineStyle = "") {
 
     if (!card) return '';
@@ -894,7 +1038,7 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
 
         } else if (isMultiTargeting && inHand && isMine && window.latestGameState && ['WAITING_FOR_DISCARD_PENALTY', 'WAITING_FOR_MULTIPLE_DISCARDS', 'WAITING_FOR_VARIABLE_DISCARD'].includes(window.latestGameState.state)) {
 
-            const isSelected = window.multiTargetSelected && window.multiTargetSelected.includes(card.id);
+            const isSelected = multiTargetSelected && multiTargetSelected.includes(card.id);
 
             if (isSelected) glowClass += ' active-skill-glow';
 
@@ -942,6 +1086,8 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
     else if (isMonster || card.type === 'Monster Card') { cardTint = '#e0607a'; variantClass = ' card-monster'; }
     else if (card.type === 'Hero Card') { cardTint = CLASS_TINT[shownClass] || 'var(--gold)'; }
     else { cardTint = TYPE_TINT[card.type] || 'var(--gold)'; }
+    const typeSlug = (card.type || 'card').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const classSlug = shownClass ? shownClass.toLowerCase().replace(/[^a-z0-9]+/g, '-') : '';
 
 
 
@@ -951,7 +1097,7 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
 
         const item = card.equippedItem;
         const isCursed = /cursed/i.test(item.type || '') || /curse/i.test(item.effect_id || '');
-        equippedBadge = `<div class="equipped-item-thumb${isCursed ? ' cursed' : ''}" title="${item.name}" style="background-image: url('${item.imageUrl || ''}')"><span class="equipped-item-thumb-name">${item.name}</span></div>`;
+        equippedBadge = `<div class="equipped-item-thumb${isCursed ? ' cursed' : ''}" title="${item.name}" style="background-image: url('${cardArt(item)}')"><span class="equipped-item-thumb-name">${item.name}</span></div>`;
 
     }
 
@@ -989,12 +1135,12 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
     // names are intact: data-id on root, .card-img/.card-info/.card-name/.card-type/
     // .card-class/.card-req/.equipped-item-thumb, and every targeting glow class.
     return `
-        <div class="card${variantClass} ${glowClass}" id="${card.id}" data-id="${card.id}" title="${detailTitle}" style="--cc:${cardTint}; ${inlineStyle}">
+        <div class="card${variantClass} type-${typeSlug}${classSlug ? ` class-${classSlug}` : ''}${artClass(card)} ${glowClass}" id="${card.id}" data-id="${card.id}" title="${detailTitle}" style="--cc:${cardTint}; ${card.artUrl ? '' : artCropStyle(card.id)} ${inlineStyle}">
             <div class="card-req">${badgeVal}</div>
             ${equippedBadge}
             <div class="card-face">
                 <div class="card-type">${card.type}</div>
-                <div class="card-img" style="background-image: url('${card.imageUrl}')"></div>
+                <div class="card-img${artClass(card)}" style="background-image: url('${cardArt(card)}')"></div>
                 <div class="card-info">
                     <div class="card-name">${card.name}</div>
                     ${cardClass}
@@ -1212,7 +1358,7 @@ socket.on('lobby_data_update', (data) => {
 
             <div class="card" onclick="socket.emit('select_leader', '${l.id}')">
 
-                <img src="${l.imageUrl}" alt="${l.name}">
+                <img src="${cardArt(l)}" alt="${l.name}">
 
                 <p>${l.name}</p>
 
@@ -1270,6 +1416,51 @@ socket.on('gameStateUpdate', (data) => {
 
     previousGameState = latestGameState;
 
+    // A resolved HERO_SKILL roll loses its pendingRoll in the next state. Capture
+    // the successful hero before adopting the new state so its class animation can
+    // be attached to the freshly rendered party card below.
+    let completedHeroCast = null;
+    let completedMonsterAttack = null;
+    let completedMagicCard = null;
+    let completedModifierBurst = null;
+    const priorRoll = previousGameState?.pendingRoll;
+    if (priorRoll?.type === 'HERO_SKILL'
+        && (!data.pendingRoll || data.pendingRoll.targetHeroId !== priorRoll.targetHeroId)) {
+        const roller = previousGameState.players?.[priorRoll.rollerId];
+        const hero = roller?.party?.find(card => card.id === priorRoll.targetHeroId);
+        const finalRoll = Number(priorRoll.currentRoll ?? priorRoll.finalTotal ?? 0);
+        if (hero && finalRoll >= Number(hero.roll_requirement || Infinity)) {
+            completedHeroCast = { heroId: hero.id, heroClass: hero.class };
+        }
+    }
+    if (priorRoll?.type === 'ATTACK'
+        && (!data.pendingRoll || data.pendingRoll.targetId !== priorRoll.targetId)) {
+        completedMonsterAttack = {
+            monsterId: priorRoll.targetId,
+            slain: !(data.activeMonsters || []).some(monster => monster.id === priorRoll.targetId)
+        };
+    }
+    if (window.pendingMagicResolution) {
+        const pending = window.pendingMagicResolution;
+        const before = previousGameState?.players?.[myId]?.hand?.some(card => card.id === pending.id);
+        const after = data.players?.[myId]?.hand?.some(card => card.id === pending.id);
+        if (before && !after) {
+            completedMagicCard = pending;
+            window.pendingMagicResolution = null;
+        }
+    }
+    if (previousGameState?.state === 'WAITING_FOR_MODIFIERS'
+        && data.state === 'WAITING_FOR_MODIFIERS') {
+        const oldHand = previousGameState.players?.[myId]?.hand || [];
+        const newIds = new Set((data.players?.[myId]?.hand || []).map(card => card.id));
+        const playedModifier = oldHand.find(card => card.type === 'Modifier Card' && !newIds.has(card.id));
+        if (playedModifier) {
+            const oldTotal = Number(previousGameState.pendingRoll?.modifierTotal || 0);
+            const newTotal = Number(data.pendingRoll?.modifierTotal || 0);
+            completedModifierBurst = newTotal - oldTotal >= 0 ? 'buff' : 'debuff';
+        }
+    }
+
     // Only adopt `me` when present — some server emits omit it, and blanking myId
     // mid-game breaks any handler that checks ownership (e.g. global actions).
     if (data.me) myId = data.me;
@@ -1312,7 +1503,7 @@ socket.on('gameStateUpdate', (data) => {
             
             if (p.hasSelectedLeader && p.leader) {
                 statusHtml = `<span class="status-ready">✓ Ready</span>`;
-                avatarHtml = `<div class="roster-avatar" style="background-image: url('${p.leader.imageUrl}')"></div>`;
+                avatarHtml = `<div class="roster-avatar" style="background-image: url('${cardArt(p.leader)}')"></div>`;
             } else {
                 statusHtml = `<span class="status-selecting">⏳ Selecting...</span>`;
             }
@@ -1363,13 +1554,13 @@ socket.on('gameStateUpdate', (data) => {
 
                             <h3 class="lobby-leader-label">Your Party Leader:</h3>
 
-                            <div class="card card-leader lobby-leader-card" style="--cc: var(--leader-pink);">
+                            <div class="card card-leader lobby-leader-card${leader.class ? ` class-${leader.class.toLowerCase().replace(/[^a-z0-9]+/g, '-')}` : ''}${artClass(leader)}" style="--cc: var(--leader-pink);">
 
                                 <div class="card-face">
 
                                     <div class="card-type">${leader.class || 'Party Leader'}</div>
 
-                                    <div class="card-img" style="background-image: url('${leader.imageUrl}')"></div>
+                                    <div class="card-img${artClass(leader)}" style="background-image: url('${cardArt(leader)}')"></div>
 
                                     <div class="card-info">
 
@@ -1502,8 +1693,13 @@ socket.on('gameStateUpdate', (data) => {
                 if (monsterEl) {
 
                     interceptedDeath = true;
+                    if (completedMonsterAttack?.monsterId === deadMonsterId) {
+                        playMonsterAttackAnim(monsterEl, deadMonsterId);
+                    }
 
-                    monsterEl?.classList.add('monster-dying');
+                    setTimeout(() => {
+                        monsterEl?.classList.add('monster-dying');
+                    }, 670);
 
                     
 
@@ -1529,7 +1725,7 @@ socket.on('gameStateUpdate', (data) => {
 
                         }, 50);
 
-                    }, 500);
+                    }, 1170);
 
                 }
 
@@ -1542,6 +1738,22 @@ socket.on('gameStateUpdate', (data) => {
         if (!interceptedDeath) {
 
             renderBoard(data);
+
+            if (completedHeroCast) {
+                requestAnimationFrame(() => playHeroSkillCast(completedHeroCast));
+            }
+            if (completedMonsterAttack && !completedMonsterAttack.slain) {
+                requestAnimationFrame(() => {
+                    const monsterEl = document.querySelector(`#active-monsters .card[data-id="${completedMonsterAttack.monsterId}"]`);
+                    playMonsterAttackAnim(monsterEl, completedMonsterAttack.monsterId);
+                });
+            }
+            if (completedMagicCard) {
+                requestAnimationFrame(() => playMagicResolution(completedMagicCard));
+            }
+            if (completedModifierBurst) {
+                requestAnimationFrame(() => playResolutionBurst(document.getElementById('math-breakdown-banner'), completedModifierBurst));
+            }
 
         }
 
@@ -1600,6 +1812,7 @@ socket.on('game_over', (data) => {
     
 
     victoryModal?.classList.remove('hidden');
+    playGameoverFinale();
 
     
 
@@ -1765,7 +1978,7 @@ function buildBoardParts(data, ctx) {
         partyHtml += `<div class="slain-monsters-container">
             <h3>Slain (${me.slainMonsters.length}/3)</h3>
             <div class="slain-monsters-list">
-                ${me.slainMonsters.map(m => `<div class="slain-monster-icon" data-id="${m.id}" onclick="inspectCard('${m.id}')" style="background-image:url('${m.imageUrl}'); cursor:pointer;" title="${m.name}"></div>`).join('')}
+                ${me.slainMonsters.map(m => `<div class="slain-monster-icon" data-id="${m.id}" onclick="inspectCard('${m.id}')" style="background-image:url('${cardArt(m)}'); cursor:pointer;" title="${m.name}"></div>`).join('')}
             </div>
         </div>`;
     }
@@ -1817,6 +2030,14 @@ function setRegionHtml(el, html) {
     if (el._lastHtmlSig === html) return;
     el._lastHtmlSig = html;
     el.innerHTML = html;
+}
+
+function setCardCountState(el, count) {
+    if (!el) return;
+    el.dataset.cardCount = String(count || 0);
+    el.classList.toggle('cards-many', count >= 6);
+    el.classList.toggle('cards-crowded', count >= 9);
+    el.classList.toggle('cards-packed', count >= 12);
 }
 
 function renderBoard(data) {
@@ -2596,7 +2817,7 @@ function renderBoard(data) {
 
                 let maxAmt = data.pendingAction.maxAmount;
 
-                let currentAmt = window.multiTargetSelected ? window.multiTargetSelected.length : 0;
+                let currentAmt = multiTargetSelected ? multiTargetSelected.length : 0;
 
                 targetBannerText.innerHTML = `SELECT UP TO ${maxAmt} CARD(S) TO DISCARD <button class="action-btn inline attack" style="margin-left:15px; font-size:16px;" onclick="submitPenaltyDiscard()">CONFIRM ${currentAmt} DISCARDS</button>`;
 
@@ -2761,6 +2982,7 @@ function renderBoard(data) {
         window._monstersSig = monstersSig;
         activeMonsters.innerHTML = boardParts.monstersHtml;
     }
+    setCardCountState(activeMonsters, (data.activeMonsters || []).length);
 
     
 
@@ -2784,7 +3006,7 @@ function renderBoard(data) {
                     ? `<button class="action-btn inline attack" onclick="resolveGlobalAction('${c.id}')">Select</button>`
                     : '';
                 return `<div class="card glow-target">
-                        <div class="card-img" style="background-image: url('${c.imageUrl}')"></div>
+                        <div class="card-img${artClass(c)}" style="background-image: url('${cardArt(c)}')"></div>
                         <div class="card-info">
                             <div class="card-name">${c.name}</div>
                             <div class="card-type">${c.type}</div>
@@ -2802,6 +3024,55 @@ function renderBoard(data) {
 
     }
 
+    // Stale mandatory-discard guard: the modal is in closeAllModals' keepOpen
+    // list (a pending REQUIRED action must survive re-renders), but if the
+    // global action resolves WITHOUT this player's submission (timeout,
+    // absorbed effect, emptied hand) nothing ever closed it and it ate every
+    // tap — a real softlock. Close it the moment the broadcast shows this
+    // player is no longer required to act.
+    const mdmEl = document.getElementById('mandatory-discard-modal');
+    if (mdmEl && !mdmEl.classList.contains('hidden')) {
+        const gaNow = data.pendingGlobalAction;
+        const stillRequired = gaNow && Array.isArray(gaNow.pendingPlayerIds) && gaNow.pendingPlayerIds.includes(myId);
+        if (!stillRequired) mdmEl.classList.add('hidden');
+    }
+
+    // Stale dice-overlay guard: a roll can resolve straight into a state that
+    // needs the board/hand/modal underneath, without passing any of the
+    // transitions that call closeAllModals — leaving the roll overlay parked
+    // over the very UI the player must now use. Act-now states hide it
+    // immediately; for everything else with no pending roll, a short timer
+    // lets the settled result read before the overlay self-hides (the timer,
+    // not a future broadcast, does the hiding — a blocked player produces no
+    // further broadcasts).
+    {
+        const diceOv = document.getElementById('dice-overlay');
+        const rollingStates = ['WAITING_FOR_MODIFIERS', 'WAITING_TO_ROLL', 'WAITING_TO_ROLL_CHALLENGE'];
+        const actNowStates = ['WAITING_FOR_DISCARD_PENALTY', 'WAITING_FOR_MULTIPLE_DISCARDS', 'WAITING_FOR_VARIABLE_DISCARD',
+            'WAITING_FOR_SACRIFICE', 'WAITING_FOR_HAND_SELECTION', 'WAITING_FOR_GLOBAL_ACTION',
+            'WAITING_FOR_IMMEDIATE_PLAY', 'WAITING_FOR_SKILL_TARGET'];
+        const hideNow = () => {
+            if (diceOv) {
+                diceOv.classList.add('hidden');
+                diceOv.style.display = '';
+            }
+        };
+        if (diceOv && !diceOv.classList.contains('hidden')) {
+            if (actNowStates.includes(data.state)) {
+                hideNow();
+            } else if (!data.pendingRoll && !rollingStates.includes(data.state)) {
+                clearTimeout(window._diceStaleTimer);
+                window._diceStaleTimer = setTimeout(() => {
+                    const s = window.latestGameState;
+                    if (s && !s.pendingRoll && !rollingStates.includes(s.state)) hideNow();
+                }, 2500);
+            } else {
+                clearTimeout(window._diceStaleTimer);
+                window._diceStaleTimer = null;
+            }
+        }
+    }
+
     
 
     setRegionHtml(discardPile, boardParts.discardHtml);
@@ -2811,6 +3082,7 @@ function renderBoard(data) {
     // My Area
 
     setRegionHtml(playerParty, boardParts.partyHtml);
+    setCardCountState(playerParty, (me.party || []).length + (me.slainMonsters || []).length);
 
     // Party leader — raised on the tray (own slot), not in the party row.
     setRegionHtml(document.getElementById('leader-slot'), boardParts.leaderHtml);
@@ -2846,6 +3118,7 @@ function renderBoard(data) {
     window._lastSlainShown = slainNow;
 
     setRegionHtml(playerHand, boardParts.handHtml);
+    setCardCountState(playerHand, (me.hand || []).length);
 
     applyMobileStacking();
 }
@@ -3161,6 +3434,7 @@ socket.on('dice_roll_pending', (data) => {
 
             die1?.classList.add('rolling');
             die2?.classList.add('rolling');
+            startDiceSprite();
             playSound('dice');
             triggerHaptic(50);
             
@@ -3182,6 +3456,7 @@ socket.on('dice_roll_pending', (data) => {
             setTimeout(() => {
                 clearInterval(window.diceRollInterval);
                 window.diceRollInterval = null;
+                stopDiceSprite();
                 die1?.classList.remove('rolling');
                 die2?.classList.remove('rolling');
                 settleDie(die1);
@@ -3215,6 +3490,7 @@ socket.on('dice_roll_pending', (data) => {
                     </div>`;
                     
                     resultDisplay.innerText = `Active: ${data.activeFinalTotal} | Challenger: ${data.challengerFinalTotal}`;
+                    playResolutionBurst(banner, 'damage');
                 } else {
                     const r1 = data.roll1 || 1;
                     const r2 = data.roll2 || 1;
@@ -3350,6 +3626,7 @@ socket.on('challenge_individual_roll', (data) => {
     
     die1.classList.add('rolling');
     die2.classList.add('rolling');
+    startDiceSprite();
     
     window.diceRollInterval = setInterval(() => {
         const temp1 = Math.floor(Math.random() * 6) + 1;
@@ -3370,6 +3647,7 @@ socket.on('challenge_individual_roll', (data) => {
     setTimeout(() => {
         clearInterval(window.diceRollInterval);
         window.diceRollInterval = null;
+        stopDiceSprite();
         die1.classList.remove('rolling');
         die2.classList.remove('rolling');
         settleDie(die1);
@@ -3405,7 +3683,7 @@ socket.on('modifier_played', (data) => {
 
     cardEl.innerHTML = `
 
-        <div class="card-img" style="background-image: url('${data.card.imageUrl}')"></div>
+        <div class="card-img${artClass(data.card)}" style="background-image: url('${cardArt(data.card)}')"></div>
 
         <div class="card-info">
 
@@ -3418,6 +3696,7 @@ socket.on('modifier_played', (data) => {
     `;
 
     stagingArea.appendChild(cardEl);
+    playResolutionBurst(document.getElementById('math-breakdown-banner'), data.modValue >= 0 ? 'buff' : 'debuff');
 
 });
 
@@ -3529,11 +3808,15 @@ socket.on('challenge_resolved', (data) => {
     showNotification(data.message);
 
     if (challengeModal) {
-
+        const display = document.createElement('div');
+        display.className = 'challenge-resolution-display';
+        display.innerHTML = challengeCardDisplay.innerHTML;
+        document.body.appendChild(display);
+        const cleanup = () => display.remove();
+        setTimeout(cleanup, 850);
+        playResolutionBurst(display.querySelector('.card') || display, 'damage', { onDone: cleanup });
         challengeModal.classList.add('hidden');
-
         challengeModal.style.display = 'none';
-
     }
 
 });
@@ -3806,7 +4089,7 @@ socket.on('peek_cards', (data) => {
 
                 <div class="card">
 
-                    <div class="card-img" style="background-image: url('${c.imageUrl}')"></div>
+                    <div class="card-img${artClass(c)}" style="background-image: url('${cardArt(c)}')"></div>
 
                     <div class="card-info">
 
@@ -3899,7 +4182,7 @@ function renderGlobalActionPrompt(action) {
 
                 cardEl.innerHTML = `
 
-                    <div class="card-img" style="background-image: url('${c.imageUrl}')"></div>
+                    <div class="card-img${artClass(c)}" style="background-image: url('${cardArt(c)}')"></div>
 
                     <div class="card-info">
 
@@ -3947,7 +4230,7 @@ function renderGlobalActionPrompt(action) {
 
                 cardEl.innerHTML = `
 
-                    <div class="card-img" style="background-image: url('${c.imageUrl}')"></div>
+                    <div class="card-img${artClass(c)}" style="background-image: url('${cardArt(c)}')"></div>
 
                     <div class="card-info">
 
@@ -4021,7 +4304,7 @@ socket.on('global_action_resolution', (data) => {
 
         cardEl.innerHTML = `
 
-            <div class="card-img" style="background-image: url('${c.imageUrl}')"></div>
+            <div class="card-img${artClass(c)}" style="background-image: url('${cardArt(c)}')"></div>
 
             <div class="card-info">
 
@@ -4163,6 +4446,10 @@ function playCard(id) {
     }
 
     const context = findCardContext(id);
+
+    if (context?.card?.type === 'Magic Card') {
+        window.pendingMagicResolution = { ...context.card };
+    }
 
     if (!context || !context.card) {
 
@@ -4517,7 +4804,7 @@ function openDiscardSearch(skillId) {
 
             cardEl.innerHTML = `
 
-                <div class="card-img" style="background-image: url('${c.imageUrl}')"></div>
+                <div class="card-img${artClass(c)}" style="background-image: url('${cardArt(c)}')"></div>
 
                 <div class="card-info">
 
@@ -4569,7 +4856,7 @@ window.openPoolSelection = function() {
 
             cardEl.innerHTML = `
 
-                <div class="card-img" style="background-image: url('${c.imageUrl}')"></div>
+                <div class="card-img${artClass(c)}" style="background-image: url('${cardArt(c)}')"></div>
 
                 <div class="card-info">
 
@@ -4691,7 +4978,17 @@ window.submitPenaltyDiscard = function() {
 
     if (!latestGameState || !latestGameState.pendingAction) return;
 
-    if (multiTargetSelected.length === latestGameState.pendingAction.amount) {
+    // Fixed-amount discards carry `amount` (select exactly N); variable ones
+    // (Qi Bear's "up to N") carry `maxAmount` only - the old exact-match check
+    // compared against undefined there, so NO count could ever confirm and the
+    // flow soft-locked behind an alert loop.
+    const pa = latestGameState.pendingAction;
+    const isVariable = typeof pa.maxAmount === 'number' && typeof pa.amount !== 'number';
+    const okCount = isVariable
+        ? multiTargetSelected.length <= pa.maxAmount
+        : multiTargetSelected.length === pa.amount;
+
+    if (okCount) {
 
         socket.emit('submit_penalty_discard', { cardIds: multiTargetSelected });
 
@@ -4701,7 +4998,7 @@ window.submitPenaltyDiscard = function() {
 
     } else {
 
-        alert(`You must select exactly ${latestGameState.pendingAction.amount} card(s).`);
+        alert(`You must select ${isVariable ? 'at most ' + pa.maxAmount : 'exactly ' + pa.amount} card(s).`);
 
     }
 
@@ -5121,9 +5418,15 @@ window.inspectCard = function(cardId) {
 
     // Set fields
 
-    if (card.imageUrl) {
+    // Generated art is illustration-only, so the modal's own name/type/description
+    // fields below carry the text the old full-card scan used to show.
+    const inspectArt = cardArt(card);
 
-        modalImage.src = card.imageUrl;
+    if (inspectArt) {
+
+        modalImage.src = inspectArt;
+
+        modalImage.classList.toggle('has-art', !!card.artUrl);
 
         modalImage.style.display = 'block';
 
@@ -6232,4 +6535,4 @@ function spawnConfetti() {
 
     }
 
-}
+}

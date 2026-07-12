@@ -1,0 +1,56 @@
+In the "Here to Slay" repo at C:\Users\c.fazal\Desktop\HeretoslayBestanden.
+
+TASK: generate (A) 8 card frame templates and (B) 6 class crest badges. The current frames are too similar — at real card size a player cannot tell a Hero from an Item, or a Magic from a Challenge — and two card types have no frame of their own.
+
+=========================
+(A) 8 CARD FRAMES -> public/assets/skin/frames/v2/<name>.png
+=========================
+STUDY THE EXISTING LAYOUT FIRST: open public/assets/skin/frames/hero.png (364x558). Every new frame MUST keep this exact anatomy and proportions:
+  - Portrait card, aspect ratio 364:558 (~0.652), rounded corners.
+  - A decorative metal border running around the whole card.
+  - A TOP MEDALLION centred on the upper border (a round/heraldic emblem).
+  - A BANNER sweeping across the top behind that medallion.
+  - A large empty INNER WINDOW for the artwork. CRITICAL: a plain rectangle whose edges land at exactly 9.5% from the left, 9.5% from the right, 15% from the top and 21% from the bottom. Leave it flat and featureless — game code draws the artwork over it, so anything inside is hidden.
+  - A BOTTOM RIBBON across the lower border (blank, no text) with a SECOND SMALL MEDALLION centred on it.
+
+Make the 8 types instantly distinguishable at thumbnail size. Vary THREE things together per type: (1) dominant colour, (2) border ornament/silhouette, (3) both medallion emblems.
+
+  leader.png   — Party Leader. Royal gold + deep crimson, the most ornate of the set.
+                 IMPORTANT: NO CROWN anywhere. The top medallion must be a PLAIN EMPTY
+                 CIRCULAR HERALDIC DISC — a smooth blank recessed circle ringed with
+                 ornate gold, with NOTHING inside it. The game overlays the player's
+                 class emblem into that empty circle at runtime, so it must be clean and
+                 unobstructed. Bottom medallion: a laurel wreath.
+  hero.png     — Hero. Forest green + gold, clean knightly vines. Top medallion: a SHIELD. Bottom: a sword.
+  monster.png  — Monster. Blackened iron + blood red, jagged broken spiky silhouette. Top: a horned SKULL. Bottom: a claw.
+  magic.png    — Magic. Arcane violet + silver, flowing swirling star-flecked ornament. Top: a many-pointed STAR/rune. Bottom: a swirl.
+  item.png     — Item. Warm bronze + tan leather, sturdy riveted strapped buckles. Top: an ANVIL. Bottom: a hammer.
+  cursed.png   — Cursed Item. Sickly dark green + black, corrupted cracked metal dripping ooze. Top: a CRACKED SKULL-EYE / serpent. Bottom: a broken chain.
+  modifier.png — Modifier. Steel blue + white enamel, crisp geometric faceted ornament. Top: a DIE (d6 pips). Bottom: a small die.
+  challenge.png— Challenge. Bright crimson + steel, aggressive angular chevrons. Top: CROSSED SWORDS. Bottom: a gauntlet fist.
+
+FRAME STYLE: premium hand-painted tabletop look (carved metal, enamel, brass, subtle bevel, specular highlights) to sit on a dark tavern board. NO text, letters or numbers anywhere.
+
+=========================
+(B) 6 CLASS CREST BADGES -> public/assets/skin/icons/crest-v2/<class>.png
+=========================
+A Party Leader must show WHICH CLASS it leads. These crests get overlaid onto the leader frame's empty circular medallion (and onto hero cards), so each must read instantly at ~20px.
+
+Each crest is a SQUARE image containing a CIRCULAR heraldic badge that fills the square edge to edge (the circle is inscribed in the square; a later step masks the square to that circle, so the corners can be any colour). Inside the circle: a bold, simple, front-facing head of the class's ANIMAL, in the flat cartoon style of the game's card art, on a solid field of that class's colour, ringed by a thin ornate gold border. Bold clean outlines, high contrast, no fine detail, no text/letters/numbers.
+
+  fighter.png  — a BEAR head       — colour #e05a4a (red)
+  bard.png     — a SQUIRREL head   — colour #e89a3a (orange)
+  guardian.png — a UNICORN head    — colour #e8c84a (gold)
+  ranger.png   — a FOX head        — colour #5ab85a (green)
+  thief.png    — a CAT head        — colour #4a90d9 (blue)
+  wizard.png   — a RABBIT head     — colour #9a5ad9 (purple)
+
+These are the game's real class animals; do not substitute other animals.
+
+=========================
+SCOPE
+=========================
+Only write PNGs under public/assets/skin/frames/v2/ and public/assets/skin/icons/crest-v2/. Do NOT modify or delete the existing frames or icons, and do NOT touch public/style.css, public/app.js, public/index.html, server.js, cards.json or any code. Do not commit. Do not run npm install.
+Do not worry about exact pixel size or transparency — a later step resizes and masks.
+
+REPORT: the files written (8 frames + 6 crests), and confirm leader.png has an EMPTY circular medallion and no crown.

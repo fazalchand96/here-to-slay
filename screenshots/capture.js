@@ -1,10 +1,10 @@
 // Reusable: capture the live game in landscape + portrait from ONE game.
-// Assumes the server is already running on localhost:3000.
+// Assumes the server is already running on 127.0.0.1:3000.
 //   node screenshots/capture.js
 const { chromium } = require('@playwright/test');
 
 const PARTY = ['card_016', 'card_024', 'card_032', 'card_040']; // Fighter/Bard/Guardian/Ranger
-const URL = 'http://localhost:3000';
+const URL = 'http://127.0.0.1:3000';
 
 async function rollLeader(page, name) {
   await page.fill('#player-name-input', name);
@@ -34,7 +34,8 @@ async function setupAndShot(browser, viewport, outPath) {
     await host.waitForTimeout(120);
   }
   await p2.evaluate(() => window._socket.emit('debug_inject_to_party', { cardId: 'card_048' }));
-  await host.waitForTimeout(700);
+  await host.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+  await host.waitForTimeout(1800);
   await host.screenshot({ path: outPath });
   console.log(outPath, '-> pageerrors:', errs.length ? errs.slice(0, 5) : 'none');
   await c1.close();

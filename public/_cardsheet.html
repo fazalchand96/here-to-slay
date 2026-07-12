@@ -1,0 +1,1399 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="/style.css">
+<style>
+  body{background:#1c140d;margin:0;padding:16px;font-family:sans-serif;}
+  h2{color:#f6cf72;text-transform:capitalize;margin:18px 0 8px;font-size:16px;}
+  .grid{display:grid;grid-template-columns:repeat(8,1fr);gap:10px 8px;}
+  .cell{display:flex;flex-direction:column;align-items:center;}
+  .sheet .card,.grid .card{height:150px!important;width:107px!important;margin:0!important;flex:0 0 auto!important;}
+  .cap{color:#cbb48a;font-size:9px;margin-top:3px;text-align:center;max-width:107px;line-height:1.1;}
+</style></head><body class="sheet"><section id="sec-mixed"><h2>mixed card types (8)</h2><div class="grid">
+    <div class="cell">
+      <div class="card type-monster-card card-monster">
+        <div class="card-face">
+          <div class="card-type">Monster Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_001.webp')"></div>
+          <div class="card-info"><div class="card-name">Abyss Queen</div></div>
+        </div>
+      </div>
+      <div class="cap">card_001 · Abyss Queen</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_016.webp')"></div>
+          <div class="card-info"><div class="card-name">Bad Axe</div></div>
+        </div>
+      </div>
+      <div class="cap">card_016 · Bad Axe</div>
+    </div>
+    <div class="cell">
+      <div class="card type-item-card">
+        <div class="card-face">
+          <div class="card-type">Item Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_064.webp')"></div>
+          <div class="card-info"><div class="card-name">Bard Mask</div></div>
+        </div>
+      </div>
+      <div class="cap">card_064 · Bard Mask</div>
+    </div>
+    <div class="cell">
+      <div class="card type-cursed-item-card">
+        <div class="card-face">
+          <div class="card-type">Cursed Item Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_075.webp')"></div>
+          <div class="card-info"><div class="card-name">Curse of the Snake's Eyes</div></div>
+        </div>
+      </div>
+      <div class="cap">card_075 · Curse of the Snake's Eyes</div>
+    </div>
+    <div class="cell">
+      <div class="card type-modifier-card">
+        <div class="card-face">
+          <div class="card-type">Modifier Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_079.webp')"></div>
+          <div class="card-info"><div class="card-name">Modifier +1/-3</div></div>
+        </div>
+      </div>
+      <div class="cap">card_079 · Modifier +1/-3</div>
+    </div>
+    <div class="cell">
+      <div class="card type-magic-card">
+        <div class="card-face">
+          <div class="card-type">Magic Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_104.webp')"></div>
+          <div class="card-info"><div class="card-name">Call to the Fallen</div></div>
+        </div>
+      </div>
+      <div class="cap">card_104 · Call to the Fallen</div>
+    </div>
+    <div class="cell">
+      <div class="card type-challenge-card">
+        <div class="card-face">
+          <div class="card-type">Challenge Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_117.webp')"></div>
+          <div class="card-info"><div class="card-name">Challenge</div></div>
+        </div>
+      </div>
+      <div class="cap">card_117 · Challenge</div>
+    </div>
+    <div class="cell">
+      <div class="card type-rule-card">
+        <div class="card-face">
+          <div class="card-type">Rule Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_131.webp')"></div>
+          <div class="card-info"><div class="card-name">Rule Card</div></div>
+        </div>
+      </div>
+      <div class="cap">card_131 · Rule Card</div>
+    </div></div></section><section id="sec-monster-card"><h2>monster-card (15)</h2><div class="grid">
+    <div class="cell">
+      <div class="card type-monster-card card-monster">
+        <div class="card-face">
+          <div class="card-type">Monster Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_001.webp')"></div>
+          <div class="card-info"><div class="card-name">Abyss Queen</div></div>
+        </div>
+      </div>
+      <div class="cap">card_001 · Abyss Queen</div>
+    </div>
+    <div class="cell">
+      <div class="card type-monster-card card-monster">
+        <div class="card-face">
+          <div class="card-type">Monster Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_002.webp')"></div>
+          <div class="card-info"><div class="card-name">Anuran Cauldron</div></div>
+        </div>
+      </div>
+      <div class="cap">card_002 · Anuran Cauldron</div>
+    </div>
+    <div class="cell">
+      <div class="card type-monster-card card-monster">
+        <div class="card-face">
+          <div class="card-type">Monster Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_003.webp')"></div>
+          <div class="card-info"><div class="card-name">Artic Aries</div></div>
+        </div>
+      </div>
+      <div class="cap">card_003 · Artic Aries</div>
+    </div>
+    <div class="cell">
+      <div class="card type-monster-card card-monster">
+        <div class="card-face">
+          <div class="card-type">Monster Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_004.webp')"></div>
+          <div class="card-info"><div class="card-name">Bloodwing</div></div>
+        </div>
+      </div>
+      <div class="cap">card_004 · Bloodwing</div>
+    </div>
+    <div class="cell">
+      <div class="card type-monster-card card-monster">
+        <div class="card-face">
+          <div class="card-type">Monster Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_005.webp')"></div>
+          <div class="card-info"><div class="card-name">Corrupted Sabretooth</div></div>
+        </div>
+      </div>
+      <div class="cap">card_005 · Corrupted Sabretooth</div>
+    </div>
+    <div class="cell">
+      <div class="card type-monster-card card-monster">
+        <div class="card-face">
+          <div class="card-type">Monster Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_006.webp')"></div>
+          <div class="card-info"><div class="card-name">Crowned Serpent</div></div>
+        </div>
+      </div>
+      <div class="cap">card_006 · Crowned Serpent</div>
+    </div>
+    <div class="cell">
+      <div class="card type-monster-card card-monster">
+        <div class="card-face">
+          <div class="card-type">Monster Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_007.webp')"></div>
+          <div class="card-info"><div class="card-name">Dark Dragon King</div></div>
+        </div>
+      </div>
+      <div class="cap">card_007 · Dark Dragon King</div>
+    </div>
+    <div class="cell">
+      <div class="card type-monster-card card-monster">
+        <div class="card-face">
+          <div class="card-type">Monster Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_008.webp')"></div>
+          <div class="card-info"><div class="card-name">Dracos</div></div>
+        </div>
+      </div>
+      <div class="cap">card_008 · Dracos</div>
+    </div>
+    <div class="cell">
+      <div class="card type-monster-card card-monster" style="--art-pos:center 20%">
+        <div class="card-face">
+          <div class="card-type">Monster Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_009.webp')"></div>
+          <div class="card-info"><div class="card-name">Malamammoth</div></div>
+        </div>
+      </div>
+      <div class="cap">card_009 · Malamammoth</div>
+    </div>
+    <div class="cell">
+      <div class="card type-monster-card card-monster">
+        <div class="card-face">
+          <div class="card-type">Monster Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_010.webp')"></div>
+          <div class="card-info"><div class="card-name">Mega Slime</div></div>
+        </div>
+      </div>
+      <div class="cap">card_010 · Mega Slime</div>
+    </div>
+    <div class="cell">
+      <div class="card type-monster-card card-monster">
+        <div class="card-face">
+          <div class="card-type">Monster Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_011.webp')"></div>
+          <div class="card-info"><div class="card-name">Orthus</div></div>
+        </div>
+      </div>
+      <div class="cap">card_011 · Orthus</div>
+    </div>
+    <div class="cell">
+      <div class="card type-monster-card card-monster">
+        <div class="card-face">
+          <div class="card-type">Monster Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_012.webp')"></div>
+          <div class="card-info"><div class="card-name">Rex Major</div></div>
+        </div>
+      </div>
+      <div class="cap">card_012 · Rex Major</div>
+    </div>
+    <div class="cell">
+      <div class="card type-monster-card card-monster">
+        <div class="card-face">
+          <div class="card-type">Monster Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_013.webp')"></div>
+          <div class="card-info"><div class="card-name">Terratuga</div></div>
+        </div>
+      </div>
+      <div class="cap">card_013 · Terratuga</div>
+    </div>
+    <div class="cell">
+      <div class="card type-monster-card card-monster">
+        <div class="card-face">
+          <div class="card-type">Monster Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_014.webp')"></div>
+          <div class="card-info"><div class="card-name">Titan Wyvern</div></div>
+        </div>
+      </div>
+      <div class="cap">card_014 · Titan Wyvern</div>
+    </div>
+    <div class="cell">
+      <div class="card type-monster-card card-monster">
+        <div class="card-face">
+          <div class="card-type">Monster Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_015.webp')"></div>
+          <div class="card-info"><div class="card-name">Warworn Owlbear</div></div>
+        </div>
+      </div>
+      <div class="cap">card_015 · Warworn Owlbear</div>
+    </div></div></section><section id="sec-hero-card"><h2>hero-card (48)</h2><div class="grid">
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_016.webp')"></div>
+          <div class="card-info"><div class="card-name">Bad Axe</div></div>
+        </div>
+      </div>
+      <div class="cap">card_016 · Bad Axe</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_017.webp')"></div>
+          <div class="card-info"><div class="card-name">Bear Claw</div></div>
+        </div>
+      </div>
+      <div class="cap">card_017 · Bear Claw</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_018.webp')"></div>
+          <div class="card-info"><div class="card-name">Beary Wise</div></div>
+        </div>
+      </div>
+      <div class="cap">card_018 · Beary Wise</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_019.webp')"></div>
+          <div class="card-info"><div class="card-name">Fury Knuckle</div></div>
+        </div>
+      </div>
+      <div class="cap">card_019 · Fury Knuckle</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_020.webp')"></div>
+          <div class="card-info"><div class="card-name">Heavy Bear</div></div>
+        </div>
+      </div>
+      <div class="cap">card_020 · Heavy Bear</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_021.webp')"></div>
+          <div class="card-info"><div class="card-name">Pan Chucks</div></div>
+        </div>
+      </div>
+      <div class="cap">card_021 · Pan Chucks</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_022.webp')"></div>
+          <div class="card-info"><div class="card-name">Qi Bear</div></div>
+        </div>
+      </div>
+      <div class="cap">card_022 · Qi Bear</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_023.webp')"></div>
+          <div class="card-info"><div class="card-name">Tough Teddy</div></div>
+        </div>
+      </div>
+      <div class="cap">card_023 · Tough Teddy</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_024.webp')"></div>
+          <div class="card-info"><div class="card-name">Dodgy Dealer</div></div>
+        </div>
+      </div>
+      <div class="cap">card_024 · Dodgy Dealer</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_025.webp')"></div>
+          <div class="card-info"><div class="card-name">Fuzzy Cheeks</div></div>
+        </div>
+      </div>
+      <div class="cap">card_025 · Fuzzy Cheeks</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_026.webp')"></div>
+          <div class="card-info"><div class="card-name">Greedy Cheeks</div></div>
+        </div>
+      </div>
+      <div class="cap">card_026 · Greedy Cheeks</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_027.webp')"></div>
+          <div class="card-info"><div class="card-name">Lucky Bucky</div></div>
+        </div>
+      </div>
+      <div class="cap">card_027 · Lucky Bucky</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_028.webp')"></div>
+          <div class="card-info"><div class="card-name">Mellow Dee</div></div>
+        </div>
+      </div>
+      <div class="cap">card_028 · Mellow Dee</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_029.webp')"></div>
+          <div class="card-info"><div class="card-name">Napping Nibbles</div></div>
+        </div>
+      </div>
+      <div class="cap">card_029 · Napping Nibbles</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_030.webp')"></div>
+          <div class="card-info"><div class="card-name">Peanut</div></div>
+        </div>
+      </div>
+      <div class="cap">card_030 · Peanut</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_031.webp')"></div>
+          <div class="card-info"><div class="card-name">Tipsy Tootie</div></div>
+        </div>
+      </div>
+      <div class="cap">card_031 · Tipsy Tootie</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_032.webp')"></div>
+          <div class="card-info"><div class="card-name">Calming Voice</div></div>
+        </div>
+      </div>
+      <div class="cap">card_032 · Calming Voice</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_033.webp')"></div>
+          <div class="card-info"><div class="card-name">Guiding Light</div></div>
+        </div>
+      </div>
+      <div class="cap">card_033 · Guiding Light</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_034.webp')"></div>
+          <div class="card-info"><div class="card-name">Holy Curselifter</div></div>
+        </div>
+      </div>
+      <div class="cap">card_034 · Holy Curselifter</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_035.webp')"></div>
+          <div class="card-info"><div class="card-name">Iron Resolve</div></div>
+        </div>
+      </div>
+      <div class="cap">card_035 · Iron Resolve</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_036.webp')"></div>
+          <div class="card-info"><div class="card-name">Mighty Blade</div></div>
+        </div>
+      </div>
+      <div class="cap">card_036 · Mighty Blade</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_037.webp')"></div>
+          <div class="card-info"><div class="card-name">Radiant Horn</div></div>
+        </div>
+      </div>
+      <div class="cap">card_037 · Radiant Horn</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_038.webp')"></div>
+          <div class="card-info"><div class="card-name">Vibrant Glow</div></div>
+        </div>
+      </div>
+      <div class="cap">card_038 · Vibrant Glow</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_039.webp')"></div>
+          <div class="card-info"><div class="card-name">Wise Shield</div></div>
+        </div>
+      </div>
+      <div class="cap">card_039 · Wise Shield</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_040.webp')"></div>
+          <div class="card-info"><div class="card-name">Bullseye</div></div>
+        </div>
+      </div>
+      <div class="cap">card_040 · Bullseye</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_041.webp')"></div>
+          <div class="card-info"><div class="card-name">Hook</div></div>
+        </div>
+      </div>
+      <div class="cap">card_041 · Hook</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_042.webp')"></div>
+          <div class="card-info"><div class="card-name">Lookie Rookie</div></div>
+        </div>
+      </div>
+      <div class="cap">card_042 · Lookie Rookie</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_043.webp')"></div>
+          <div class="card-info"><div class="card-name">Quick Draw</div></div>
+        </div>
+      </div>
+      <div class="cap">card_043 · Quick Draw</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_044.webp')"></div>
+          <div class="card-info"><div class="card-name">Serious Grey</div></div>
+        </div>
+      </div>
+      <div class="cap">card_044 · Serious Grey</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_045.webp')"></div>
+          <div class="card-info"><div class="card-name">Sharp Fox</div></div>
+        </div>
+      </div>
+      <div class="cap">card_045 · Sharp Fox</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_046.webp')"></div>
+          <div class="card-info"><div class="card-name">Wildshot</div></div>
+        </div>
+      </div>
+      <div class="cap">card_046 · Wildshot</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_047.webp')"></div>
+          <div class="card-info"><div class="card-name">Wily Red</div></div>
+        </div>
+      </div>
+      <div class="cap">card_047 · Wily Red</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_048.webp')"></div>
+          <div class="card-info"><div class="card-name">Kit Napper</div></div>
+        </div>
+      </div>
+      <div class="cap">card_048 · Kit Napper</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_049.webp')"></div>
+          <div class="card-info"><div class="card-name">Meowzio</div></div>
+        </div>
+      </div>
+      <div class="cap">card_049 · Meowzio</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_050.webp')"></div>
+          <div class="card-info"><div class="card-name">Plundering Puma</div></div>
+        </div>
+      </div>
+      <div class="cap">card_050 · Plundering Puma</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_051.webp')"></div>
+          <div class="card-info"><div class="card-name">Shurikitty</div></div>
+        </div>
+      </div>
+      <div class="cap">card_051 · Shurikitty</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_052.webp')"></div>
+          <div class="card-info"><div class="card-name">Silent Shadow</div></div>
+        </div>
+      </div>
+      <div class="cap">card_052 · Silent Shadow</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_053.webp')"></div>
+          <div class="card-info"><div class="card-name">Slippery Paws</div></div>
+        </div>
+      </div>
+      <div class="cap">card_053 · Slippery Paws</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_054.webp')"></div>
+          <div class="card-info"><div class="card-name">Sly Pickings</div></div>
+        </div>
+      </div>
+      <div class="cap">card_054 · Sly Pickings</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_055.webp')"></div>
+          <div class="card-info"><div class="card-name">Smooth Mimimeow</div></div>
+        </div>
+      </div>
+      <div class="cap">card_055 · Smooth Mimimeow</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_056.webp')"></div>
+          <div class="card-info"><div class="card-name">Bun Bun</div></div>
+        </div>
+      </div>
+      <div class="cap">card_056 · Bun Bun</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_057.webp')"></div>
+          <div class="card-info"><div class="card-name">Buttons</div></div>
+        </div>
+      </div>
+      <div class="cap">card_057 · Buttons</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_058.webp')"></div>
+          <div class="card-info"><div class="card-name">Fluffy</div></div>
+        </div>
+      </div>
+      <div class="cap">card_058 · Fluffy</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_059.webp')"></div>
+          <div class="card-info"><div class="card-name">Hopper</div></div>
+        </div>
+      </div>
+      <div class="cap">card_059 · Hopper</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_060.webp')"></div>
+          <div class="card-info"><div class="card-name">Snowball</div></div>
+        </div>
+      </div>
+      <div class="cap">card_060 · Snowball</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_061.webp')"></div>
+          <div class="card-info"><div class="card-name">Spooky</div></div>
+        </div>
+      </div>
+      <div class="cap">card_061 · Spooky</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_062.webp')"></div>
+          <div class="card-info"><div class="card-name">Whiskers</div></div>
+        </div>
+      </div>
+      <div class="cap">card_062 · Whiskers</div>
+    </div>
+    <div class="cell">
+      <div class="card type-hero-card">
+        <div class="card-face">
+          <div class="card-type">Hero Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_063.webp')"></div>
+          <div class="card-info"><div class="card-name">Wiggles</div></div>
+        </div>
+      </div>
+      <div class="cap">card_063 · Wiggles</div>
+    </div></div></section><section id="sec-item-card"><h2>item-card (11)</h2><div class="grid">
+    <div class="cell">
+      <div class="card type-item-card">
+        <div class="card-face">
+          <div class="card-type">Item Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_064.webp')"></div>
+          <div class="card-info"><div class="card-name">Bard Mask</div></div>
+        </div>
+      </div>
+      <div class="cap">card_064 · Bard Mask</div>
+    </div>
+    <div class="cell">
+      <div class="card type-item-card">
+        <div class="card-face">
+          <div class="card-type">Item Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_065.webp')"></div>
+          <div class="card-info"><div class="card-name">Decoy Doll</div></div>
+        </div>
+      </div>
+      <div class="cap">card_065 · Decoy Doll</div>
+    </div>
+    <div class="cell">
+      <div class="card type-item-card">
+        <div class="card-face">
+          <div class="card-type">Item Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_066.webp')"></div>
+          <div class="card-info"><div class="card-name">Fighter Mask</div></div>
+        </div>
+      </div>
+      <div class="cap">card_066 · Fighter Mask</div>
+    </div>
+    <div class="cell">
+      <div class="card type-item-card">
+        <div class="card-face">
+          <div class="card-type">Item Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_067.webp')"></div>
+          <div class="card-info"><div class="card-name">Guardian Mask</div></div>
+        </div>
+      </div>
+      <div class="cap">card_067 · Guardian Mask</div>
+    </div>
+    <div class="cell">
+      <div class="card type-item-card">
+        <div class="card-face">
+          <div class="card-type">Item Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_068.webp')"></div>
+          <div class="card-info"><div class="card-name">Particularly Rusty Coin</div></div>
+        </div>
+      </div>
+      <div class="cap">card_068 · Particularly Rusty Coin</div>
+    </div>
+    <div class="cell">
+      <div class="card type-item-card">
+        <div class="card-face">
+          <div class="card-type">Item Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_069.webp')"></div>
+          <div class="card-info"><div class="card-name">Particularly Rusty Coin</div></div>
+        </div>
+      </div>
+      <div class="cap">card_069 · Particularly Rusty Coin</div>
+    </div>
+    <div class="cell">
+      <div class="card type-item-card">
+        <div class="card-face">
+          <div class="card-type">Item Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_070.webp')"></div>
+          <div class="card-info"><div class="card-name">Ranger Mask</div></div>
+        </div>
+      </div>
+      <div class="cap">card_070 · Ranger Mask</div>
+    </div>
+    <div class="cell">
+      <div class="card type-item-card">
+        <div class="card-face">
+          <div class="card-type">Item Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_071.webp')"></div>
+          <div class="card-info"><div class="card-name">Really Big Ring</div></div>
+        </div>
+      </div>
+      <div class="cap">card_071 · Really Big Ring</div>
+    </div>
+    <div class="cell">
+      <div class="card type-item-card">
+        <div class="card-face">
+          <div class="card-type">Item Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_072.webp')"></div>
+          <div class="card-info"><div class="card-name">Really Big Ring</div></div>
+        </div>
+      </div>
+      <div class="cap">card_072 · Really Big Ring</div>
+    </div>
+    <div class="cell">
+      <div class="card type-item-card">
+        <div class="card-face">
+          <div class="card-type">Item Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_073.webp')"></div>
+          <div class="card-info"><div class="card-name">Thief Mask</div></div>
+        </div>
+      </div>
+      <div class="cap">card_073 · Thief Mask</div>
+    </div>
+    <div class="cell">
+      <div class="card type-item-card">
+        <div class="card-face">
+          <div class="card-type">Item Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_074.webp')"></div>
+          <div class="card-info"><div class="card-name">Wizard Mask</div></div>
+        </div>
+      </div>
+      <div class="cap">card_074 · Wizard Mask</div>
+    </div></div></section><section id="sec-cursed-item-card"><h2>cursed-item-card (4)</h2><div class="grid">
+    <div class="cell">
+      <div class="card type-cursed-item-card">
+        <div class="card-face">
+          <div class="card-type">Cursed Item Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_075.webp')"></div>
+          <div class="card-info"><div class="card-name">Curse of the Snake's Eyes</div></div>
+        </div>
+      </div>
+      <div class="cap">card_075 · Curse of the Snake's Eyes</div>
+    </div>
+    <div class="cell">
+      <div class="card type-cursed-item-card">
+        <div class="card-face">
+          <div class="card-type">Cursed Item Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_076.webp')"></div>
+          <div class="card-info"><div class="card-name">Curse of the Snake's Eyes</div></div>
+        </div>
+      </div>
+      <div class="cap">card_076 · Curse of the Snake's Eyes</div>
+    </div>
+    <div class="cell">
+      <div class="card type-cursed-item-card">
+        <div class="card-face">
+          <div class="card-type">Cursed Item Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_077.webp')"></div>
+          <div class="card-info"><div class="card-name">Sealing Key</div></div>
+        </div>
+      </div>
+      <div class="cap">card_077 · Sealing Key</div>
+    </div>
+    <div class="cell">
+      <div class="card type-cursed-item-card">
+        <div class="card-face">
+          <div class="card-type">Cursed Item Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_078.webp')"></div>
+          <div class="card-info"><div class="card-name">Suspiciously Shiny Coin</div></div>
+        </div>
+      </div>
+      <div class="cap">card_078 · Suspiciously Shiny Coin</div>
+    </div></div></section><section id="sec-modifier-card"><h2>modifier-card (25)</h2><div class="grid">
+    <div class="cell">
+      <div class="card type-modifier-card">
+        <div class="card-face">
+          <div class="card-type">Modifier Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_079.webp')"></div>
+          <div class="card-info"><div class="card-name">Modifier +1/-3</div></div>
+        </div>
+      </div>
+      <div class="cap">card_079 · Modifier +1/-3</div>
+    </div>
+    <div class="cell">
+      <div class="card type-modifier-card">
+        <div class="card-face">
+          <div class="card-type">Modifier Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_080.webp')"></div>
+          <div class="card-info"><div class="card-name">Modifier +1/-3</div></div>
+        </div>
+      </div>
+      <div class="cap">card_080 · Modifier +1/-3</div>
+    </div>
+    <div class="cell">
+      <div class="card type-modifier-card">
+        <div class="card-face">
+          <div class="card-type">Modifier Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_081.webp')"></div>
+          <div class="card-info"><div class="card-name">Modifier +1/-3</div></div>
+        </div>
+      </div>
+      <div class="cap">card_081 · Modifier +1/-3</div>
+    </div>
+    <div class="cell">
+      <div class="card type-modifier-card">
+        <div class="card-face">
+          <div class="card-type">Modifier Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_082.webp')"></div>
+          <div class="card-info"><div class="card-name">Modifier +1/-3</div></div>
+        </div>
+      </div>
+      <div class="cap">card_082 · Modifier +1/-3</div>
+    </div>
+    <div class="cell">
+      <div class="card type-modifier-card">
+        <div class="card-face">
+          <div class="card-type">Modifier Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_083.webp')"></div>
+          <div class="card-info"><div class="card-name">Modifier +2/-2</div></div>
+        </div>
+      </div>
+      <div class="cap">card_083 · Modifier +2/-2</div>
+    </div>
+    <div class="cell">
+      <div class="card type-modifier-card">
+        <div class="card-face">
+          <div class="card-type">Modifier Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_084.webp')"></div>
+          <div class="card-info"><div class="card-name">Modifier +2/-2</div></div>
+        </div>
+      </div>
+      <div class="cap">card_084 · Modifier +2/-2</div>
+    </div>
+    <div class="cell">
+      <div class="card type-modifier-card">
+        <div class="card-face">
+          <div class="card-type">Modifier Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_085.webp')"></div>
+          <div class="card-info"><div class="card-name">Modifier +2/-2</div></div>
+        </div>
+      </div>
+      <div class="cap">card_085 · Modifier +2/-2</div>
+    </div>
+    <div class="cell">
+      <div class="card type-modifier-card">
+        <div class="card-face">
+          <div class="card-type">Modifier Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_086.webp')"></div>
+          <div class="card-info"><div class="card-name">Modifier +2/-2</div></div>
+        </div>
+      </div>
+      <div class="cap">card_086 · Modifier +2/-2</div>
+    </div>
+    <div class="cell">
+      <div class="card type-modifier-card">
+        <div class="card-face">
+          <div class="card-type">Modifier Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_087.webp')"></div>
+          <div class="card-info"><div class="card-name">Modifier +2/-2</div></div>
+        </div>
+      </div>
+      <div class="cap">card_087 · Modifier +2/-2</div>
+    </div>
+    <div class="cell">
+      <div class="card type-modifier-card">
+        <div class="card-face">
+          <div class="card-type">Modifier Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_088.webp')"></div>
+          <div class="card-info"><div class="card-name">Modifier +2/-2</div></div>
+        </div>
+      </div>
+      <div class="cap">card_088 · Modifier +2/-2</div>
+    </div>
+    <div class="cell">
+      <div class="card type-modifier-card">
+        <div class="card-face">
+          <div class="card-type">Modifier Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_089.webp')"></div>
+          <div class="card-info"><div class="card-name">Modifier +2/-2</div></div>
+        </div>
+      </div>
+      <div class="cap">card_089 · Modifier +2/-2</div>
+    </div>
+    <div class="cell">
+      <div class="card type-modifier-card">
+        <div class="card-face">
+          <div class="card-type">Modifier Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_090.webp')"></div>
+          <div class="card-info"><div class="card-name">Modifier +2/-2</div></div>
+        </div>
+      </div>
+      <div class="cap">card_090 · Modifier +2/-2</div>
+    </div>
+    <div class="cell">
+      <div class="card type-modifier-card">
+        <div class="card-face">
+          <div class="card-type">Modifier Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_091.webp')"></div>
+          <div class="card-info"><div class="card-name">Modifier +2/-2</div></div>
+        </div>
+      </div>
+      <div class="cap">card_091 · Modifier +2/-2</div>
+    </div>
+    <div class="cell">
+      <div class="card type-modifier-card">
+        <div class="card-face">
+          <div class="card-type">Modifier Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_092.webp')"></div>
+          <div class="card-info"><div class="card-name">Modifier +3/-1</div></div>
+        </div>
+      </div>
+      <div class="cap">card_092 · Modifier +3/-1</div>
+    </div>
+    <div class="cell">
+      <div class="card type-modifier-card">
+        <div class="card-face">
+          <div class="card-type">Modifier Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_093.webp')"></div>
+          <div class="card-info"><div class="card-name">Modifier +3/-1</div></div>
+        </div>
+      </div>
+      <div class="cap">card_093 · Modifier +3/-1</div>
+    </div>
+    <div class="cell">
+      <div class="card type-modifier-card">
+        <div class="card-face">
+          <div class="card-type">Modifier Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_094.webp')"></div>
+          <div class="card-info"><div class="card-name">Modifier +3/-1</div></div>
+        </div>
+      </div>
+      <div class="cap">card_094 · Modifier +3/-1</div>
+    </div>
+    <div class="cell">
+      <div class="card type-modifier-card">
+        <div class="card-face">
+          <div class="card-type">Modifier Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_095.webp')"></div>
+          <div class="card-info"><div class="card-name">Modifier +3/-1</div></div>
+        </div>
+      </div>
+      <div class="cap">card_095 · Modifier +3/-1</div>
+    </div>
+    <div class="cell">
+      <div class="card type-modifier-card">
+        <div class="card-face">
+          <div class="card-type">Modifier Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_096.webp')"></div>
+          <div class="card-info"><div class="card-name">Modifier +4</div></div>
+        </div>
+      </div>
+      <div class="cap">card_096 · Modifier +4</div>
+    </div>
+    <div class="cell">
+      <div class="card type-modifier-card">
+        <div class="card-face">
+          <div class="card-type">Modifier Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_097.webp')"></div>
+          <div class="card-info"><div class="card-name">Modifier +4</div></div>
+        </div>
+      </div>
+      <div class="cap">card_097 · Modifier +4</div>
+    </div>
+    <div class="cell">
+      <div class="card type-modifier-card">
+        <div class="card-face">
+          <div class="card-type">Modifier Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_098.webp')"></div>
+          <div class="card-info"><div class="card-name">Modifier +4</div></div>
+        </div>
+      </div>
+      <div class="cap">card_098 · Modifier +4</div>
+    </div>
+    <div class="cell">
+      <div class="card type-modifier-card">
+        <div class="card-face">
+          <div class="card-type">Modifier Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_099.webp')"></div>
+          <div class="card-info"><div class="card-name">Modifier +4</div></div>
+        </div>
+      </div>
+      <div class="cap">card_099 · Modifier +4</div>
+    </div>
+    <div class="cell">
+      <div class="card type-modifier-card">
+        <div class="card-face">
+          <div class="card-type">Modifier Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_100.webp')"></div>
+          <div class="card-info"><div class="card-name">Modifier -4</div></div>
+        </div>
+      </div>
+      <div class="cap">card_100 · Modifier -4</div>
+    </div>
+    <div class="cell">
+      <div class="card type-modifier-card">
+        <div class="card-face">
+          <div class="card-type">Modifier Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_101.webp')"></div>
+          <div class="card-info"><div class="card-name">Modifier -4</div></div>
+        </div>
+      </div>
+      <div class="cap">card_101 · Modifier -4</div>
+    </div>
+    <div class="cell">
+      <div class="card type-modifier-card">
+        <div class="card-face">
+          <div class="card-type">Modifier Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_102.webp')"></div>
+          <div class="card-info"><div class="card-name">Modifier -4</div></div>
+        </div>
+      </div>
+      <div class="cap">card_102 · Modifier -4</div>
+    </div>
+    <div class="cell">
+      <div class="card type-modifier-card">
+        <div class="card-face">
+          <div class="card-type">Modifier Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_103.webp')"></div>
+          <div class="card-info"><div class="card-name">Modifier -4</div></div>
+        </div>
+      </div>
+      <div class="cap">card_103 · Modifier -4</div>
+    </div></div></section><section id="sec-magic-card"><h2>magic-card (13)</h2><div class="grid">
+    <div class="cell">
+      <div class="card type-magic-card">
+        <div class="card-face">
+          <div class="card-type">Magic Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_104.webp')"></div>
+          <div class="card-info"><div class="card-name">Call to the Fallen</div></div>
+        </div>
+      </div>
+      <div class="cap">card_104 · Call to the Fallen</div>
+    </div>
+    <div class="cell">
+      <div class="card type-magic-card">
+        <div class="card-face">
+          <div class="card-type">Magic Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_105.webp')"></div>
+          <div class="card-info"><div class="card-name">Critical Boost</div></div>
+        </div>
+      </div>
+      <div class="cap">card_105 · Critical Boost</div>
+    </div>
+    <div class="cell">
+      <div class="card type-magic-card">
+        <div class="card-face">
+          <div class="card-type">Magic Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_106.webp')"></div>
+          <div class="card-info"><div class="card-name">Critical Boost</div></div>
+        </div>
+      </div>
+      <div class="cap">card_106 · Critical Boost</div>
+    </div>
+    <div class="cell">
+      <div class="card type-magic-card">
+        <div class="card-face">
+          <div class="card-type">Magic Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_107.webp')"></div>
+          <div class="card-info"><div class="card-name">Destructive Spell</div></div>
+        </div>
+      </div>
+      <div class="cap">card_107 · Destructive Spell</div>
+    </div>
+    <div class="cell">
+      <div class="card type-magic-card">
+        <div class="card-face">
+          <div class="card-type">Magic Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_108.webp')"></div>
+          <div class="card-info"><div class="card-name">Destructive Spell</div></div>
+        </div>
+      </div>
+      <div class="cap">card_108 · Destructive Spell</div>
+    </div>
+    <div class="cell">
+      <div class="card type-magic-card">
+        <div class="card-face">
+          <div class="card-type">Magic Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_109.webp')"></div>
+          <div class="card-info"><div class="card-name">Enchanted Spell</div></div>
+        </div>
+      </div>
+      <div class="cap">card_109 · Enchanted Spell</div>
+    </div>
+    <div class="cell">
+      <div class="card type-magic-card">
+        <div class="card-face">
+          <div class="card-type">Magic Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_110.webp')"></div>
+          <div class="card-info"><div class="card-name">Enchanted Spell</div></div>
+        </div>
+      </div>
+      <div class="cap">card_110 · Enchanted Spell</div>
+    </div>
+    <div class="cell">
+      <div class="card type-magic-card">
+        <div class="card-face">
+          <div class="card-type">Magic Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_111.webp')"></div>
+          <div class="card-info"><div class="card-name">Entangling Trap</div></div>
+        </div>
+      </div>
+      <div class="cap">card_111 · Entangling Trap</div>
+    </div>
+    <div class="cell">
+      <div class="card type-magic-card">
+        <div class="card-face">
+          <div class="card-type">Magic Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_112.webp')"></div>
+          <div class="card-info"><div class="card-name">Entangling Trap</div></div>
+        </div>
+      </div>
+      <div class="cap">card_112 · Entangling Trap</div>
+    </div>
+    <div class="cell">
+      <div class="card type-magic-card">
+        <div class="card-face">
+          <div class="card-type">Magic Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_113.webp')"></div>
+          <div class="card-info"><div class="card-name">Forced Exchange</div></div>
+        </div>
+      </div>
+      <div class="cap">card_113 · Forced Exchange</div>
+    </div>
+    <div class="cell">
+      <div class="card type-magic-card">
+        <div class="card-face">
+          <div class="card-type">Magic Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_114.webp')"></div>
+          <div class="card-info"><div class="card-name">Forceful Winds</div></div>
+        </div>
+      </div>
+      <div class="cap">card_114 · Forceful Winds</div>
+    </div>
+    <div class="cell">
+      <div class="card type-magic-card">
+        <div class="card-face">
+          <div class="card-type">Magic Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_115.webp')"></div>
+          <div class="card-info"><div class="card-name">Winds of Change</div></div>
+        </div>
+      </div>
+      <div class="cap">card_115 · Winds of Change</div>
+    </div>
+    <div class="cell">
+      <div class="card type-magic-card">
+        <div class="card-face">
+          <div class="card-type">Magic Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_116.webp')"></div>
+          <div class="card-info"><div class="card-name">Winds of Change</div></div>
+        </div>
+      </div>
+      <div class="cap">card_116 · Winds of Change</div>
+    </div></div></section><section id="sec-challenge-card"><h2>challenge-card (14)</h2><div class="grid">
+    <div class="cell">
+      <div class="card type-challenge-card">
+        <div class="card-face">
+          <div class="card-type">Challenge Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_117.webp')"></div>
+          <div class="card-info"><div class="card-name">Challenge</div></div>
+        </div>
+      </div>
+      <div class="cap">card_117 · Challenge</div>
+    </div>
+    <div class="cell">
+      <div class="card type-challenge-card">
+        <div class="card-face">
+          <div class="card-type">Challenge Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_118.webp')"></div>
+          <div class="card-info"><div class="card-name">Challenge</div></div>
+        </div>
+      </div>
+      <div class="cap">card_118 · Challenge</div>
+    </div>
+    <div class="cell">
+      <div class="card type-challenge-card">
+        <div class="card-face">
+          <div class="card-type">Challenge Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_119.webp')"></div>
+          <div class="card-info"><div class="card-name">Challenge</div></div>
+        </div>
+      </div>
+      <div class="cap">card_119 · Challenge</div>
+    </div>
+    <div class="cell">
+      <div class="card type-challenge-card">
+        <div class="card-face">
+          <div class="card-type">Challenge Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_120.webp')"></div>
+          <div class="card-info"><div class="card-name">Challenge</div></div>
+        </div>
+      </div>
+      <div class="cap">card_120 · Challenge</div>
+    </div>
+    <div class="cell">
+      <div class="card type-challenge-card">
+        <div class="card-face">
+          <div class="card-type">Challenge Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_121.webp')"></div>
+          <div class="card-info"><div class="card-name">Challenge</div></div>
+        </div>
+      </div>
+      <div class="cap">card_121 · Challenge</div>
+    </div>
+    <div class="cell">
+      <div class="card type-challenge-card">
+        <div class="card-face">
+          <div class="card-type">Challenge Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_122.webp')"></div>
+          <div class="card-info"><div class="card-name">Challenge</div></div>
+        </div>
+      </div>
+      <div class="cap">card_122 · Challenge</div>
+    </div>
+    <div class="cell">
+      <div class="card type-challenge-card">
+        <div class="card-face">
+          <div class="card-type">Challenge Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_123.webp')"></div>
+          <div class="card-info"><div class="card-name">Challenge</div></div>
+        </div>
+      </div>
+      <div class="cap">card_123 · Challenge</div>
+    </div>
+    <div class="cell">
+      <div class="card type-challenge-card">
+        <div class="card-face">
+          <div class="card-type">Challenge Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_124.webp')"></div>
+          <div class="card-info"><div class="card-name">Challenge</div></div>
+        </div>
+      </div>
+      <div class="cap">card_124 · Challenge</div>
+    </div>
+    <div class="cell">
+      <div class="card type-challenge-card">
+        <div class="card-face">
+          <div class="card-type">Challenge Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_125.webp')"></div>
+          <div class="card-info"><div class="card-name">Challenge</div></div>
+        </div>
+      </div>
+      <div class="cap">card_125 · Challenge</div>
+    </div>
+    <div class="cell">
+      <div class="card type-challenge-card">
+        <div class="card-face">
+          <div class="card-type">Challenge Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_126.webp')"></div>
+          <div class="card-info"><div class="card-name">Challenge</div></div>
+        </div>
+      </div>
+      <div class="cap">card_126 · Challenge</div>
+    </div>
+    <div class="cell">
+      <div class="card type-challenge-card">
+        <div class="card-face">
+          <div class="card-type">Challenge Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_127.webp')"></div>
+          <div class="card-info"><div class="card-name">Challenge</div></div>
+        </div>
+      </div>
+      <div class="cap">card_127 · Challenge</div>
+    </div>
+    <div class="cell">
+      <div class="card type-challenge-card">
+        <div class="card-face">
+          <div class="card-type">Challenge Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_128.webp')"></div>
+          <div class="card-info"><div class="card-name">Challenge</div></div>
+        </div>
+      </div>
+      <div class="cap">card_128 · Challenge</div>
+    </div>
+    <div class="cell">
+      <div class="card type-challenge-card">
+        <div class="card-face">
+          <div class="card-type">Challenge Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_129.webp')"></div>
+          <div class="card-info"><div class="card-name">Challenge</div></div>
+        </div>
+      </div>
+      <div class="cap">card_129 · Challenge</div>
+    </div>
+    <div class="cell">
+      <div class="card type-challenge-card">
+        <div class="card-face">
+          <div class="card-type">Challenge Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_130.webp')"></div>
+          <div class="card-info"><div class="card-name">Challenge</div></div>
+        </div>
+      </div>
+      <div class="cap">card_130 · Challenge</div>
+    </div></div></section><section id="sec-rule-card"><h2>rule-card (1)</h2><div class="grid">
+    <div class="cell">
+      <div class="card type-rule-card">
+        <div class="card-face">
+          <div class="card-type">Rule Card</div>
+          <div class="card-img has-art" style="background-image:url('/assets/skin/cards/art-web/card_131.webp')"></div>
+          <div class="card-info"><div class="card-name">Rule Card</div></div>
+        </div>
+      </div>
+      <div class="cap">card_131 · Rule Card</div>
+    </div></div></section></body></html>

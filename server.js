@@ -103,9 +103,34 @@ function registerCardPlayed(card) {
     }
 }
 
+// Card ids that have generated illustration art on disk (art-web/<id>.webp,
+// produced by scripts/compress-art.js). Cards with art get `artUrl` and the
+// client renders it edge-to-edge in the frame window; cards without it fall back
+// to the old `imageUrl` card scan, which has to be zoom-cropped instead.
+function loadGeneratedArtIds() {
+    const dir = path.join(__dirname, 'public', 'assets', 'skin', 'cards', 'art-web');
+    try {
+        return new Set(
+            fs.readdirSync(dir)
+                .filter(f => f.endsWith('.webp'))
+                .map(f => f.slice(0, -'.webp'.length))
+        );
+    } catch {
+        return new Set();   // art not generated yet
+    }
+}
+
 function loadCards() {
     const rawData = fs.readFileSync(path.join(__dirname, 'cards.json'), 'utf-8');
     const cards = JSON.parse(rawData);
+    const artIds = loadGeneratedArtIds();
+
+    // ALL_CARDS is a separate raw require of cards.json used for by-id lookups
+    // (skill targets, debug injection, card inspection), so it needs artUrl too —
+    // otherwise cards reached through those paths render the old wiki scan.
+    ALL_CARDS.forEach(c => {
+        if (artIds.has(c.id)) c.artUrl = `assets/skin/cards/art-web/${c.id}.webp`;
+    });
 
     PARTY_LEADERS = [];
     gameState.mainDeck = [];
@@ -122,6 +147,10 @@ function loadCards() {
         }
         
         let card = { ...c };
+
+        if (artIds.has(card.id)) {
+            card.artUrl = `assets/skin/cards/art-web/${card.id}.webp`;
+        }
 
         if (card.type === 'Party Leader') {
             PARTY_LEADERS.push(card);
@@ -209,9 +238,10 @@ function effectiveHeroClass(hero) {
     return (hero.equippedItem && maskClass(hero.equippedItem)) || hero.class;
 }
 
-// Decoy Doll (ITEM_DECOY): sacrifice the Doll to save the Hero from a destroy/steal.
+// Decoy Doll (ITEM_DECOY): sacrifice the Doll to save the Hero from sacrifice/destroy.
 // Auto-applied (always the better choice). Returns true if it absorbed the effect.
-function consumeDecoyDoll(targetHero) {
+function consumeDecoyDoll(targetHero, action = 'DESTROY') {
+    if (action === 'STEAL') return false;
     if (targetHero && targetHero.equippedItem && targetHero.equippedItem.effect_id === 'ITEM_DECOY') {
         gameState.discardPile.push(targetHero.equippedItem);
         targetHero.equippedItem = null;
@@ -1349,14 +1379,19 @@ io.on('connection', (socket) => {
         if (ga.type === 'MULTI_SACRIFICE') {
             const heroIndex = player.party.findIndex(h => h.id === data.targetHeroId);
             if (heroIndex === -1) return; // not a hero this player owns — ignore
-            const sacrificed = player.party.splice(heroIndex, 1)[0];
-            if (sacrificed.equippedItem) {
-                gameState.discardPile.push(sacrificed.equippedItem);
-                sacrificed.equippedItem = null;
+            const sacrificed = player.party[heroIndex];
+            if (consumeDecoyDoll(sacrificed, 'SACRIFICE')) {
+                io.emit('message', `${getPlayerName(gameState, player.id)} discarded Decoy Doll instead of sacrificing ${sacrificed.name}.`);
+            } else {
+                player.party.splice(heroIndex, 1);
+                if (sacrificed.equippedItem) {
+                    gameState.discardPile.push(sacrificed.equippedItem);
+                    sacrificed.equippedItem = null;
+                }
+                gameState.discardPile.push(sacrificed);
+                io.emit('message', `${getPlayerName(gameState, player.id)} sacrificed a Hero.`);
             }
-            gameState.discardPile.push(sacrificed);
             ga.pendingPlayerIds = ga.pendingPlayerIds.filter(id => id !== socket.id);
-            io.emit('message', `${getPlayerName(gameState, player.id)} sacrificed a Hero.`);
         } else {
             // Card-based global actions: MULTI_DISCARD, MULTI_DISCARD_AND_CHOOSE, MULTI_GIVE.
             const cardIndex = player.hand.findIndex(c => c.id === data.cardId);
@@ -1780,13 +1815,17 @@ socket.on('resolve_immediate_play', (data) => {
         const tHeroIndex = player.party.findIndex(h => h.id === data.targetHeroId);
         if (tHeroIndex !== -1) {
             const targetHero = player.party[tHeroIndex];
-            if (targetHero.equippedItem) {
-                gameState.discardPile.push(targetHero.equippedItem);
-                targetHero.equippedItem = null;
+            if (consumeDecoyDoll(targetHero, 'SACRIFICE')) {
+                io.emit('message', `${getPlayerName(gameState, socket.id)} discarded Decoy Doll instead of sacrificing ${targetHero.name}!`);
+            } else {
+                if (targetHero.equippedItem) {
+                    gameState.discardPile.push(targetHero.equippedItem);
+                    targetHero.equippedItem = null;
+                }
+                player.party.splice(tHeroIndex, 1);
+                gameState.discardPile.push(targetHero);
+                io.emit('message', `${getPlayerName(gameState, socket.id)} sacrificed their ${targetHero.name} as a penalty!`);
             }
-            player.party.splice(tHeroIndex, 1);
-            gameState.discardPile.push(targetHero);
-            io.emit('message', `${getPlayerName(gameState, socket.id)} sacrificed their ${targetHero.name} as a penalty!`);
             
             resetToPlayingState();
             broadcastState();
@@ -2032,8 +2071,8 @@ socket.on('resolve_immediate_play', (data) => {
                         }
                     }
 
-                    // Decoy Doll absorbs the destroy/steal — the Hero survives.
-                    if (consumeDecoyDoll(hero)) {
+                    // Decoy Doll absorbs sacrifice/destroy only. It does not block steals.
+                    if (consumeDecoyDoll(hero, pAction.type)) {
                         io.emit('message', `${hero.name}'s Decoy Doll was destroyed instead — the Hero survives!`);
                     } else {
                         p.party.splice(heroIndex, 1);
@@ -2098,17 +2137,11 @@ socket.on('resolve_immediate_play', (data) => {
                     const targetHeroIndex = tp.party.findIndex(h => h.id === pAction.targetHeroToSteal.id);
                     if (targetHeroIndex !== -1) {
                         const targetHeroToSteal = tp.party[targetHeroIndex];
-                        // Decoy Doll absorbs the steal — the swap can't complete, so the
-                        // player keeps the Hero they were about to give away.
-                        if (consumeDecoyDoll(targetHeroToSteal)) {
-                            io.emit('message', `${targetHeroToSteal.name}'s Decoy Doll blocked the exchange — both Heroes stay put!`);
-                        } else {
-                            tp.party.splice(targetHeroIndex, 1);
-                            player.party.push(targetHeroToSteal);
-                            tp.party.push(myHeroToGive);
-                            io.emit('message', `${getPlayerName(gameState, player.id)} exchanged ${myHeroToGive.name} for ${targetHeroToSteal.name}!`);
-                            swapped = true;
-                        }
+                        tp.party.splice(targetHeroIndex, 1);
+                        player.party.push(targetHeroToSteal);
+                        tp.party.push(myHeroToGive);
+                        io.emit('message', `${getPlayerName(gameState, player.id)} exchanged ${myHeroToGive.name} for ${targetHeroToSteal.name}!`);
+                        swapped = true;
                     }
                 }
                 if (!swapped) {

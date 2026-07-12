@@ -175,7 +175,13 @@
              + e2e selectors intact); positioned per orientation via CSS. -->
         <div id="board-center">
             <div class="deck-area">
+                <!-- Draw pile renders as a real 2.5D stack: three card-back layers
+                     stepped down-right (deck-layer-1 is the top card). Purely
+                     decorative; the <span> stays for e2e text selectors. -->
                 <div class="card card-back" id="main-deck">
+                    <i class="deck-layer deck-layer-3" aria-hidden="true"></i>
+                    <i class="deck-layer deck-layer-2" aria-hidden="true"></i>
+                    <i class="deck-layer deck-layer-1" aria-hidden="true"></i>
                     <span>Main Deck</span>
                 </div>
                 <div class="card-container" id="discard-pile">
@@ -454,17 +460,44 @@
             <h2 style="margin-bottom:15px;">The Board</h2>
             <div id="board-modal-content" style="display:flex; flex-direction:column; gap:20px;">
                 <p style="opacity:0.75; text-align:center; margin:0;">Monsters, the deck and the discard pile are now shown directly on the board.</p>
-                <div id="global-discard-pool" class="hidden" style="border: 2px dashed #ffd700; padding: 10px; margin-left: 20px;">
-                    <h3>Discard Pool</h3>
-                    <div id="pool-cards" class="card-container"></div>
-                </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Global discard pool (Beary Wise etc.): the MULTI_DISCARD_AND_CHOOSE
+         initiator picks one submitted card. Own overlay — it used to live inside
+         #board-modal, which nothing opens since the on-board overhaul, so the
+         choose-UI was unreachable and the game soft-locked. -->
+    <div id="global-discard-pool" class="overlay hidden" style="z-index: 10550;">
+        <div class="glass-panel large" style="position:relative; max-width:800px; width:90%; max-height:85vh; overflow-y:auto;">
+            <h3 style="margin-bottom:12px;">Discard Pool — pick one card</h3>
+            <div id="pool-cards" class="card-container" style="display:flex; flex-wrap:wrap; justify-content:center; gap:15px;"></div>
         </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="anim.js"></script>
     <script src="app.js"></script>
+
+    <!-- Dev-only board alignment tool. Never loads in normal play: opt in with
+         ?align=1 in the URL, or press Ctrl+Shift+A. See public/align-tool.js. -->
+    <script>
+        (function () {
+            let loaded = false;
+            const loadAlignTool = () => {
+                if (loaded) return;
+                loaded = true;
+                const s = document.createElement('script');
+                s.src = 'align-tool.js';
+                document.body.appendChild(s);
+            };
+            if (new URLSearchParams(location.search).has('align')) loadAlignTool();
+            window.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) loadAlignTool();
+            });
+        })();
+    </script>
 
     <!-- PWA Service Worker Registration -->
     <script>

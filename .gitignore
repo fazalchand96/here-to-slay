@@ -33,9 +33,25 @@ Thumbs.db
 *.log
 npm-debug.log*
 
-# UI screenshot artifacts (keep the capture.js tool, ignore the PNG output)
+# UI screenshot artifacts (keep the capture.js tools, ignore ALL PNG output at
+# any depth — the gate/proof captures under fit/ sheet/ etc. are ~180MB of
+# dev-only artifacts and must never ship to the repo).
 screenshots/*.png
+screenshots/**/*.png
 
 # Locally-installed agent skills (machine-specific symlinks)
 .agents/
 skills-lock.json
+
+# Raw/source card art — 271MB of full-size PNGs. The game loads only the
+# compressed art-web/ webp set (~8MB). Never ship the raw source to the repo.
+public/assets/skin/cards/art/
+# Rejected painterly art set (archived; superseded by the cartoon set).
+public/assets/skin/cards/art_v1_painterly/
+# Frame backup created by scripts/frames-install.js (pure rollback safety net).
+public/assets/skin/frames/v1_backup/
+# Mobile-UI test harness OUTPUTS (breaker screenshots + result JSONLs). The
+# harness CODE (harness/*.js) is tracked; its run artifacts are not.
+harness/results/
+# Scratch temp dir from animation capture work.
+.tmp-dice-anim/

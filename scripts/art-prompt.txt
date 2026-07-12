@@ -1,0 +1,22 @@
+In the "Here to Slay" repo at C:\Users\c.fazal\Desktop\HeretoslayBestanden. Generate card illustration PNGs, continuing an approved run.
+
+WHICH CARDS: The file scripts/art-todo.txt lists EXACTLY the cards that still need art, one per line, in this format:
+    <card_id> | <type>  class=<class>  ANIMAL=<animal> | <name> | <effect>
+Read that file. Generate an image for each listed card_id and save it to public/assets/skin/cards/art/<card_id>.png. Skip any id whose PNG already exists. Do not generate art for any card that is not in that list.
+
+You have a limited execution window. Do NOT plan, explore, or explain — read the list and start generating images IMMEDIATELY, one after another with no commentary between, until the window ends. Whatever you finish is kept; a later run resumes the rest from the regenerated list.
+
+ANIMAL: when a line has ANIMAL=<x>, the character MUST be that animal. The card's NAME never decides the animal — the class does. (e.g. "Bullseye" is a Ranger -> a FOX, not a bull. "Lucky Bucky" is a Bard -> a SQUIRREL, not a deer.)
+Lines with no ANIMAL= are not heroes:
+  - Monster Card -> an original cartoon monster/beast (never one of the class animals: bear, squirrel, unicorn, fox, cat, rabbit), cute but menacing.
+  - Item Card / Cursed Item Card -> just the object itself. A class Mask item = that class's animal mask as an object.
+  - Magic / Challenge / Modifier Card -> a simple dynamic action scene conveying the card's effect (given as the last field).
+
+ART STYLE — append this EXACT descriptor to every prompt, identical for all cards:
+"Flat vector cartoon illustration in the style of the board game Here to Slay by Unstable Games. Bold clean dark outlines of even weight. Simple geometric shapes and cute chibi proportions: large head, small body, simple expressive eyes. Flat cel-shaded colour fills with only minimal soft shadow. Bright, saturated but harmonious colours. Absolutely NO photorealism, NO painterly brushwork, NO realistic fur detail, NO heavy texture, NO cinematic lighting. Simple dynamic background of radial speed-lines, swirling shapes and soft sparkles in two or three flat tones - no detailed scenery. Character centred, shown roughly waist-up in a dynamic heroic pose. Illustration ONLY - absolutely no text, letters, numbers, borders, frames, UI elements or watermarks."
+
+Portrait aspect. NEVER render any text, letters or numbers in the image.
+
+SCOPE: only write PNGs under public/assets/skin/cards/art/. Do NOT modify public/style.css, public/app.js, public/index.html, public/sw.js, server.js, cards.json, or anything in scripts/. Do not commit. Do not run npm install.
+
+REPORT briefly: how many images you generated this run.
