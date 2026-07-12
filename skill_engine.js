@@ -12,6 +12,16 @@ function consumeDecoyDoll(gameState, targetHero, action = 'DESTROY') {
     return false;
 }
 
+function hasOpponentHeroTarget(gameState, actorId, action = 'DESTROY') {
+    return Object.entries(gameState.players || {}).some(([id, player]) => {
+        if (id === actorId || !player) return false;
+        if (!(player.party || []).some(card => card && card.type === 'Hero Card')) return false;
+        if (action === 'STEAL') return !player.cannotBeStolen;
+        if (player.cannotBeDestroyed) return false;
+        return !(player.slainMonsters || []).some(monster => monster.effect_id === 'MONSTER_TERRATUGA');
+    });
+}
+
 // keepItem: Shurikitty's special — when an equipped Item would be discarded by the
 // destroy, the initiator takes it into hand instead.
 function resolveDestroyAction(gameState, initiatorId, targetPlayerId, targetHeroId, keepItem = false) {
@@ -1004,5 +1014,6 @@ function executeMagic(gameState, io, effectId, playerId, targetData) {
 
 module.exports = {
     executeSkill,
-    executeMagic
+    executeMagic,
+    hasOpponentHeroTarget
 };

@@ -1526,9 +1526,13 @@ body.landscape #opponents-bar .opponent-chip {
     flex-direction: column;
     align-items: center;
     gap: 8px;
+    width: min(135px, 42vw);
 }
 .peek-card-wrap .card {
     cursor: default;
+    width: 54px !important;
+    height: 82px !important;
+    min-height: 82px !important;
 }
 /* Gentle, contained hover so a scaled card can't overflow the modal edge. */
 .peek-card-wrap .card:hover {
@@ -5443,6 +5447,53 @@ body.landscape #party-zone .area-label {
 #main-deck .deck-layer-1 {
     transform: translate(-4%, -3%);
     box-shadow: 2px 5px 12px rgba(0, 0, 0, 0.48);
+}
+
+/* Private hand-look/pull picker: premium card frames intentionally hide their
+   embedded text, so repeat the entitled card's full decision text below it. */
+.peek-card-details {
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 8px 9px;
+    border: 1px solid rgba(105, 70, 31, 0.35);
+    border-radius: 8px;
+    background: linear-gradient(#fff8e8, #ead7b7);
+    color: #2f2115;
+    box-shadow: 0 3px 7px rgba(0, 0, 0, 0.28);
+    text-align: left;
+}
+.peek-card-name { font-size: 0.78rem; line-height: 1.1; }
+.peek-card-type { color: #78572d; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; }
+.peek-card-effect { font-size: 0.65rem; line-height: 1.18; }
+
+/* Active-monster requirement badge: survives the premium art-only card face and
+   stays compact in both board orientations. */
+#active-monsters .monster-requirement-badge {
+    position: absolute;
+    z-index: 8;
+    left: 50%;
+    bottom: 3px;
+    transform: translateX(-50%);
+    width: calc(100% - 8px);
+    box-sizing: border-box;
+    padding: 2px 5px;
+    border: 1px solid rgba(255, 220, 145, 0.78);
+    border-radius: 5px;
+    background: rgba(35, 13, 11, 0.92);
+    color: #fff0c2;
+    font-size: clamp(7px, 0.7vw, 10px);
+    font-weight: 900;
+    line-height: 1.05;
+    white-space: normal;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 0 1px 1px #000;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.55);
+    pointer-events: none;
 }
 /* Reserve the left-side leader pocket for every party density. This overrides
    the older cards-many padding so the first grid column can never flow beneath

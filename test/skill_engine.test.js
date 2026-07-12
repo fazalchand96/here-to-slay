@@ -6,7 +6,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { executeSkill, executeMagic } = require('../skill_engine');
+const { executeSkill, executeMagic, hasOpponentHeroTarget } = require('../skill_engine');
 
 // ---------------------------------------------------------------------------
 // Test helpers / factories
@@ -90,6 +90,21 @@ function withRandom(value, fn) {
 // ---------------------------------------------------------------------------
 // Self-buff skills
 // ---------------------------------------------------------------------------
+
+test('deferred Hero targeting reports no target when opponents have no Heroes', () => {
+    const gs = makeState([player('alice', { party: [hero('Caster')] }), player('bob')]);
+    assert.equal(hasOpponentHeroTarget(gs, 'alice', 'DESTROY'), false);
+    assert.equal(hasOpponentHeroTarget(gs, 'alice', 'STEAL'), false);
+});
+
+test('deferred Hero targeting respects steal/destroy protections', () => {
+    const target = player('bob', { party: [hero('Target')], cannotBeStolen: true });
+    const gs = makeState([player('alice'), target]);
+    assert.equal(hasOpponentHeroTarget(gs, 'alice', 'STEAL'), false);
+    assert.equal(hasOpponentHeroTarget(gs, 'alice', 'DESTROY'), true);
+    target.cannotBeDestroyed = true;
+    assert.equal(hasOpponentHeroTarget(gs, 'alice', 'DESTROY'), false);
+});
 
 test('SKILL_VIBRANT_GLOW grants +5 roll bonus', () => {
     const p = player('alice', { party: [hero('Vibrant Glow', { id: 'vg' })] });

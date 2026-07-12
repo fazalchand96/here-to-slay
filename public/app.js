@@ -1078,6 +1078,9 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
     const detailTitle = (isMonster || card.type === 'Monster Card')
         ? `Slay ${card.slayRoll}+ · Fail ${card.penaltyRoll}- · Needs ${card.requirement || '—'}`
         : (card.requirement || card.name || '');
+    const monsterRequirement = (isMonster || card.type === 'Monster Card')
+        ? `<div class="monster-requirement-badge">Req: ${card.requirement || 'None'}</div>`
+        : '';
     // Per-class / per-type accent that tints the frame border + type ribbon (--cc).
     const CLASS_TINT = { Fighter: 'var(--class-fighter)', Bard: 'var(--class-bard)', Guardian: 'var(--class-guardian)', Ranger: 'var(--class-ranger)', Thief: 'var(--class-thief)', Wizard: 'var(--class-wizard)' };
     const TYPE_TINT = { 'Item Card': 'var(--gold)', 'Cursed Item Card': 'var(--class-wizard)', 'Magic Card': 'var(--class-wizard)', 'Modifier Card': '#5aa8b8', 'Challenge Card': '#e07a4a' };
@@ -1137,6 +1140,7 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
     return `
         <div class="card${variantClass} type-${typeSlug}${classSlug ? ` class-${classSlug}` : ''}${artClass(card)} ${glowClass}" id="${card.id}" data-id="${card.id}" title="${detailTitle}" style="--cc:${cardTint}; ${card.artUrl ? '' : artCropStyle(card.id)} ${inlineStyle}">
             <div class="card-req">${badgeVal}</div>
+            ${monsterRequirement}
             ${equippedBadge}
             <div class="card-face">
                 <div class="card-type">${card.type}</div>
@@ -4093,6 +4097,7 @@ socket.on('peek_cards', (data) => {
 
             wrap.className = 'peek-card-wrap';
 
+            const effectText = c.effect || 'No effect text.';
             wrap.innerHTML = `
 
                 <div class="card">
@@ -4107,6 +4112,12 @@ socket.on('peek_cards', (data) => {
 
                     </div>
 
+                </div>
+
+                <div class="peek-card-details">
+                    <strong class="peek-card-name">${c.name || 'Unknown card'}</strong>
+                    <span class="peek-card-type">${c.type || 'Unknown type'}${c.class ? ` · ${c.class}` : ''}</span>
+                    <span class="peek-card-effect">${effectText}</span>
                 </div>
 
                 ${viewOnly ? '' : `<button class="action-btn peek-select-btn" onclick="selectPeekCard('${c.id}', '${data.skillId}')">${data.actionLabel || 'Select'}</button>`}
@@ -5392,9 +5403,9 @@ function findCardContext(id) {
 
 
 
-window.inspectCard = function(cardId) {
+window.inspectCard = function(cardId, scopedContext = null) {
     triggerHaptic(10);
-    const context = findCardContext(cardId);
+    const context = scopedContext || findCardContext(cardId);
 
     if (!context || !context.card || context.card.type === 'Hidden') return;
 
@@ -5457,6 +5468,8 @@ window.inspectCard = function(cardId) {
     if (card.type === 'Monster Card') {
 
         descriptionText += `Slay: ${card.slayRoll}+ | Fail: ${card.penaltyRoll}-\n\n`;
+
+        descriptionText += `Requirement: ${card.requirement || 'None'}\n\n`;
 
     } else if (card.requirement && card.requirement !== 'None') {
 
@@ -6093,7 +6106,18 @@ function handleTargetingClick(cardEl, cardId) {
 
     if (myTargetMode) {
 
-        const context = findCardContext(cardId);
+        let context = null;
+        if (cardEl.closest('#player-party')) {
+            const card = latestGameState?.players?.[myId]?.party?.find(c => c.id === cardId);
+            if (card) context = { card, location: 'party', owner: myId };
+        } else if (cardEl.closest('#player-hand')) {
+            const card = latestGameState?.players?.[myId]?.hand?.find(c => c.id === cardId);
+            if (card) context = { card, location: 'hand', owner: myId };
+        } else if (cardEl.closest('#active-monsters')) {
+            const card = latestGameState?.activeMonsters?.find(c => c.id === cardId);
+            if (card) context = { card, location: 'monsters', owner: null };
+        }
+        context = context || findCardContext(cardId);
 
         if (context) {
 
@@ -6409,7 +6433,7 @@ document.body.addEventListener('click', (e) => {
 
         if (context) {
 
-            inspectCard(cardId);
+            inspectCard(cardId, context);
 
         }
 

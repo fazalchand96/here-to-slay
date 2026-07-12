@@ -4,7 +4,7 @@ const { Server } = require('socket.io');
 const fs = require('fs');
 const path = require('path');
 const { resolveSkill } = require('./card_effects');
-const { executeSkill, executeMagic } = require('./skill_engine');
+const { executeSkill, executeMagic, hasOpponentHeroTarget } = require('./skill_engine');
 const ALL_CARDS = require('./cards.json');
 
 const app = express();
@@ -710,6 +710,14 @@ function resolvePendingRoll() {
                 } else {
                     // DEFERRED TARGETING LOGIC
                     if (TARGETING_SKILLS.includes(hero.skill_id)) {
+                        const stealSkills = ['STEAL_HERO', 'SKILL_MEOWZIO', 'SKILL_TIPSY_TOOTIE', 'SKILL_WHISKERS', 'SKILL_WIGGLES'];
+                        const targetAction = stealSkills.includes(hero.skill_id) ? 'STEAL' : 'DESTROY';
+                        if (!hasOpponentHeroTarget(gameState, rollerId, targetAction)) {
+                            io.emit('message', `${getPlayerName(gameState, player.id)} successfully rolled for ${hero.name}, but there is no legal Hero target.`);
+                            resetToPlayingState();
+                            broadcastState();
+                            return;
+                        }
                         gameState.state = 'WAITING_FOR_SKILL_TARGET';
                         gameState.pendingAction = {
                             type: 'SKILL_TARGET_HERO',
