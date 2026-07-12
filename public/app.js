@@ -1721,7 +1721,15 @@ socket.on('gameStateUpdate', (data) => {
 
                         setTimeout(() => {
 
-                            renderBoard(data);
+                            // Render the NEWEST state, not the captured `data`.
+                            // This render is delayed ~1.2s for the slay animation;
+                            // if a newer gameStateUpdate arrived and already
+                            // rendered during that window, renderBoard(data) here
+                            // would clobber the DOM back to this (now stale) update
+                            // and — with no further broadcast — leave it desynced
+                            // (e.g. a played hero card stuck in the hand). Found by
+                            // the mobile-UI harness; exposed more at fast cadence.
+                            renderBoard(latestGameState);
 
                         }, 50);
 

@@ -117,9 +117,20 @@ async function checkDesync(page) {
         // Category-5 canary: the server must NEVER mask a player's own hand.
         const hiddenOwn = (my.hand || []).filter(c => c && c.type === 'Hidden').length;
         if (hiddenOwn > 0) return `own hand contains ${hiddenOwn} Hidden card(s) — server mismasking`;
-        const handDom = document.querySelectorAll('#player-hand .card[data-id]').length;
+        const handEls = [...document.querySelectorAll('#player-hand .card[data-id]')];
+        const handDom = handEls.length;
         const handState = (my.hand || []).length;
-        if (handDom !== handState) return `hand DOM=${handDom} state=${handState}`;
+        if (handDom !== handState) {
+            // Enrich: which id(s) are in the DOM but not in state, and what marks
+            // the extra element (animation/ghost class, visibility). Distinguishes
+            // a real orphaned card from a transient mid-render sample.
+            const stateIds = new Set((my.hand || []).map(c => c.id));
+            const domIds = handEls.map(e => e.dataset.id);
+            const extra = handEls.filter(e => !stateIds.has(e.dataset.id))
+                .map(e => `${e.dataset.id}[${e.className.replace(/\s+/g, '.').slice(0, 70)}|vis=${getComputedStyle(e).visibility}|op=${getComputedStyle(e).opacity}]`);
+            const missing = [...stateIds].filter(id => !domIds.includes(id));
+            return `hand DOM=${handDom} state=${handState} | extraDom=${JSON.stringify(extra)} | missingFromDom=${JSON.stringify(missing)} | animActive=${document.body.className.match(/\S*strike\S*|\S*anim\S*/g) || 'none'}`;
+        }
         const partyDom = document.querySelectorAll('#player-party .card[data-id]').length;
         const partyState = (my.party || []).length;
         if (partyDom !== partyState) return `party DOM=${partyDom} state=${partyState}`;
