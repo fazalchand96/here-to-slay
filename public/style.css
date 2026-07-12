@@ -1512,7 +1512,10 @@ body.landscape #opponents-bar .opponent-chip {
 /* Deck/hand peek modal: lay each card above a persistent, full Select button so
    nothing relies on hover and nothing clips. Scoped to #deck-peek-cards so the
    rest of the game's card rendering is untouched. */
-#deck-peek-cards {
+#deck-peek-cards,
+#mandatory-discard-cards,
+#pool-cards,
+#discard-search-cards {
     display: flex;
     flex-wrap: wrap;
     gap: 14px;

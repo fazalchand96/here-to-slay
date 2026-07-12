@@ -4,6 +4,11 @@ Written 2026-07-12 ~13:30 by the Fable 5 Director session. Read this plus
 GOAL_ANIMATION_AND_TESTING.md, CONTEXT.md, and harness/results/FINDINGS.md to
 resume with zero context. Verify against live logs — this is a snapshot.
 
+## ⚠️ STREAK TARGET CHANGED (2026-07-12, user): 15 games per orientation, NOT 50.
+Relaunch streaks with `--games 15` (was 50). DoD = two CLEAN 15-game 6p streaks
+(landscape + portrait), 2 lanes each. Live deploy is on the -ca6f URL; every
+bug fix → commit/push/deploy (Codex fixes, Director does git — Codex .git is RO).
+
 ## Definition-of-Done status
 
 - **Track A Step 1 (alignment): PASS** (4 gate rounds; portrait leader needed a

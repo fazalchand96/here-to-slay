@@ -1076,7 +1076,7 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
     }
     // Tooltip detail (no extra node) keeps slay/fail/requirement reachable.
     const detailTitle = (isMonster || card.type === 'Monster Card')
-        ? `Slay ${card.slayRoll}+ · Fail ${card.penaltyRoll}- · Needs ${card.requirement || '—'}`
+        ? `${card.rollType === 'LOW_ROLL' ? `Slay ≤${card.slayRoll} · Fail ${card.penaltyRoll}+` : `Slay ${card.slayRoll}+ · Fail ${card.penaltyRoll}-`} · Needs ${card.requirement || '—'}`
         : (card.requirement || card.name || '');
     const monsterRequirement = (isMonster || card.type === 'Monster Card')
         ? `<div class="monster-requirement-badge">Req: ${card.requirement || 'None'}</div>`
@@ -3019,16 +3019,9 @@ function renderBoard(data) {
             const poolCards = document.getElementById('pool-cards');
             poolCards.innerHTML = gaPool.submittedCards.map(c => {
                 const btn = iChoose
-                    ? `<button class="action-btn inline attack" onclick="resolveGlobalAction('${c.id}')">Select</button>`
+                    ? `<button class="action-btn peek-select-btn attack" onclick="resolveGlobalAction('${c.id}')">Select</button>`
                     : '';
-                return `<div class="card glow-target">
-                        <div class="card-img${artClass(c)}" style="background-image: url('${cardArt(c)}')"></div>
-                        <div class="card-info">
-                            <div class="card-name">${c.name}</div>
-                            <div class="card-type">${c.type}</div>
-                        </div>
-                        ${btn}
-                    </div>`;
+                return `<div class="peek-card-wrap">${pickerCardWrapHtml(c, btn)}</div>`;
             }).join('');
         }
         globalDiscardPool?.classList.remove('hidden');
@@ -4172,6 +4165,27 @@ window.selectPeekCard = function(cardId, skillId) {
 
 
 
+// Shared markup for a card shown in a chooser/picker modal (discard, give,
+// sacrifice, pool, discard-search). The premium art-only frame hides .card-info,
+// so a separate always-visible details panel carries name/type/effect — the
+// player must be able to read WHAT they're choosing (found for Beary Wise's
+// opponent-discard; applies to every picker). `buttonHtml` is the per-picker
+// action button, rendered persistent (peek-select-btn), never hover-only.
+function pickerCardWrapHtml(c, buttonHtml) {
+    return `
+        <div class="card glow-target">
+            <div class="card-img${artClass(c)}" style="background-image: url('${cardArt(c)}')"></div>
+            <div class="card-info"><div class="card-name">${c.name || ''}</div><div class="card-type">${c.type || ''}</div></div>
+        </div>
+        <div class="peek-card-details">
+            <strong class="peek-card-name">${c.name || 'Unknown card'}</strong>
+            <span class="peek-card-type">${c.type || ''}${c.class ? ' · ' + c.class : ''}</span>
+            <span class="peek-card-effect">${c.effect || 'No effect text.'}</span>
+        </div>
+        ${buttonHtml || ''}
+    `;
+}
+
 function renderGlobalActionPrompt(action) {
 
     if (action && action.pendingPlayerIds && action.pendingPlayerIds.includes(myId)) {
@@ -4199,27 +4213,13 @@ function renderGlobalActionPrompt(action) {
 
             myHand.forEach(c => {
 
-                const cardEl = document.createElement('div');
+                const wrap = document.createElement('div');
 
-                cardEl.className = 'card glow-target';
+                wrap.className = 'peek-card-wrap';
 
-                cardEl.innerHTML = `
+                wrap.innerHTML = pickerCardWrapHtml(c, `<button class="action-btn peek-select-btn attack" onclick="submitGlobalAction('${c.id}')">${action.type === 'MULTI_GIVE' ? 'Give' : 'Discard'}</button>`);
 
-                    <div class="card-img${artClass(c)}" style="background-image: url('${cardArt(c)}')"></div>
-
-                    <div class="card-info">
-
-                        <div class="card-name">${c.name}</div>
-
-                        <div class="card-type">${c.type}</div>
-
-                    </div>
-
-                    <button class="action-btn inline attack" onclick="submitGlobalAction('${c.id}')">${action.type === 'MULTI_GIVE' ? 'Give' : 'Discard'}</button>
-
-                `;
-
-                container.appendChild(cardEl);
+                container.appendChild(wrap);
 
             });
 
@@ -4247,27 +4247,13 @@ function renderGlobalActionPrompt(action) {
 
             myParty.forEach(c => {
 
-                const cardEl = document.createElement('div');
+                const wrap = document.createElement('div');
 
-                cardEl.className = 'card glow-target';
+                wrap.className = 'peek-card-wrap';
 
-                cardEl.innerHTML = `
+                wrap.innerHTML = pickerCardWrapHtml(c, `<button class="action-btn peek-select-btn attack" onclick="socket.emit('submit_global_action', { targetHeroId: '${c.id}' }); document.getElementById('mandatory-discard-modal').classList.add('hidden');">Sacrifice</button>`);
 
-                    <div class="card-img${artClass(c)}" style="background-image: url('${cardArt(c)}')"></div>
-
-                    <div class="card-info">
-
-                        <div class="card-name">${c.name}</div>
-
-                        <div class="card-type">${c.type}</div>
-
-                    </div>
-
-                    <button class="action-btn inline attack" onclick="socket.emit('submit_global_action', { targetHeroId: '${c.id}' }); document.getElementById('mandatory-discard-modal').classList.add('hidden');">Sacrifice</button>
-
-                `;
-
-                container.appendChild(cardEl);
+                container.appendChild(wrap);
 
             });
 
@@ -4817,31 +4803,15 @@ function openDiscardSearch(skillId) {
 
         validCards.forEach(c => {
 
-            const cardEl = document.createElement('div');
+            const wrap = document.createElement('div');
 
-            cardEl.className = 'card glow-target';
+            wrap.className = 'peek-card-wrap';
 
-            cardEl.id = c.id;
+            wrap.dataset.id = c.id;
 
-            cardEl.dataset.id = c.id;
+            wrap.innerHTML = pickerCardWrapHtml(c, `<button class="action-btn peek-select-btn attack" onclick="selectDiscardCard('${c.id}')">Select</button>`);
 
-            cardEl.innerHTML = `
-
-                <div class="card-img${artClass(c)}" style="background-image: url('${cardArt(c)}')"></div>
-
-                <div class="card-info">
-
-                    <div class="card-name">${c.name}</div>
-
-                    <div class="card-type">${c.type}</div>
-
-                </div>
-
-                <button class="action-btn inline attack" onclick="selectDiscardCard('${c.id}')">Select</button>
-
-            `;
-
-            container.appendChild(cardEl);
+            container.appendChild(wrap);
 
         });
 
@@ -5471,7 +5441,9 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
     if (card.type === 'Monster Card') {
 
-        descriptionText += `Slay: ${card.slayRoll}+ | Fail: ${card.penaltyRoll}-\n\n`;
+        descriptionText += (card.rollType === 'LOW_ROLL')
+            ? `Slay: ${card.slayRoll} or lower | Fail: ${card.penaltyRoll} or higher\n\n`
+            : `Slay: ${card.slayRoll}+ | Fail: ${card.penaltyRoll}-\n\n`;
 
         descriptionText += `Requirement: ${card.requirement || 'None'}\n\n`;
 
