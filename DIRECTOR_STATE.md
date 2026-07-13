@@ -328,18 +328,44 @@ instructions given per above. Gate independently before commit/push/deploy
 (rerun tests, spot-check the Meowzio judgment call, check CACHE_VERSION
 was bumped given it touches app.js).
 
-**Bundled into the same dispatch — player name sometimes shows wrong/as
-raw ID in the game log**, user report 2026-07-13. Director found two
-candidate causes, told Codex to verify which is real rather than assume
-both: (a) server.js new players start `name: ''`, so any message in the
-window before `set_player_name` arrives falls through getPlayerName()'s
-`'Player '+id` fallback; (b) public/app.js has at least TWO inconsistent
-name-resolution implementations — the shared `getPlayerName(id)` helper
-(line 5) vs an ad-hoc inline one near the roll-display code (~line 281,
-`data.players[pr.rollerId].name || 'Player'`, reads from a possibly-stale
-`data` param instead of `latestGameState`, falls back to bare "Player"
-with no id at all). Told to audit ALL name-resolution call sites in app.js
-and consolidate to one consistent always-current source.
+**DONE (partially) — GATED + SHIPPED 2026-07-13.** task-mrjlbfja-rha754,
+committed `63234fb`, pushed, deploy verifying (hts-v74).
+- AND/THEN targeting fix: Serious Grey/Whiskers/Meowzio, all per Director's
+  pre-classification — GOOD, fully closes the reported bug + suspected
+  siblings. 130/130 tests, independently reverified.
+- Player-name bug: only PARTIALLY fixed. Codex fixed the app.js dual-
+  implementation issue (attack-roll display now uses shared
+  getPlayerName()) and added a legacy-string resolver in showNotification.
+  Director caught a real bug in that resolver before committing — it did
+  `resolvedMessage.split(rawPrefix).join(...)` on a bare 4-char substring,
+  which could false-positive-match inside unrelated text (a card name,
+  etc.) and mangle it; fixed to match the exact "Player <prefix>" phrase
+  instead (the only string getPlayerName's fallback ever actually
+  produces). **Bigger finding Codex missed entirely: skill_engine.js has
+  ~86 occurrences of `player.id.substring(0, 4)` (and similar for other
+  player vars like `tp.id.substring(0,4)`) built directly into
+  `actionMessage` strings that get broadcast to every client via
+  `io.emit('message', actionMessage)` (confirmed at skill_engine.js line
+  980, plus at least one inline emit at line 44 for Rex Major). This is
+  almost certainly the PRIMARY source of the user's "shows raw ID" report
+  — far more impactful than the two things actually fixed. NOT yet fixed —
+  queued as its own follow-up dispatch, see below.**
+
+**IN PROGRESS — skill_engine.js raw-ID sweep (the real fix for the name
+bug):** task-mrjmh5hn-4l4vww, fresh thread 019f5cfa-7501-7b03-9423-8a2e58f3d5c8. ~86 occurrences of `<player-var>.id.substring(0, 4)` used directly
+in user-facing action messages instead of a resolved player name. Needs:
+(1) a name-resolution helper reachable from skill_engine.js — it currently
+has no equivalent to server.js's `getPlayerName(gameState, id)`, and
+skill_engine.js CANNOT require server.js back (server.js already requires
+skill_engine.js — circular). Prefer extracting one shared implementation
+(e.g. a small new `player_utils.js` both files require) over duplicating
+the logic a third time, to avoid yet another drift-prone copy (app.js
+already had 2 diverging copies — do not make a 3rd/4th elsewhere). (2)
+Sweep all ~86 occurrences to use it, verify with existing tests (some may
+assert exact message strings and need updating) plus spot-check a couple
+of the busier skills (Meowzio, Whiskers, Serious Grey — just fixed, don't
+regress them) in a real 2-browser flow if feasible. Same CACHE_VERSION
+bump reminder applies if any public/*.js|html|css changes.
 
 **Explicitly deferred (user, 2026-07-13):** the 2 streak-breaker softlocks
 (landscape50i game 11 PROMPT_SKILL_ROLL stall, portrait50d game 8

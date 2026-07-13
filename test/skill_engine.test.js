@@ -819,14 +819,16 @@ test('SKILL_GREEDY_CHEEKS no-ops when opponents have empty hands', () => {
 // --- Destroy / steal variants ---
 test('SKILL_MEOWZIO steals a hero and pulls a card from that player', () => {
     const victim = hero('Victim', { id: 'v1' });
-    const bob = player('bob', { party: [victim], hand: [card('x', 'Item Card')] });
-    const alice = player('alice', { party: [hero('Meowzio', { id: 'mz' })] });
+    const bob = player('bob', { name: 'Bob the Brave', party: [victim], hand: [card('x', 'Item Card')] });
+    const alice = player('alice', { name: 'Alice the Bold', party: [hero('Meowzio', { id: 'mz' })] });
     const gs = makeState([alice, bob]);
-    executeSkill(gs, makeIo(), 'SKILL_MEOWZIO', 'alice', 'mz', { targetPlayerId: 'bob', targetHeroId: 'v1' });
+    const io = makeIo();
+    executeSkill(gs, io, 'SKILL_MEOWZIO', 'alice', 'mz', { targetPlayerId: 'bob', targetHeroId: 'v1' });
     assert.ok(alice.party.includes(victim)); // stolen, not destroyed
     assert.equal(bob.party.length, 0);
     assert.equal(alice.hand.length, 1);       // pulled a card from bob
     assert.equal(bob.hand.length, 0);
+    assert.match(io.lastMessage(), /Alice the Bold used Meowzio on Bob the Brave/);
 });
 
 test('SKILL_MEOWZIO pulls from the chosen player when no Hero can be stolen', () => {
@@ -843,16 +845,18 @@ test('SKILL_MEOWZIO pulls from the chosen player when no Hero can be stolen', ()
 test('SKILL_WHISKERS steals the targeted hero, then queues a DESTROY for a second', () => {
     const stolen = hero('Stolen', { id: 'v1' });
     const other = hero('Other', { id: 'v2' });
-    const bob = player('bob', { party: [stolen, other] });
-    const alice = player('alice', { party: [hero('Whiskers', { id: 'wh' })] });
+    const bob = player('bob', { name: 'Bob the Brave', party: [stolen, other] });
+    const alice = player('alice', { name: 'Alice the Bold', party: [hero('Whiskers', { id: 'wh' })] });
     const gs = makeState([alice, bob]);
-    executeSkill(gs, makeIo(), 'SKILL_WHISKERS', 'alice', 'wh', { targetPlayerId: 'bob', targetHeroId: 'v1' });
+    const io = makeIo();
+    executeSkill(gs, io, 'SKILL_WHISKERS', 'alice', 'wh', { targetPlayerId: 'bob', targetHeroId: 'v1' });
     // v1 is STOLEN (not discarded) into alice's party...
     assert.ok(alice.party.includes(stolen));
     assert.ok(!gs.discardPile.includes(stolen));
     // ...and a DESTROY of the second hero is queued (bob still has v2).
     assert.equal(gs.pendingAction.type, 'DESTROY');
     assert.equal(gs.pendingAction.playerToChoose, 'alice');
+    assert.match(io.lastMessage(), /Alice the Bold used Whiskers to STEAL Stolen from Bob the Brave/);
 });
 
 test('SKILL_WHISKERS with no second hero leaves no pending destroy', () => {
@@ -892,12 +896,14 @@ test('SKILL_WHISKERS resolves STEAL when DESTROY has no legal target', () => {
 
 test('SKILL_SERIOUS_GREY destroys a hero and ALWAYS draws a card', () => {
     const victim = hero('Victim', { id: 'v1' });
-    const bob = player('bob', { party: [victim] });
-    const alice = player('alice', { party: [hero('Serious Grey', { id: 'sg' })] });
+    const bob = player('bob', { name: 'Bob the Brave', party: [victim] });
+    const alice = player('alice', { name: 'Alice the Bold', party: [hero('Serious Grey', { id: 'sg' })] });
     const gs = makeState([alice, bob], { mainDeck: [card('reward', 'Hero Card')] });
-    executeSkill(gs, makeIo(), 'SKILL_SERIOUS_GREY', 'alice', 'sg', { targetPlayerId: 'bob', targetHeroId: 'v1' });
+    const io = makeIo();
+    executeSkill(gs, io, 'SKILL_SERIOUS_GREY', 'alice', 'sg', { targetPlayerId: 'bob', targetHeroId: 'v1' });
     assert.equal(bob.party.length, 0);
     assert.equal(alice.hand.length, 1); // draw is unconditional ("DESTROY ... AND DRAW")
+    assert.match(io.lastMessage(), /Alice the Bold DESTROYED Bob the Brave's Victim/);
 });
 
 test('SKILL_SERIOUS_GREY still draws when no destroy target exists', () => {

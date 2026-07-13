@@ -5,6 +5,7 @@ const { createReconnectManager, RECONNECT_GRACE_MS } = require('./reconnect');
 const fs = require('fs');
 const path = require('path');
 const { resolveSkill } = require('./card_effects');
+const { getPlayerName } = require('./player_utils');
 const {
     executeSkill, executeMagic, hasOpponentHeroTarget, getTargetingSkillPlan, drawCardsWithPassives,
     triggerCrownedSerpent, prepareImmediateItemPlay, markButtonsFreePlay,
@@ -20,14 +21,6 @@ const io = new Server(server, {
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
-
-function getPlayerName(gameState, id) {
-    if (!gameState || !gameState.players || !gameState.players[id]) {
-        return 'Player ' + id.substring(0, 4);
-    }
-    const p = gameState.players[id];
-    return p.name && p.name !== 'Player' ? p.name : 'Player ' + id.substring(0, 4);
-}
 // Game State
 let gameState = {
     state: 'LOBBY', // LOBBY, PLAYING, WAITING_FOR_MODIFIERS, WAITING_FOR_CHALLENGES, GAMEOVER
@@ -901,7 +894,7 @@ function resolvePendingRoll() {
 // every board/pending-action field so a fresh match cannot inherit stale cards.
 function removePlayerAndResetMatch(socketId) {
     if (!gameState.players[socketId]) return;
-    const name = getPlayerName(gameState, socketId) || socketId.substring(0, 4);
+    const name = getPlayerName(gameState, socketId);
 
     delete gameState.players[socketId];
     gameState.playerOrder = gameState.playerOrder.filter(id => id !== socketId);

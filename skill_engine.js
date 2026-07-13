@@ -1,4 +1,5 @@
 const SAFE_MODE = false;
+const { getPlayerName } = require('./player_utils');
 
 function maskClass(item) {
     if (!item || item.effect_id !== 'ITEM_MASK') return null;
@@ -41,7 +42,7 @@ function drawCardsWithPassives(gameState, io, count, player) {
         drawn.push(card);
         receive(card);
         if (hasRex && card.type === 'Modifier Card' && gameState.mainDeck.length > 0) {
-            if (io && io.emit) io.emit('message', `${player.id.substring(0, 4)} revealed a Modifier due to Rex Major and drew another card!`);
+            if (io && io.emit) io.emit('message', `${getPlayerName(gameState, player.id)} revealed a Modifier due to Rex Major and drew another card!`);
             receive(gameState.mainDeck.pop());
         }
     }
@@ -159,7 +160,7 @@ function resolveDestroyAction(gameState, initiatorId, targetPlayerId, targetHero
     const protectedByTerratuga = targetPlayer.slainMonsters
         && targetPlayer.slainMonsters.some(m => m.effect_id === 'MONSTER_TERRATUGA');
     if (protectedByBlade || protectedByTerratuga) {
-        return `${initiatorId.substring(0, 4)} tried to destroy ${targetPlayerId.substring(0, 4)}'s Hero, but it is protected by ${protectedByBlade ? 'Mighty Blade' : 'Terratuga'}!`;
+        return `${getPlayerName(gameState, initiatorId)} tried to destroy ${getPlayerName(gameState, targetPlayerId)}'s Hero, but it is protected by ${protectedByBlade ? 'Mighty Blade' : 'Terratuga'}!`;
     }
 
     const tHeroIndex = targetPlayer.party.findIndex(h => h.id === targetHeroId);
@@ -170,7 +171,7 @@ function resolveDestroyAction(gameState, initiatorId, targetPlayerId, targetHero
 
     // Decoy Doll absorbs the destroy before Sabretooth can convert it.
     if (consumeDecoyDoll(gameState, targetHero)) {
-        return `${initiatorId.substring(0, 4)} hit ${targetPlayerId.substring(0, 4)}'s ${targetHero.name}, but Decoy Doll was destroyed instead — the Hero survives!`;
+        return `${getPlayerName(gameState, initiatorId)} hit ${getPlayerName(gameState, targetPlayerId)}'s ${targetHero.name}, but Decoy Doll was destroyed instead — the Hero survives!`;
     }
 
     const hasSabretooth = initiator.slainMonsters && initiator.slainMonsters.some(m => m.effect_id === 'MONSTER_CORRUPTED_SABRETOOTH');
@@ -179,13 +180,13 @@ function resolveDestroyAction(gameState, initiatorId, targetPlayerId, targetHero
         targetPlayer.party.splice(tHeroIndex, 1);
         targetHero.usedSkillThisTurn = false;
         initiator.party.push(targetHero);
-        actionMessage = `Corrupted Sabretooth turned a Destroy into a Steal! ${initiatorId.substring(0, 4)} STOLE ${targetPlayerId.substring(0, 4)}'s ${targetHero.name}!`;
+        actionMessage = `Corrupted Sabretooth turned a Destroy into a Steal! ${getPlayerName(gameState, initiatorId)} STOLE ${getPlayerName(gameState, targetPlayerId)}'s ${targetHero.name}!`;
     } else {
         let itemNote = '';
         if (targetHero.equippedItem) {
             if (keepItem) {
                 initiator.hand.push(targetHero.equippedItem);
-                itemNote = ` ${initiatorId.substring(0, 4)} took the equipped ${targetHero.equippedItem.name}!`;
+                itemNote = ` ${getPlayerName(gameState, initiatorId)} took the equipped ${targetHero.equippedItem.name}!`;
             } else {
                 gameState.discardPile.push(targetHero.equippedItem);
             }
@@ -193,11 +194,11 @@ function resolveDestroyAction(gameState, initiatorId, targetPlayerId, targetHero
         }
         targetPlayer.party.splice(tHeroIndex, 1);
         gameState.discardPile.push(targetHero);
-        actionMessage = `${initiatorId.substring(0, 4)} DESTROYED ${targetPlayerId.substring(0, 4)}'s ${targetHero.name}!${itemNote}`;
+        actionMessage = `${getPlayerName(gameState, initiatorId)} DESTROYED ${getPlayerName(gameState, targetPlayerId)}'s ${targetHero.name}!${itemNote}`;
 
         const hasDracos = targetPlayer.slainMonsters && targetPlayer.slainMonsters.some(m => m.effect_id === 'MONSTER_DRACOS');
         if (hasDracos) {
-            actionMessage += ` However, ${targetPlayerId.substring(0, 4)} drew a card due to Dracos!`;
+            actionMessage += ` However, ${getPlayerName(gameState, targetPlayerId)} drew a card due to Dracos!`;
             if (gameState.mainDeck.length > 0) targetPlayer.hand.push(gameState.mainDeck.pop());
         }
     }
@@ -220,7 +221,7 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
     }
 
     console.log(`Executing skill ${skillId} for hero ${heroName} by player ${rollerId}`);
-    let actionMessage = `${player.id.substring(0, 4)} successfully used ${heroName}'s skill!`;
+    let actionMessage = `${getPlayerName(gameState, player.id)} successfully used ${heroName}'s skill!`;
 
     // Helper to draw cards securely
     const drawCards = (num, p) => drawCardsWithPassives(gameState, io, num, p);
@@ -242,11 +243,11 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
                     amount: amt,
                     originalActor: rollerId
                 };
-                actionMessage = `${player.id.substring(0, 4)} forces ${tp.id.substring(0, 4)} to discard ${amt} card(s)!`;
+                actionMessage = `${getPlayerName(gameState, player.id)} forces ${getPlayerName(gameState, tp.id)} to discard ${amt} card(s)!`;
             } else {
                 gameState.state = 'PLAYING';
                 gameState.pendingAction = null;
-                actionMessage = `${tp ? tp.id.substring(0, 4) : 'The target'} has no cards to discard!`;
+                actionMessage = `${tp ? getPlayerName(gameState, tp.id) : 'The target'} has no cards to discard!`;
             }
             break;
         }
@@ -259,7 +260,7 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
                 playerToChoose: rollerId,
                 originalActor: rollerId
             };
-            actionMessage = `${player.id.substring(0, 4)} is choosing a player to pull a card from!`;
+            actionMessage = `${getPlayerName(gameState, player.id)} is choosing a player to pull a card from!`;
             break;
 
         case 'SKILL_FURY_KNUCKLE':
@@ -270,7 +271,7 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
                 playerToChoose: rollerId,
                 originalActor: rollerId
             };
-            actionMessage = `${player.id.substring(0, 4)} is choosing a player to pull a card from!`;
+            actionMessage = `${getPlayerName(gameState, player.id)} is choosing a player to pull a card from!`;
             break;
 
         case 'SKILL_TOUGH_TEDDY':
@@ -318,11 +319,11 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
                     originalActor: rollerId,
                     optional: true
                 };
-                actionMessage = `${player.id.substring(0, 4)} drew a Challenge via Pan Chucks — they MAY destroy a Hero (or skip).`;
+                actionMessage = `${getPlayerName(gameState, player.id)} drew a Challenge via Pan Chucks — they MAY destroy a Hero (or skip).`;
             } else if (drewChallenge) {
-                actionMessage = `${player.id.substring(0, 4)} drew a Challenge via Pan Chucks, but there are no Heroes to destroy.`;
+                actionMessage = `${getPlayerName(gameState, player.id)} drew a Challenge via Pan Chucks, but there are no Heroes to destroy.`;
             } else if (drawn.length > 0) {
-                actionMessage = `${player.id.substring(0, 4)} drew ${drawn.length} card(s) via Pan Chucks, but no Challenge cards.`;
+                actionMessage = `${getPlayerName(gameState, player.id)} drew ${drawn.length} card(s) via Pan Chucks, but no Challenge cards.`;
             } else {
                 actionMessage = `The deck is empty — Pan Chucks drew nothing.`;
             }
@@ -352,11 +353,11 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
                     playerToChoose: rollerId,
                     originalActor: rollerId
                 };
-                actionMessage = `${player.id.substring(0, 4)} can discard up to ${maxDiscard} card(s) to destroy that many Heroes.`;
+                actionMessage = `${getPlayerName(gameState, player.id)} can discard up to ${maxDiscard} card(s) to destroy that many Heroes.`;
             } else if (destroyableOpp === 0) {
-                actionMessage = `${player.id.substring(0, 4)} used Qi Bear, but there are no opponent Heroes to destroy.`;
+                actionMessage = `${getPlayerName(gameState, player.id)} used Qi Bear, but there are no opponent Heroes to destroy.`;
             } else {
-                actionMessage = `${player.id.substring(0, 4)} has no cards to discard for Qi Bear!`;
+                actionMessage = `${getPlayerName(gameState, player.id)} has no cards to discard for Qi Bear!`;
             }
             break;
         }
@@ -384,7 +385,7 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
             drawCards(3, player);
             gameState.state = 'PLAYING';
             gameState.pendingAction = { type: 'DISCARD', playerToChoose: rollerId, amount: 1, originalActor: rollerId };
-            actionMessage = `${player.id.substring(0, 4)} drew 3 cards and must discard 1!`;
+            actionMessage = `${getPlayerName(gameState, player.id)} drew 3 cards and must discard 1!`;
             break;
         case 'SKILL_GREEDY_CHEEKS':
             let greedyTargets = Object.keys(gameState.players).filter(pId => pId !== rollerId && gameState.players[pId].hand.length > 0);
@@ -392,23 +393,23 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
                 gameState.state = 'WAITING_FOR_GLOBAL_ACTION';
                 gameState.pendingGlobalAction = { type: 'MULTI_GIVE', initiatorId: rollerId, pendingPlayerIds: greedyTargets, submittedCards: [] };
                 io.emit('global_action_requested', gameState.pendingGlobalAction);
-                actionMessage = `Greedy Cheeks forces opponents to give a card to ${player.id.substring(0, 4)}!`;
+                actionMessage = `Greedy Cheeks forces opponents to give a card to ${getPlayerName(gameState, player.id)}!`;
             } else { actionMessage = `Opponents have no cards!`; }
             break;
         case 'SKILL_FUZZY_CHEEKS':
             drawCards(1, player);
             gameState.state = 'WAITING_FOR_HAND_SELECTION';
             gameState.pendingAction = { type: 'PLAY_FROM_HAND', allowedTypes: ['Hero Card'], playerToChoose: rollerId, originalActor: rollerId, optional: true };
-            actionMessage = `${player.id.substring(0, 4)} drew a card and may play a Hero!`;
+            actionMessage = `${getPlayerName(gameState, player.id)} drew a card and may play a Hero!`;
             break;
         case 'SKILL_HOOK':
             if (player.hand.some(c => c.type === 'Item Card')) {
                 gameState.state = 'WAITING_FOR_HAND_SELECTION';
                 gameState.pendingAction = { type: 'PLAY_FROM_HAND', allowedTypes: ['Item Card'], playerToChoose: rollerId, originalActor: rollerId, thenDraw: 1 };
-                actionMessage = `${player.id.substring(0, 4)} must play an Item from hand, then draw a card!`;
+                actionMessage = `${getPlayerName(gameState, player.id)} must play an Item from hand, then draw a card!`;
             } else {
                 drawCards(1, player);
-                actionMessage = `${player.id.substring(0, 4)} had no Item to play with Hook, so they drew a card.`;
+                actionMessage = `${getPlayerName(gameState, player.id)} had no Item to play with Hook, so they drew a card.`;
             }
             break;
         case 'SKILL_QUICK_DRAW': {
@@ -419,9 +420,9 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
             if (qdDrawn.some(c => c.type === 'Item Card')) {
                 gameState.state = 'WAITING_FOR_HAND_SELECTION';
                 gameState.pendingAction = { type: 'PLAY_FROM_HAND', allowedTypes: ['Item Card'], playerToChoose: rollerId, originalActor: rollerId, optional: true };
-                actionMessage = `${player.id.substring(0, 4)} drew 2 cards and may play an Item immediately!`;
+                actionMessage = `${getPlayerName(gameState, player.id)} drew 2 cards and may play an Item immediately!`;
             } else {
-                actionMessage = `${player.id.substring(0, 4)} drew 2 cards with Quick Draw — no Item drawn, so nothing more happens.`;
+                actionMessage = `${getPlayerName(gameState, player.id)} drew 2 cards with Quick Draw — no Item drawn, so nothing more happens.`;
             }
             break;
         }
@@ -437,9 +438,9 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
                     gameState.state = 'WAITING_FOR_IMMEDIATE_PLAY';
                     gameState.pendingCard = snowballCard;
                     gameState.pendingAction = { type: 'IMMEDIATE_PLAY_CHOICE', playerToChoose: rollerId, thenDraw: 1 };
-                    actionMessage = `${player.id.substring(0, 4)} drew a Magic card with Snowball and may play it immediately (then draw another)!`;
+                    actionMessage = `${getPlayerName(gameState, player.id)} drew a Magic card with Snowball and may play it immediately (then draw another)!`;
                 } else {
-                    actionMessage = `${player.id.substring(0, 4)} drew a card with Snowball — not a Magic card, so nothing more happens.`;
+                    actionMessage = `${getPlayerName(gameState, player.id)} drew a card with Snowball — not a Magic card, so nothing more happens.`;
                 }
             } else {
                 actionMessage = `The deck is empty!`;
@@ -447,11 +448,11 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
             break;
 case 'DRAW_CARD':
             drawCards(1, player);
-            actionMessage = `${player.id.substring(0, 4)} used ${heroName}'s skill to draw a card.`;
+            actionMessage = `${getPlayerName(gameState, player.id)} used ${heroName}'s skill to draw a card.`;
             break;
         case 'DRAW_2_CARDS':
             drawCards(2, player);
-            actionMessage = `${player.id.substring(0, 4)} used ${heroName}'s skill to draw 2 cards.`;
+            actionMessage = `${getPlayerName(gameState, player.id)} used ${heroName}'s skill to draw 2 cards.`;
             break;
         case 'DRAW_AND_PLAY':
             if (gameState.mainDeck.length > 0) {
@@ -465,45 +466,45 @@ case 'DRAW_CARD':
                         type: 'IMMEDIATE_PLAY_CHOICE',
                         playerToChoose: rollerId
                     };
-                    actionMessage = `${player.id.substring(0, 4)} drew a Hero and can play it immediately!`;
+                    actionMessage = `${getPlayerName(gameState, player.id)} drew a Hero and can play it immediately!`;
                 } else {
-                    actionMessage = `${player.id.substring(0, 4)} drew a card.`;
+                    actionMessage = `${getPlayerName(gameState, player.id)} drew a card.`;
                 }
             } else {
                 actionMessage = `The deck is empty!`;
             }
             break;
         case 'SKILL_NAPPING_NIBBLES':
-            actionMessage = `${player.id.substring(0, 4)} used ${heroName}'s skill. It did absolutely nothing!`;
+            actionMessage = `${getPlayerName(gameState, player.id)} used ${heroName}'s skill. It did absolutely nothing!`;
             break;
         case 'SKILL_CALMING_VOICE':
             // "Hero cards in your Party cannot be stolen until your next turn." - Requires lingering state.
             player.cannotBeStolen = true; // In a full implementation, we reset this on turn start.
-            actionMessage = `${player.id.substring(0, 4)}'s Heroes cannot be stolen until their next turn!`;
+            actionMessage = `${getPlayerName(gameState, player.id)}'s Heroes cannot be stolen until their next turn!`;
             break;
         case 'SKILL_IRON_RESOLVE':
             player.cannotBeChallenged = true;
-            actionMessage = `${player.id.substring(0, 4)}'s cards cannot be challenged for the rest of their turn!`;
+            actionMessage = `${getPlayerName(gameState, player.id)}'s cards cannot be challenged for the rest of their turn!`;
             break;
         case 'SKILL_MIGHTY_BLADE':
             player.cannotBeDestroyed = true;
-            actionMessage = `${player.id.substring(0, 4)}'s Heroes cannot be destroyed until their next turn!`;
+            actionMessage = `${getPlayerName(gameState, player.id)}'s Heroes cannot be destroyed until their next turn!`;
             break;
         case 'SKILL_VIBRANT_GLOW':
             player.rollBonus = (player.rollBonus || 0) + 5;
             (player.rollBonusSources = player.rollBonusSources || []).push({ source: 'Vibrant Glow', value: 5 });
-            actionMessage = `${player.id.substring(0, 4)} gained +5 to all rolls this turn!`;
+            actionMessage = `${getPlayerName(gameState, player.id)} gained +5 to all rolls this turn!`;
             break;
         case 'SKILL_WISE_SHIELD':
             player.rollBonus = (player.rollBonus || 0) + 3;
             (player.rollBonusSources = player.rollBonusSources || []).push({ source: 'Wise Shield', value: 3 });
-            actionMessage = `${player.id.substring(0, 4)} gained +3 to all rolls this turn!`;
+            actionMessage = `${getPlayerName(gameState, player.id)} gained +3 to all rolls this turn!`;
             break;
         case 'SKILL_WILY_RED':
             while(player.hand.length < 7 && gameState.mainDeck.length > 0) {
                 drawCards(1, player);
             }
-            actionMessage = `${player.id.substring(0, 4)} drew cards until they had 7 in their hand!`;
+            actionMessage = `${getPlayerName(gameState, player.id)} drew cards until they had 7 in their hand!`;
             break;
         case 'SKILL_SPOOKY':
             let spookyTargets = [];
@@ -516,7 +517,7 @@ case 'DRAW_CARD':
                 gameState.state = 'WAITING_FOR_GLOBAL_ACTION';
                 gameState.pendingGlobalAction = { type: 'MULTI_SACRIFICE', initiatorId: rollerId, pendingPlayerIds: spookyTargets };
                 io.emit('global_action_requested', gameState.pendingGlobalAction);
-                actionMessage = `${player.id.substring(0, 4)}'s ${heroName} forced all other players to sacrifice a Hero!`;
+                actionMessage = `${getPlayerName(gameState, player.id)}'s ${heroName} forced all other players to sacrifice a Hero!`;
             } else {
                 actionMessage = `Opponents have no Heroes to sacrifice!`;
             }
@@ -528,7 +529,7 @@ case 'DRAW_CARD':
                     player.hand.push(p.hand.splice(randIndex, 1)[0]);
                 }
             });
-            actionMessage = `${player.id.substring(0, 4)} stole a random card from everyone's hand!`;
+            actionMessage = `${getPlayerName(gameState, player.id)} stole a random card from everyone's hand!`;
             break;
         case 'SKILL_SMOOTH_MIMIMEOW':
             Object.values(gameState.players).forEach(p => {
@@ -537,7 +538,7 @@ case 'DRAW_CARD':
                     player.hand.push(p.hand.splice(randIndex, 1)[0]);
                 }
             });
-            actionMessage = `${player.id.substring(0, 4)} pulled a card from everyone with a Thief in their party!`;
+            actionMessage = `${getPlayerName(gameState, player.id)} pulled a card from everyone with a Thief in their party!`;
             break;
 
         // --- 2. Opponent Hero Target ---
@@ -549,7 +550,7 @@ case 'DRAW_CARD':
             if (targetData && targetData.targetPlayerId) {
                 const tp = gameState.players[targetData.targetPlayerId];
                 if (tp) {
-                    let msg = `${player.id.substring(0, 4)} used Meowzio on ${tp.id.substring(0, 4)}`;
+                    let msg = `${getPlayerName(gameState, player.id)} used Meowzio on ${getPlayerName(gameState, tp.id)}`;
                     const tHeroIndex = tp.cannotBeStolen || !targetData.targetHeroId
                         ? -1
                         : tp.party.findIndex(h => h.id === targetData.targetHeroId);
@@ -587,7 +588,7 @@ case 'DRAW_CARD':
             if (targetData && targetData.targetPlayerId && targetData.targetHeroId) {
                 const tp = gameState.players[targetData.targetPlayerId];
                 if (tp && tp.cannotBeStolen) {
-                    actionMessage = `${player.id.substring(0, 4)} tried to use Whiskers, but ${tp.id.substring(0, 4)}'s Heroes are protected from stealing!`;
+                    actionMessage = `${getPlayerName(gameState, player.id)} tried to use Whiskers, but ${getPlayerName(gameState, tp.id)}'s Heroes are protected from stealing!`;
                 } else if (tp) {
                     const tHeroIndex = tp.party.findIndex(h => h.id === targetData.targetHeroId);
                     if (tHeroIndex !== -1) {
@@ -595,7 +596,7 @@ case 'DRAW_CARD':
                         tp.party.splice(tHeroIndex, 1);
                         targetHero.usedSkillThisTurn = false;
                         player.party.push(targetHero);
-                        actionMessage = `${player.id.substring(0, 4)} used Whiskers to STEAL ${targetHero.name} from ${tp.id.substring(0, 4)}`;
+                        actionMessage = `${getPlayerName(gameState, player.id)} used Whiskers to STEAL ${targetHero.name} from ${getPlayerName(gameState, tp.id)}`;
                     }
                 }
                 // Now set up the DESTROY half against a second Hero, if one exists.
@@ -616,7 +617,7 @@ case 'DRAW_CARD':
                 }
             }
             if (!targetData || !targetData.targetHeroId) {
-                actionMessage = `${player.id.substring(0, 4)} used Whiskers, but there was no Hero to STEAL.`;
+                actionMessage = `${getPlayerName(gameState, player.id)} used Whiskers, but there was no Hero to STEAL.`;
                 if (hasOpponentHeroTarget(gameState, rollerId, 'DESTROY')) {
                     gameState.state = 'PLAYING';
                     gameState.pendingAction = { type: 'DESTROY', playerToChoose: rollerId, originalActor: rollerId };
@@ -632,7 +633,7 @@ case 'DRAW_CARD':
             if (targetData && targetData.targetPlayerId && targetData.targetHeroId) {
                 actionMessage = resolveDestroyAction(gameState, rollerId, targetData.targetPlayerId, targetData.targetHeroId);
             } else {
-                actionMessage = `${player.id.substring(0, 4)} used Serious Grey, but there was no Hero to DESTROY.`;
+                actionMessage = `${getPlayerName(gameState, player.id)} used Serious Grey, but there was no Hero to DESTROY.`;
             }
             drawCards(1, player);
             actionMessage += ` Serious Grey still drew a card.`;
@@ -654,7 +655,7 @@ case 'DRAW_CARD':
                         // resolves (with deferred targeting if it needs a target).
                         // Sealing Key (CURSE_KEY) still forbids using the effect.
                         if (targetHero.equippedItem && targetHero.equippedItem.effect_id === 'CURSE_KEY') {
-                            actionMessage = `${player.id.substring(0, 4)} used Wiggles to STEAL ${targetHero.name}, but it is sealed (Sealing Key) and cannot be used!`;
+                            actionMessage = `${getPlayerName(gameState, player.id)} used Wiggles to STEAL ${targetHero.name}, but it is sealed (Sealing Key) and cannot be used!`;
                         } else {
                             gameState.state = 'WAITING_TO_ROLL';
                             gameState.pendingRoll = {
@@ -664,47 +665,47 @@ case 'DRAW_CARD':
                                 roll1: 0, roll2: 0, passiveBonus: 0, modifierTotal: 0,
                                 baseRoll: 0, currentRoll: 0, passedPlayers: []
                             };
-                            actionMessage = `${player.id.substring(0, 4)} used Wiggles to STEAL ${targetHero.name} — now roll to use its effect immediately!`;
+                            actionMessage = `${getPlayerName(gameState, player.id)} used Wiggles to STEAL ${targetHero.name} — now roll to use its effect immediately!`;
                         }
                     }
                 } else if (tp) {
-                    actionMessage = `${tp.id.substring(0, 4)}'s Hero is protected from stealing!`;
+                    actionMessage = `${getPlayerName(gameState, tp.id)}'s Hero is protected from stealing!`;
                 }
             }
             break;
         case 'SKILL_PLUNDERING_PUMA':
             gameState.state = 'PLAYING';
             gameState.pendingAction = { type: 'PUMA_PULL', playerToChoose: rollerId, originalActor: rollerId };
-            actionMessage = `${player.id.substring(0, 4)} is choosing a player to pull 2 cards from!`;
+            actionMessage = `${getPlayerName(gameState, player.id)} is choosing a player to pull 2 cards from!`;
             break;
         case 'SKILL_SLY_PICKINGS':
             gameState.state = 'PLAYING';
             gameState.pendingAction = { type: 'CONDITIONAL_PULL', conditionType: 'Item Card', actionOnSuccess: 'PLAY_IMMEDIATELY', playerToChoose: rollerId, originalActor: rollerId };
-            actionMessage = `${player.id.substring(0, 4)} is choosing a player to pull a card from!`;
+            actionMessage = `${getPlayerName(gameState, player.id)} is choosing a player to pull a card from!`;
             break;
         case 'SKILL_BUTTONS':
             gameState.state = 'PLAYING';
             gameState.pendingAction = { type: 'LOOK_AND_PULL', playerToChoose: rollerId, originalActor: rollerId };
-            actionMessage = `${player.id.substring(0, 4)} is choosing a player to look at their hand!`;
+            actionMessage = `${getPlayerName(gameState, player.id)} is choosing a player to look at their hand!`;
             break;
         case 'SKILL_LUCKY_BUCKY':
             gameState.state = 'PLAYING';
             gameState.pendingAction = { type: 'CONDITIONAL_PULL', conditionType: 'Hero Card', actionOnSuccess: 'PLAY_IMMEDIATELY', playerToChoose: rollerId, originalActor: rollerId };
-            actionMessage = `${player.id.substring(0, 4)} is choosing a player to pull a card from!`;
+            actionMessage = `${getPlayerName(gameState, player.id)} is choosing a player to pull a card from!`;
             break;
 case 'DESTROY_HERO':
             if (targetData && targetData.targetPlayerId && targetData.targetHeroId) {
                 const tp = gameState.players[targetData.targetPlayerId];
                 const targetHasTerratuga = tp && tp.slainMonsters && tp.slainMonsters.some(m => m.effect_id === 'MONSTER_TERRATUGA');
                 if (targetHasTerratuga) {
-                    actionMessage = `${player.id.substring(0, 4)} tried to destroy ${tp.id.substring(0, 4)}'s Hero, but they are protected by Terratuga!`;
+                    actionMessage = `${getPlayerName(gameState, player.id)} tried to destroy ${getPlayerName(gameState, tp.id)}'s Hero, but they are protected by Terratuga!`;
                 } else if (tp && !tp.cannotBeDestroyed) {
                     const tHeroIndex = tp.party.findIndex(h => h.id === targetData.targetHeroId);
                     if (tHeroIndex !== -1) {
                         actionMessage = resolveDestroyAction(gameState, rollerId, targetData.targetPlayerId, targetData.targetHeroId);
                     }
                 } else if (tp && tp.cannotBeDestroyed) {
-                     actionMessage = `${player.id.substring(0, 4)} tried to destroy ${tp.id.substring(0, 4)}'s Hero, but they are protected by Mighty Blade!`;
+                     actionMessage = `${getPlayerName(gameState, player.id)} tried to destroy ${getPlayerName(gameState, tp.id)}'s Hero, but they are protected by Mighty Blade!`;
                 }
             }
             break;
@@ -717,10 +718,10 @@ case 'DESTROY_HERO':
                         const targetHero = tp.party[tHeroIndex];
                         tp.party.splice(tHeroIndex, 1);
                         player.party.push(targetHero);
-                        actionMessage = `${player.id.substring(0, 4)} STOLE ${targetHero.name} from ${tp.id.substring(0, 4)}!`;
+                        actionMessage = `${getPlayerName(gameState, player.id)} STOLE ${targetHero.name} from ${getPlayerName(gameState, tp.id)}!`;
                     }
                 } else if (tp && tp.cannotBeStolen) {
-                     actionMessage = `${player.id.substring(0, 4)} tried to steal ${tp.id.substring(0, 4)}'s Hero, but they are protected by Calming Voice!`;
+                     actionMessage = `${getPlayerName(gameState, player.id)} tried to steal ${getPlayerName(gameState, tp.id)}'s Hero, but they are protected by Calming Voice!`;
                 }
             }
             break;
@@ -733,7 +734,7 @@ case 'DESTROY_HERO':
                     const randIndex = Math.floor(Math.random() * tp.hand.length);
                     const pulled = tp.hand.splice(randIndex, 1)[0];
                     player.hand.push(pulled);
-                    actionMessage = `${player.id.substring(0, 4)} pulled a card from ${tp.id.substring(0, 4)}'s hand!`;
+                    actionMessage = `${getPlayerName(gameState, player.id)} pulled a card from ${getPlayerName(gameState, tp.id)}'s hand!`;
                     if (pulled.type === 'Hero Card' && tp.hand.length > 0) {
                         const randIndex2 = Math.floor(Math.random() * tp.hand.length);
                         player.hand.push(tp.hand.splice(randIndex2, 1)[0]);
@@ -751,7 +752,7 @@ case 'DESTROY_HERO':
                     const temp = player.hand;
                     player.hand = tp.hand;
                     tp.hand = temp;
-                    actionMessage = `${player.id.substring(0, 4)} traded hands with ${tp.id.substring(0, 4)}!`;
+                    actionMessage = `${getPlayerName(gameState, player.id)} traded hands with ${getPlayerName(gameState, tp.id)}!`;
                 }
             }
             break;
@@ -762,14 +763,14 @@ case 'DESTROY_HERO':
             if (targetData && targetData.targetPlayerId) {
                 const tp = gameState.players[targetData.targetPlayerId];
                 if (tp) {
-                    const tpName = tp.name || tp.id.substring(0, 4);
+                    const tpName = getPlayerName(gameState, tp.id);
                     io.to(rollerId).emit('peek_cards', {
                         cards: tp.hand,
                         skillId: 'SKILL_SHARP_FOX',
                         viewOnly: true,
                         title: `${tpName}'s hand (${tp.hand.length} card${tp.hand.length === 1 ? '' : 's'})`,
                     });
-                    actionMessage = `${player.id.substring(0, 4)} looked at ${tp.id.substring(0, 4)}'s hand!`;
+                    actionMessage = `${getPlayerName(gameState, player.id)} looked at ${getPlayerName(gameState, tp.id)}'s hand!`;
                 }
             }
             break;
@@ -785,15 +786,15 @@ case 'DESTROY_HERO':
                         targetPlayerId: targetData.targetPlayerId,
                         skillId: 'SKILL_SILENT_SHADOW',
                     };
-                    const tpName = tp.name || tp.id.substring(0, 4);
+                    const tpName = getPlayerName(gameState, tp.id);
                     io.to(rollerId).emit('peek_cards', {
                         cards: tp.hand,
                         skillId: 'SKILL_SILENT_SHADOW',
                         title: `Choose a card from ${tpName}'s hand`,
                     });
-                    actionMessage = `${player.id.substring(0, 4)} is looking at ${tp.id.substring(0, 4)}'s hand to take a card!`;
+                    actionMessage = `${getPlayerName(gameState, player.id)} is looking at ${getPlayerName(gameState, tp.id)}'s hand to take a card!`;
                 } else if (tp) {
-                    actionMessage = `${tp.id.substring(0, 4)} has no cards for ${player.id.substring(0, 4)} to take!`;
+                    actionMessage = `${getPlayerName(gameState, tp.id)} has no cards for ${getPlayerName(gameState, player.id)} to take!`;
                 }
             }
             break;
@@ -819,7 +820,7 @@ case 'DESTROY_HERO':
                         skillId: 'SKILL_SLIPPERY_PAWS',
                         allowedCardIds: pulled.map(c => c.id),
                     };
-                    const tpName = tp.name || tp.id.substring(0, 4);
+                    const tpName = getPlayerName(gameState, tp.id);
                     io.to(rollerId).emit('peek_cards', {
                         cards: pulled,
                         skillId: 'SKILL_SLIPPERY_PAWS',
@@ -827,9 +828,9 @@ case 'DESTROY_HERO':
                         subtitle: 'Choose one of these cards to discard.',
                         actionLabel: 'Discard',
                     });
-                    actionMessage = `${player.id.substring(0, 4)} pulled ${pulled.length} card(s) from ${tp.id.substring(0, 4)} and must discard one!`;
+                    actionMessage = `${getPlayerName(gameState, player.id)} pulled ${pulled.length} card(s) from ${getPlayerName(gameState, tp.id)} and must discard one!`;
                 } else if (tp) {
-                    actionMessage = `${tp.id.substring(0, 4)} has no cards for ${player.id.substring(0, 4)} to pull!`;
+                    actionMessage = `${getPlayerName(gameState, tp.id)} has no cards for ${getPlayerName(gameState, player.id)} to pull!`;
                 }
             }
             break;
@@ -847,11 +848,11 @@ case 'DESTROY_HERO':
                         playerToChoose: targetData.targetPlayerId,
                         originalActor: rollerId
                     };
-                    actionMessage = `${player.id.substring(0, 4)} forces ${tp.id.substring(0, 4)} to sacrifice a Hero!`;
+                    actionMessage = `${getPlayerName(gameState, player.id)} forces ${getPlayerName(gameState, tp.id)} to sacrifice a Hero!`;
                 } else {
                     gameState.state = 'PLAYING';
                     gameState.pendingAction = null;
-                    actionMessage = `${tp ? tp.id.substring(0, 4) : 'The target'} has no Heroes to sacrifice!`;
+                    actionMessage = `${tp ? getPlayerName(gameState, tp.id) : 'The target'} has no Heroes to sacrifice!`;
                 }
             }
             break;
@@ -864,7 +865,7 @@ case 'DESTROY_HERO':
                     const item = h.equippedItem;
                     h.equippedItem = null;
                     player.hand.push(item);
-                    actionMessage = `${player.id.substring(0, 4)} returned ${item.name} to their hand!`;
+                    actionMessage = `${getPlayerName(gameState, player.id)} returned ${item.name} to their hand!`;
                 }
             }
             break;
@@ -879,7 +880,7 @@ case 'DESTROY_HERO':
                 if (cardIndex !== -1) {
                     const card = gameState.discardPile.splice(cardIndex, 1)[0];
                     player.hand.push(card);
-                    actionMessage = `${player.id.substring(0, 4)} retrieved ${card.name} from the discard pile!`;
+                    actionMessage = `${getPlayerName(gameState, player.id)} retrieved ${card.name} from the discard pile!`;
                 }
             }
             break;
@@ -890,7 +891,7 @@ case 'DESTROY_HERO':
                 const peekCards = gameState.mainDeck.slice(-3).reverse(); // top 3 cards
                 // Emit only to the roller
                 io.to(rollerId).emit('peek_cards', { cards: peekCards, skillId: 'SKILL_BULLSEYE' });
-                actionMessage = `${player.id.substring(0, 4)} is looking at the top 3 cards...`;
+                actionMessage = `${getPlayerName(gameState, player.id)} is looking at the top 3 cards...`;
             } else {
                 actionMessage = `The deck is empty!`;
             }
@@ -915,9 +916,9 @@ case 'DESTROY_HERO':
                         hand: gameState.players[id].hand
                     });
                 });
-                actionMessage = `${player.id.substring(0, 4)} forced all other players to discard! Waiting for choices...`;
+                actionMessage = `${getPlayerName(gameState, player.id)} forced all other players to discard! Waiting for choices...`;
             } else {
-                actionMessage = `${player.id.substring(0, 4)} used ${heroName}'s skill, but no one has cards to discard!`;
+                actionMessage = `${getPlayerName(gameState, player.id)} used ${heroName}'s skill, but no one has cards to discard!`;
             }
             break;
         }
@@ -939,9 +940,9 @@ case 'DESTROY_HERO':
                         }
                     }
                 });
-                actionMessage = `${player.id.substring(0, 4)} used ${heroName} to DESTROY ${destroyedCount} Hero(es)!`;
+                actionMessage = `${getPlayerName(gameState, player.id)} used ${heroName} to DESTROY ${destroyedCount} Hero(es)!`;
             } else {
-                actionMessage = `${player.id.substring(0, 4)} used ${heroName}'s skill, but no valid targets were selected.`;
+                actionMessage = `${getPlayerName(gameState, player.id)} used ${heroName}'s skill, but no valid targets were selected.`;
             }
             break;
         }
@@ -964,10 +965,10 @@ case 'DESTROY_HERO':
                             tp.party.push(tipsy);
                         }
 
-                        actionMessage = `${player.id.substring(0, 4)} swapped Tipsy Tootie for ${targetHero.name} from ${tp.id.substring(0, 4)}!`;
+                        actionMessage = `${getPlayerName(gameState, player.id)} swapped Tipsy Tootie for ${targetHero.name} from ${getPlayerName(gameState, tp.id)}!`;
                     }
                 } else if (tp && tp.cannotBeStolen) {
-                    actionMessage = `${player.id.substring(0, 4)} tried to steal from ${tp.id.substring(0, 4)}, but they are protected!`;
+                    actionMessage = `${getPlayerName(gameState, player.id)} tried to steal from ${getPlayerName(gameState, tp.id)}, but they are protected!`;
                 }
             }
             break;
@@ -984,7 +985,7 @@ function executeMagic(gameState, io, effectId, playerId, targetData) {
     if (!player) return;
 
     console.log(`Executing magic ${effectId} by player ${playerId}`);
-    let actionMessage = `${player.id.substring(0, 4)} successfully cast a spell!`;
+    let actionMessage = `${getPlayerName(gameState, player.id)} successfully cast a spell!`;
 
     const drawCards = (num, p) => drawCardsWithPassives(gameState, io, num, p);
 
@@ -995,7 +996,7 @@ function executeMagic(gameState, io, effectId, playerId, targetData) {
                 if (cardIndex !== -1) {
                     const card = gameState.discardPile.splice(cardIndex, 1)[0];
                     player.hand.push(card);
-                    actionMessage = `${player.id.substring(0, 4)} retrieved ${card.name} from the discard pile!`;
+                    actionMessage = `${getPlayerName(gameState, player.id)} retrieved ${card.name} from the discard pile!`;
                 }
             }
             break;
@@ -1009,9 +1010,9 @@ function executeMagic(gameState, io, effectId, playerId, targetData) {
                     amount: 1,
                     originalActor: playerId
                 };
-                actionMessage = `${player.id.substring(0, 4)} drew 3 cards and must now discard 1.`;
+                actionMessage = `${getPlayerName(gameState, player.id)} drew 3 cards and must now discard 1.`;
             } else {
-                actionMessage = `${player.id.substring(0, 4)} drew 3 cards!`;
+                actionMessage = `${getPlayerName(gameState, player.id)} drew 3 cards!`;
             }
             break;
 
@@ -1031,20 +1032,20 @@ function executeMagic(gameState, io, effectId, playerId, targetData) {
                         originalActor: playerId
                     }
                 };
-                actionMessage = `${player.id.substring(0, 4)} cast Destructive Spell! Waiting for them to discard 1 card.`;
+                actionMessage = `${getPlayerName(gameState, player.id)} cast Destructive Spell! Waiting for them to discard 1 card.`;
             } else {
                 gameState.pendingAction = {
                     type: 'DESTROY',
                     playerToChoose: playerId,
                     originalActor: playerId
                 };
-                actionMessage = `${player.id.substring(0, 4)} cast Destructive Spell with an empty hand! Waiting to select a Hero to destroy.`;
+                actionMessage = `${getPlayerName(gameState, player.id)} cast Destructive Spell with an empty hand! Waiting to select a Hero to destroy.`;
             }
             break;
 
         case 'MAGIC_ENCHANTED':
             player.magicRollBonus = (player.magicRollBonus || 0) + 2;
-            actionMessage = `${player.id.substring(0, 4)} gained +2 to all rolls until the end of their turn!`;
+            actionMessage = `${getPlayerName(gameState, player.id)} gained +2 to all rolls until the end of their turn!`;
             break;
 
         case 'MAGIC_ENTANGLING':
@@ -1062,7 +1063,7 @@ function executeMagic(gameState, io, effectId, playerId, targetData) {
                         originalActor: playerId
                     }
                 };
-                actionMessage = `${player.id.substring(0, 4)} cast Entangling Trap! Waiting for them to discard ${discardAmount} card(s).`;
+                actionMessage = `${getPlayerName(gameState, player.id)} cast Entangling Trap! Waiting for them to discard ${discardAmount} card(s).`;
             } else {
                 // No cards to discard — go straight to the steal, but only if there's
                 // actually a Hero to steal; otherwise skip so we don't soft-lock.
@@ -1077,10 +1078,10 @@ function executeMagic(gameState, io, effectId, playerId, targetData) {
                         playerToChoose: playerId,
                         originalActor: playerId
                     };
-                    actionMessage = `${player.id.substring(0, 4)} cast Entangling Trap with an empty hand! Waiting to select a Hero to steal.`;
+                    actionMessage = `${getPlayerName(gameState, player.id)} cast Entangling Trap with an empty hand! Waiting to select a Hero to steal.`;
                 } else {
                     gameState.pendingAction = null;
-                    actionMessage = `${player.id.substring(0, 4)} cast Entangling Trap, but there are no Heroes to steal.`;
+                    actionMessage = `${getPlayerName(gameState, player.id)} cast Entangling Trap, but there are no Heroes to steal.`;
                 }
             }
             break;
@@ -1091,7 +1092,7 @@ function executeMagic(gameState, io, effectId, playerId, targetData) {
                 playerToChoose: playerId,
                 originalActor: playerId
             };
-            actionMessage = `${player.id.substring(0, 4)} cast Forced Exchange! Waiting to select an opponent's Hero to steal.`;
+            actionMessage = `${getPlayerName(gameState, player.id)} cast Forced Exchange! Waiting to select an opponent's Hero to steal.`;
             break;
 
         case 'MAGIC_WINDS_FORCE':
@@ -1106,7 +1107,7 @@ function executeMagic(gameState, io, effectId, playerId, targetData) {
                     }
                 });
             }
-            actionMessage = `${player.id.substring(0, 4)} cast Forceful Winds! ${itemsReturned} equipped Items returned to hands.`;
+            actionMessage = `${getPlayerName(gameState, player.id)} cast Forceful Winds! ${itemsReturned} equipped Items returned to hands.`;
             break;
 
         case 'MAGIC_WINDS_CHANGE': {
@@ -1115,7 +1116,7 @@ function executeMagic(gameState, io, effectId, playerId, targetData) {
             const anyEquipped = Object.values(gameState.players)
                 .some(p => (p.party || []).some(h => h && h.equippedItem));
             if (!anyEquipped) {
-                actionMessage = `${player.id.substring(0, 4)} cast Winds of Change, but no Items are equipped — the spell fizzles.`;
+                actionMessage = `${getPlayerName(gameState, player.id)} cast Winds of Change, but no Items are equipped — the spell fizzles.`;
                 break;
             }
             gameState.pendingAction = {
@@ -1124,7 +1125,7 @@ function executeMagic(gameState, io, effectId, playerId, targetData) {
                 amount: 1,
                 originalActor: playerId
             };
-            actionMessage = `${player.id.substring(0, 4)} cast Winds of Change! Select an equipped item to return to your hand.`;
+            actionMessage = `${getPlayerName(gameState, player.id)} cast Winds of Change! Select an equipped item to return to your hand.`;
             break;
         }
     }
