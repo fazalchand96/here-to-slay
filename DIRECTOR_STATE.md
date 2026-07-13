@@ -229,9 +229,10 @@ only wipe to LOBBY if the grace period elapses with no reconnect. This is a
 real feature (server session persistence across reconnect), not just a
 config tweak — scope it accordingly, write tests, gate before shipping.
 
-**QUEUED NEXT #2:** landscape-only UI request from user 2026-07-13 (given
-across two messages, consolidated + Director root-caused each item below
-against current code before dispatch):
+**QUEUED — landscape UI polish (not yet dispatched):** landscape-only UI
+request from user 2026-07-13 (given across two messages, consolidated +
+Director root-caused each item below against current code before
+dispatch):
 - The DRAW / RELOAD / END action buttons (right rail) should be stacked
   vertically on top of each other in the corner (verify current layout
   first — may already be a vertical stack; user says DRAW/RELOAD currently
@@ -281,113 +282,54 @@ against current code before dispatch):
 - Gate via landscape screenshots (landscape only per the request) before
   commit/push/deploy.
 
-**QUEUED NEXT #3 (dispatch after reconnect-grace is gated+committed):**
-AND-vs-THEN hero-skill targeting bug, user-reported via Serious Grey
-2026-07-13, user correctly suspected it affects other cards too. Root
-cause (Director, server.js ~line 706-714): the deferred-targeting gate for
-EVERY skill in `TARGETING_SKILLS` (server.js line 91) does ONE blanket
-check — `hasOpponentHeroTarget(...)`, and if false, fizzles the ENTIRE
-skill with a message and `resetToPlayingState()`, no partial effect at
-all. This is correct for THEN/single-clause cards but wrong for AND cards
-with an independent second clause — violates [[then-vs-and-card-playability]]
-("X AND Y → playable if either part can").
+**DONE — shipped 2026-07-13, in order:**
+1. Card-logic 8-bug batch (Mimimeow/Mask, Orthus, Rex Major, Crowned
+   Serpent hardened, Sly Pickings, Buttons free-play, Winds of Change,
+   opponent-modal missing slain monsters) — commit `481434e`.
+2. Reconnect grace period (90s, session-token based, away/dimmed state) —
+   commit `3a7c6ad`.
+3. AND-vs-THEN hero-skill targeting (Serious Grey draws even with no
+   destroy target; Whiskers independently resolves whichever of
+   steal/destroy has a target; Meowzio pulls even with no steal target) +
+   partial player-name fix — commit `63234fb`.
+4. skill_engine.js raw-ID sweep (114 occurrences, new shared
+   player_utils.js) — commit `86c98a6`. **Player-name bug now fully
+   closed** (item 3's partial fix + this sweep together).
 
-Director pre-classified every card in TARGETING_SKILLS against its actual
-cards.json text before dispatch (do not re-derive from scratch, verify
-against current code instead — this is 2026-07-13):
-- Bad Axe (DESTROY_HERO), Kit Napper (STEAL_HERO): single-clause, ALREADY
-  CORRECT, not a bug.
-- Destructive Spell (MAGIC_DESTRUCTIVE): explicit "DISCARD... then
-  DESTROY" — sequential, ALREADY CORRECT (matches prior fix in
-  [[card-audit-progress]]).
-- Shurikitty: item-transfer is a CONSEQUENCE of the destroy (conditional
-  on it happening), not an independent action — ALREADY CORRECT.
-- Tipsy Tootie: "steal... and move Tipsy Tootie to that party" is one
-  combined steal action, not two independent ones — ALREADY CORRECT.
-- Wiggles: surface wording says "and" but "roll to use its effect
-  immediately" is entirely dependent on WHICH hero got stolen — correctly
-  sequential despite the "and", ALREADY CORRECT.
-- **Serious Grey ("DESTROY a Hero and DRAW a card") — CONFIRMED BUG**,
-  matches user report exactly. No destroy target should still allow the
-  draw.
-- **Whiskers ("STEAL a Hero card and DESTROY a Hero card") — LIKELY SAME
-  BUG.** Two independent hero-targeting actions; current flow (per
-  [[card-audit-progress]]) checks for a legal STEAL target upfront via
-  this same gate — if none exists but a DESTROY target does, it should
-  still fire the destroy half instead of fully fizzling.
-- **Meowzio ("STEAL a Hero from that player AND pull a card from that
-  player's hand") — AMBIGUOUS, needs judgment, do not auto-fix.** If the
-  chosen player has no Hero but has hand cards, should you still be able
-  to choose them just to pull? Flagged for Codex to reason through and
-  report its choice, not decide unilaterally.
+Every batch above was independently gated by Director (unit suite rerun,
+not just trusted reports; several real bugs caught before shipping — see
+full history above for specifics: a Meowzio-pull-target false-negative
+edge case, a false-positive-risk string-replace bug, the raw-ID sweep scope
+itself). All deployed and confirmed live via production `/sw.js` cache
+version checks except item 4 (server-only, no client files touched, no
+cache bump needed).
 
-**IN PROGRESS:** task-mrjlbfja-rha754, fresh thread
-019f5cdc-bf32-7fa0-9c39-f826124f26bb. Dispatched bundled with the name-bug
-below (both small, contained server/app.js fixes). Full classification +
-instructions given per above. Gate independently before commit/push/deploy
-(rerun tests, spot-check the Meowzio judgment call, check CACHE_VERSION
-was bumped given it touches app.js).
-
-**DONE (partially) — GATED + SHIPPED 2026-07-13.** task-mrjlbfja-rha754,
-committed `63234fb`, pushed, deploy verifying (hts-v74).
-- AND/THEN targeting fix: Serious Grey/Whiskers/Meowzio, all per Director's
-  pre-classification — GOOD, fully closes the reported bug + suspected
-  siblings. 130/130 tests, independently reverified.
-- Player-name bug: only PARTIALLY fixed. Codex fixed the app.js dual-
-  implementation issue (attack-roll display now uses shared
-  getPlayerName()) and added a legacy-string resolver in showNotification.
-  Director caught a real bug in that resolver before committing — it did
-  `resolvedMessage.split(rawPrefix).join(...)` on a bare 4-char substring,
-  which could false-positive-match inside unrelated text (a card name,
-  etc.) and mangle it; fixed to match the exact "Player <prefix>" phrase
-  instead (the only string getPlayerName's fallback ever actually
-  produces). **Bigger finding Codex missed entirely: skill_engine.js has
-  ~86 occurrences of `player.id.substring(0, 4)` (and similar for other
-  player vars like `tp.id.substring(0,4)`) built directly into
-  `actionMessage` strings that get broadcast to every client via
-  `io.emit('message', actionMessage)` (confirmed at skill_engine.js line
-  980, plus at least one inline emit at line 44 for Rex Major). This is
-  almost certainly the PRIMARY source of the user's "shows raw ID" report
-  — far more impactful than the two things actually fixed. NOT yet fixed —
-  queued as its own follow-up dispatch, see below.**
-
-**IN PROGRESS — skill_engine.js raw-ID sweep (the real fix for the name
-bug):** task-mrjmh5hn-4l4vww, fresh thread 019f5cfa-7501-7b03-9423-8a2e58f3d5c8. ~86 occurrences of `<player-var>.id.substring(0, 4)` used directly
-in user-facing action messages instead of a resolved player name. Needs:
-(1) a name-resolution helper reachable from skill_engine.js — it currently
-has no equivalent to server.js's `getPlayerName(gameState, id)`, and
-skill_engine.js CANNOT require server.js back (server.js already requires
-skill_engine.js — circular). Prefer extracting one shared implementation
-(e.g. a small new `player_utils.js` both files require) over duplicating
-the logic a third time, to avoid yet another drift-prone copy (app.js
-already had 2 diverging copies — do not make a 3rd/4th elsewhere). (2)
-Sweep all ~86 occurrences to use it, verify with existing tests (some may
-assert exact message strings and need updating) plus spot-check a couple
-of the busier skills (Meowzio, Whiskers, Serious Grey — just fixed, don't
-regress them) in a real 2-browser flow if feasible. Same CACHE_VERSION
-bump reminder applies if any public/*.js|html|css changes.
+**IN PROGRESS — two new UI requests (2026-07-13, user):** task-mrjncenl-ui5ijh,
+fresh thread 019f5d10-b294-7400-88ad-c6a6f9d7b804. Client-only
+(public/app.js + public/style.css). Scope:
+(1) show the hero card to ALL players during a HERO_SKILL roll — Director
+root-caused: `renderDiceAttackTarget` in app.js only handles
+`pr.type === 'ATTACK'`, clears/hides the preview for any other roll type
+including HERO_SKILL. Extend it to also render the hero card via
+`pr.targetHeroId` for HERO_SKILL rolls. (2) per-class colors on Hero card
+frames (Fighter=red, Guardian=yellow, Ranger=green, Wizard=purple,
+Bard=orange, Thief=blue) — Director found the exact color values already
+exist as UNUSED CSS vars (`--class-fighter` etc., style.css ~line 39-45,
+zero usages anywhere) — apply them. (3) class-crest icon (currently
+leader-only via `.card.card-leader::after`) extended to regular Hero
+cards — told explicitly NOT to blindly copy the leader's top-center
+medallion position since Hero frames have a different layout (art window
++ recent `.board-card-name` ribbon + `.card-req` badge + item thumbnail
+already occupy space) — find a non-colliding spot, likely a corner badge.
+Gate independently before commit/push/deploy: screenshots of hand+party in
+both orientations with mixed classes, plus a second-viewport screenshot of
+a live HERO_SKILL roll proving the preview is visible to a non-roller.
 
 **Explicitly deferred (user, 2026-07-13):** the 2 streak-breaker softlocks
 (landscape50i game 11 PROMPT_SKILL_ROLL stall, portrait50d game 8
 WAITING_FOR_CHALLENGES stuck-retry) and resuming the 15-game streak runs —
 "not necessary right now, we will do that later." Do not pick these up
 unless the user asks.
-
-**Queued bugs reported by user during the hold (not yet fixed):**
-- 6 card-logic bugs (Mimimeow/Thief-Mask, Ortus, Rex Major, Serpent, Sly
-  Pickings, Buttons) + Winds of Change — logged with full detail in memory
-  [[card-audit-progress]], several flagged as possible regressions of
-  previously-"DONE" fixes.
-- **Opponent modal never shows slain monsters (UI bug, root-caused, ready
-  to fix quickly when unblocked):** `public/app.js`, `openOpponentModal`
-  (~line 1237-1253) builds `cardsHtml` from `opp.leader` + `opp.party`
-  only — `opp.slainMonsters` is never included, so inspecting an opponent
-  shows their leader/party but never their slain-monster trophies (the
-  opponent bar's slain *count* chip is fine, this is the detail-view gap).
-  Also fix while there: `oppModalSignature` (~line 1275-1285), which gates
-  when the modal re-renders, doesn't fingerprint `slainMonsters` either —
-  add it or a change in opponent's slain monsters between broadcasts won't
-  trigger a rebuild even after the render fix.
 
 ## In flight right now
 

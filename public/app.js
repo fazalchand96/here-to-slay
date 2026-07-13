@@ -268,10 +268,9 @@ function renderDicePips(value) {
     return html;
 }
 
-// Show WHICH monster an attack roll is targeting (+ its slay requirement) in the
-// dice overlay. The overlay covers the board, so without this an opponent can't
-// tell what's being attacked and can't decide whether to play a modifier. No-op
-// (and clears) for non-attack rolls.
+// Show WHICH card a roll is targeting in the dice overlay. The overlay covers the
+// board, so every player needs this context when deciding whether to modify the
+// roll. Attacks show their monster; hero-skill rolls show the roller's hero.
 function renderDiceAttackTarget(data) {
     const preview = document.getElementById('dice-monster-preview');
     if (!preview) return;
@@ -279,17 +278,30 @@ function renderDiceAttackTarget(data) {
     const mon = (pr && pr.type === 'ATTACK')
         ? (data.activeMonsters || []).find(m => m.id === pr.targetId)
         : null;
-    if (!mon) { preview.innerHTML = ''; preview.style.display = 'none'; return; }
+    const roller = pr && data.players ? data.players[pr.rollerId] : null;
+    const hero = (pr && pr.type === 'HERO_SKILL' && roller)
+        ? (roller.party || []).find(h => h.id === pr.targetHeroId)
+        : null;
+    if (!mon && !hero) { preview.innerHTML = ''; preview.style.display = 'none'; return; }
     const rollerName = getPlayerName(pr.rollerId);
     const reasonEl = document.getElementById('dice-reason');
-    if (reasonEl) reasonEl.innerText = `${rollerName} is attacking:`;
+    if (reasonEl) reasonEl.innerText = mon
+        ? `${rollerName} is attacking:`
+        : `${rollerName} is rolling for ${hero.name}:`;
+    preview.style.display = 'flex';
+    if (hero) {
+        const skillReq = (typeof hero.roll_requirement === 'number')
+            ? `<div class="dice-monster-req">Skill ${hero.roll_requirement}+</div>`
+            : '';
+        preview.innerHTML = `${renderCard(hero, false, false, false, false)}${skillReq}`;
+        return;
+    }
     // Show the roll thresholds so watchers know which way to swing a modifier.
     const low = mon.rollType === 'LOW_ROLL';
     const slay = low ? `Slay ≤${mon.slayRoll}` : `Slay ${mon.slayRoll}+`;
     const pen = (mon.penaltyRoll != null)
         ? ` · Penalty ${low ? `${mon.penaltyRoll}+` : `≤${mon.penaltyRoll}`}`
         : '';
-    preview.style.display = 'flex';
     preview.innerHTML = `${renderCard(mon, false, false, true, false)}`
         + `<div class="dice-monster-req">🗡 ${slay}${pen}</div>`;
 }
@@ -2446,7 +2458,7 @@ function renderBoard(data) {
 
         else turnIndicator?.classList.add('hidden');
 
-        renderDiceAttackTarget(data); // keep the attacked-monster preview through the modifier window
+        renderDiceAttackTarget(data); // keep the targeted monster/hero preview through modifiers
 
     } else if (data.state === 'WAITING_TO_ROLL') {
 
@@ -2511,7 +2523,7 @@ function renderBoard(data) {
 
             document.getElementById('dice-reason').innerText = `Rolling ${reasonStr}...`;
 
-            renderDiceAttackTarget(data); // name + show the targeted monster (attacks only)
+            renderDiceAttackTarget(data); // name + show the targeted monster or hero
 
 
 
@@ -2615,7 +2627,7 @@ function renderBoard(data) {
 
         document.getElementById('dice-reason').innerText = 'Rolling for Challenge!';
 
-        renderDiceAttackTarget(data); // clears any stale monster preview (challenge != attack)
+        renderDiceAttackTarget(data); // clears any stale roll-target preview (challenge roll)
 
         const pRoll = data.pendingRoll;
 
@@ -5457,6 +5469,8 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
     const modalImage = document.getElementById('inspector-modal-image');
 
+    const modalImageContainer = document.getElementById('inspector-modal-image-container');
+
     const modalName = document.getElementById('inspector-modal-name');
 
     const modalType = document.getElementById('inspector-modal-type');
@@ -5476,6 +5490,16 @@ window.inspectCard = function(cardId, scopedContext = null) {
     // Generated art is illustration-only, so the modal's own name/type/description
     // fields below carry the text the old full-card scan used to show.
     const inspectArt = cardArt(card);
+
+    if (modalImageContainer) {
+        const inspectClass = card.type === 'Hero Card' ? effectiveHeroClass(card) : '';
+        const inspectClassSlug = inspectClass
+            ? inspectClass.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+            : '';
+        modalImageContainer.className = card.type === 'Hero Card'
+            ? `inspector-hero-card class-${inspectClassSlug}`
+            : '';
+    }
 
     if (inspectArt) {
 
