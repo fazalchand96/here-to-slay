@@ -320,16 +320,26 @@ visible from the NON-rolling player's own browser context, not just the
 roller's — screenshot shows "DirectorHost is rolling for Bad Axe: [card]
 Skill 8+" on P2's screen. 131/131 tests independently reverified.
 
-**QUEUED — class-colored Hero FRAME TEMPLATES (rework of what just
-shipped in dea3545), user 2026-07-13.** User reviewed the shipped CSS
-accent-border + DOM crest overlay and rejected the technique: wants the
-actual card frame template art itself recolored per class (not a color
-line drawn on top), and the crest genuinely baked into that template
-image (like the leader's, which LOOKS baked-in — user's mental model —
-though it is technically also a DOM overlay onto an intentionally-empty
-medallion; worth being aware of but match the user's literal ask: bake it
-for real this time). Dispatch after the landscape button/AP/tracker task
-above completes — both touch style.css, avoid concurrent Codex writes.
+**DONE — landscape UI polish batch: GATED PASS + SHIPPED 2026-07-13.**
+task-mrjnuqil-9682ep, committed `4abea41`, pushed, deploy verifying
+(hts-v76). All 6 items confirmed via Director's own Playwright screenshot
+(same browser-unavailable limitation on Codex's side, third time this has
+happened this session for UI tasks — consider this a standing pattern,
+always budget for Director self-verification on UI dispatches): button
+stack lowered + tightened, DRAW/RELOAD/END/sound/menu now use non-
+distorting `contain` sizing (fixes the incomplete-fill look), AP text
+label removed entirely (no more overlap), win-tracker moved to
+left-middle stacked vertically, sound stays top-right + game-log moved
+top-left. 131/131 tests independently reverified.
+
+**IN PROGRESS — class-colored Hero FRAME TEMPLATES (rework of the CSS
+accent from dea3545), user 2026-07-13.** User rejected the CSS
+accent-border + DOM crest overlay technique: wants the actual card frame
+template art itself recolored per class (not a color line drawn on top),
+and the crest genuinely baked into that template image (like the leader's
+— visually looks baked-in to the user, though it's technically also a DOM
+overlay onto an intentionally-empty medallion; matching the user's literal
+ask means baking it for real this time, via sharp compositing).
 
 Technique to hand Codex (Director-researched precedent already in this
 repo, don't let it reinvent or repeat a past mistake):
@@ -356,6 +366,33 @@ repo, don't let it reinvent or repeat a past mistake):
 Gate via screenshots the same way as dea3545 (Codex's sandbox has had no
 browser available the last two UI tasks — Director will likely need to
 verify independently again via a Playwright script, budget for that).
+
+**QUEUED — landscape UI round 3 (user, 2026-07-13), dispatch after the
+frame-template task above completes (same file, style.css):**
+1. DRAW/RELOAD/END should be stacked EVEN closer together than the round-2
+   fix landed (round-2 tightened it but user wants it tighter still).
+2. **AP gems — architecture change, not a tweak.** Replace the live
+   glow-overlay-on-baked-empty-sockets approach entirely. User wants: crop
+   just the AP-rail strip from the current board background (both
+   orientations — the rail exists in both), bake 4 variants of that strip
+   (1/2/3/4 gems lit, reusing the same sharp-compositing technique as
+   scripts/bake-deck-backgrounds.js and the frame-tint work above), then
+   have a small positioned DOM element (same `--ap-track-x/y/width/height`
+   stage coords already in deck-stage.generated.css) swap which of the 4
+   pre-baked strip images it shows based on current AP — cheap image
+   src/background swap, no live-rendered glow needed. Director confirmed
+   this is technically sound and a genuine simplification before queuing
+   it, not just relaying the user's idea untested.
+3. **Sound/game-log buttons still look wrong post round-2** — user: "not
+   aligned, not filling the box, I see a circle then a square on top of
+   it." Round 2 made the button box square (40x40) with `contain` sizing
+   for the round icon-round.png plaque — but a circle inscribed in a
+   square box leaves the corners visibly empty/mismatched against
+   whatever the box's own background/border shows there. Fix so there is
+   no visible square artifact behind/around the circular plaque (e.g.
+   clip the box to a circle, remove any separate square background/border
+   on the button element itself, or resize precisely to the plaque's
+   circular bounds — Codex's call on technique, verify visually).
 
 **Explicitly deferred (user, 2026-07-13):** the 2 streak-breaker softlocks
 (landscape50i game 11 PROMPT_SKILL_ROLL stall, portrait50d game 8

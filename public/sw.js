@@ -2,7 +2,7 @@
 // NOTE: bump CACHE_VERSION whenever the app shell (HTML/JS/CSS) changes so old
 // caches are purged on activate. A stale shell can serve outdated JS and break
 // the app (e.g. "io is not defined" when an old index.html/app.js is served).
-const CACHE_VERSION = 'hts-v76';
+const CACHE_VERSION = 'hts-v77';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
@@ -63,9 +63,15 @@ const PRECACHE_ASSETS = [
   '/assets/skin/textures/leather.png',
   '/assets/skin/textures/emerald-leather.png',
   '/assets/skin/textures/blackened-iron.png',
-  // One frame per card type — leader and cursed no longer borrow another type's.
+  // One frame per card type, plus class-specific Hero frame templates.
   '/assets/skin/frames/leader.png',
   '/assets/skin/frames/hero.png',
+  '/assets/skin/frames/hero-fighter.png',
+  '/assets/skin/frames/hero-bard.png',
+  '/assets/skin/frames/hero-guardian.png',
+  '/assets/skin/frames/hero-ranger.png',
+  '/assets/skin/frames/hero-thief.png',
+  '/assets/skin/frames/hero-wizard.png',
   '/assets/skin/frames/monster.png',
   '/assets/skin/frames/magic.png',
   '/assets/skin/frames/item.png',
