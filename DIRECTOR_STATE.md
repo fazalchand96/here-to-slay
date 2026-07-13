@@ -455,8 +455,18 @@ take real AI image-edit time (the deck/discard/labels round took ~15-50
 min including one network-hang retry) — set that expectation, do not
 expect a quick turnaround like the last several CSS-only fixes.
 
-**QUEUED — crest must look genuinely ENGRAVED, not pasted on (user,
-2026-07-13), dispatch after the AP full-board regen above completes.**
+**DONE — AP full-board regen: GATED PASS + SHIPPED 2026-07-13.**
+task-mrjq1jq0-z9pzej, committed `72e15a6`, pushed, deploy verifying
+(hts-v80). Director independently viewed 2 of the 8 new board variants
+directly (landscape ap1/ap4) — genuinely distinct full images, only gem
+count differs, everything else pixel-identical, glow reads as natively
+painted not composited. Confirmed live swap in-game (fresh 3-AP game
+correctly shows the 3-lit variant). 131/131 tests reverified. Old
+strip-compositing approach (ap-rail-*.png, bake-ap-rails.js) fully
+reverted/removed as instructed.
+
+**IN PROGRESS — crest must look genuinely ENGRAVED, not pasted on (user,
+2026-07-13):**
 User reviewed 65f10a9 (shield removed, crest moved to medallion) and says
 it still looks "added on top" rather than "actually engraved... just like
 the shield was." Root cause (Director's assessment): the shield was part
