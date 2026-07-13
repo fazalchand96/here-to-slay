@@ -1252,6 +1252,10 @@ window.openOpponentModal = function(id) {
 
     }
 
+    if (opp.slainMonsters && opp.slainMonsters.length > 0) {
+        cardsHtml += `<div class="slain-monsters-container"><h3>Slain (${opp.slainMonsters.length}/3)</h3><div class="slain-monsters-list">${opp.slainMonsters.map(m => `<div class="slain-monster-icon" data-id="${m.id}" onclick="inspectCard('${m.id}')" style="background-image:url('${cardArt(m)}'); cursor:pointer;" title="${m.name}"></div>`).join('')}</div></div>`;
+    }
+
 
 
     modalContent.innerHTML = cardsHtml;
@@ -1279,6 +1283,7 @@ function oppModalSignature(id) {
     return JSON.stringify({
         l: opp.leader ? opp.leader.id : null,
         p: (opp.party || []).map(h => `${h.id}:${h.equippedItem ? h.equippedItem.id : ''}`),
+        m: (opp.slainMonsters || []).map(monster => monster.id),
         t: targetingActive,
         s: latestGameState ? latestGameState.state : null,
     });
@@ -4450,7 +4455,7 @@ function playCard(id) {
 
     if (!context || !context.card) {
 
-        socket.emit('playCard', { cardId: id, isFree: window.isNextPlayFree });
+        socket.emit('playCard', { cardId: id, isFree: window.isNextPlayFree || context?.card?.freePlay === true });
 
         window.isNextPlayFree = false;
 
@@ -4541,7 +4546,7 @@ function playCard(id) {
 
     } else {
 
-        socket.emit('playCard', { cardId: id, isFree: window.isNextPlayFree });
+        socket.emit('playCard', { cardId: id, isFree: window.isNextPlayFree || context.card.freePlay === true });
 
         window.isNextPlayFree = false;
 
@@ -5563,7 +5568,7 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
             btn.className = 'action-btn';
 
-            const isFree = window.isNextPlayFree || false;
+            const isFree = window.isNextPlayFree || card.freePlay === true || false;
 
             const btnText = card.type === 'Magic Card' ? `Cast Magic (${isFree ? '0' : '1'} AP)` : `Play Card (${isFree ? '0' : '1'} AP)`;
 

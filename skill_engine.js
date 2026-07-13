@@ -1,5 +1,94 @@
 const SAFE_MODE = false;
 
+function maskClass(item) {
+    if (!item || item.effect_id !== 'ITEM_MASK') return null;
+    if (item.class) return item.class;
+    const match = /^(\w+)\s+Mask$/.exec(item.name || '');
+    return match ? match[1] : null;
+}
+
+function effectiveHeroClass(hero) {
+    if (!hero) return null;
+    return (hero.equippedItem && maskClass(hero.equippedItem)) || hero.class;
+}
+
+// Put cards drawn by an effect through the slain-monster draw passives. This is
+// shared by Hero skills, Magic effects, and the server's normal draw action so
+// Orthus/Rex Major do not depend on which code path produced the draw.
+function drawCardsWithPassives(gameState, io, count, player) {
+    const drawn = [];
+    const hasRex = (player.slainMonsters || []).some(m => m.effect_id === 'MONSTER_REX_MAJOR');
+    const hasOrthus = (player.slainMonsters || []).some(m => m.effect_id === 'MONSTER_ORTHUS');
+
+    const receive = (card) => {
+        if (!card) return;
+        if (hasOrthus && card.type === 'Magic Card' && !gameState.pendingCard) {
+            gameState.state = 'WAITING_FOR_IMMEDIATE_PLAY';
+            gameState.pendingCard = card;
+            gameState.pendingAction = {
+                playerToChoose: player.id,
+                type: 'IMMEDIATE_PLAY',
+                originalActor: player.id,
+                source: 'MONSTER_ORTHUS'
+            };
+        } else {
+            player.hand.push(card);
+        }
+    };
+
+    for (let i = 0; i < count && gameState.mainDeck.length > 0; i++) {
+        const card = gameState.mainDeck.pop();
+        drawn.push(card);
+        receive(card);
+        if (hasRex && card.type === 'Modifier Card' && gameState.mainDeck.length > 0) {
+            if (io && io.emit) io.emit('message', `${player.id.substring(0, 4)} revealed a Modifier due to Rex Major and drew another card!`);
+            receive(gameState.mainDeck.pop());
+        }
+    }
+    return drawn;
+}
+
+function triggerCrownedSerpent(gameState, io) {
+    Object.values(gameState.players || {}).forEach(player => {
+        if ((player.slainMonsters || []).some(m => m.effect_id === 'MONSTER_CROWNED_SERPENT') && gameState.mainDeck.length > 0) {
+            drawCardsWithPassives(gameState, io, 1, player);
+        }
+    });
+}
+
+function prepareImmediateItemPlay(gameState, playerId) {
+    const player = gameState.players && gameState.players[playerId];
+    const item = gameState.pendingCard;
+    if (!player || !item || !['Item Card', 'Cursed Item Card'].includes(item.type)) return false;
+    player.hand.push(item);
+    gameState.pendingCard = null;
+    gameState.state = 'WAITING_FOR_HAND_SELECTION';
+    gameState.pendingAction = {
+        type: 'PLAY_FROM_HAND', allowedTypes: [item.type], allowedCardIds: [item.id],
+        playerToChoose: playerId, originalActor: playerId
+    };
+    return true;
+}
+
+function markButtonsFreePlay(player, pulledCard) {
+    if (!player || !pulledCard || pulledCard.type !== 'Magic Card') return false;
+    pulledCard.freePlay = true;
+    return true;
+}
+
+function returnEquippedItemToOwner(gameState, heroId) {
+    for (const owner of Object.values(gameState.players || {})) {
+        const hero = (owner.party || []).find(h => h.id === heroId);
+        if (hero && hero.equippedItem) {
+            const item = hero.equippedItem;
+            owner.hand.push(item);
+            hero.equippedItem = null;
+            return { owner, item };
+        }
+    }
+    return null;
+}
+
 // Decoy Doll (ITEM_DECOY): if the equipped Hero would be sacrificed or destroyed,
 // discard the Doll instead. It does not protect against stealing.
 function consumeDecoyDoll(gameState, targetHero, action = 'DESTROY') {
@@ -100,11 +189,7 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
     let actionMessage = `${player.id.substring(0, 4)} successfully used ${heroName}'s skill!`;
 
     // Helper to draw cards securely
-    const drawCards = (num, p) => {
-        for(let i=0; i<num; i++) {
-            if(gameState.mainDeck.length > 0) p.hand.push(gameState.mainDeck.pop());
-        }
-    };
+    const drawCards = (num, p) => drawCardsWithPassives(gameState, io, num, p);
 
     switch(skillId) {
         // --- FIGHTER CLASS SKILLS ---
@@ -181,12 +266,7 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
             // "DRAW 2 cards. If at least one is a Challenge card, you MAY reveal it,
             // then DESTROY a Hero." The destroy is OPTIONAL (skippable) and only
             // offered when a Challenge was drawn AND a destroyable Hero exists.
-            const drawn = [];
-            for (let i = 0; i < 2 && gameState.mainDeck.length > 0; i++) {
-                const c = gameState.mainDeck.pop();
-                player.hand.push(c);
-                drawn.push(c);
-            }
+            const drawn = drawCards(2, player);
             const drewChallenge = drawn.some(c => c.type === 'Challenge Card');
             let canDestroy = false;
             for (const pid in gameState.players) {
@@ -301,12 +381,7 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
             // "DRAW 2 cards. If at least one of those cards is an item card, you may
             // play one of them immediately." The play option is conditional on one of
             // the TWO DRAWN cards being an Item — not on Items already in hand.
-            const qdDrawn = [];
-            for (let i = 0; i < 2 && gameState.mainDeck.length > 0; i++) {
-                const c = gameState.mainDeck.pop();
-                player.hand.push(c);
-                qdDrawn.push(c);
-            }
+            const qdDrawn = drawCards(2, player);
             if (qdDrawn.some(c => c.type === 'Item Card')) {
                 gameState.state = 'WAITING_FOR_HAND_SELECTION';
                 gameState.pendingAction = { type: 'PLAY_FROM_HAND', allowedTypes: ['Item Card'], playerToChoose: rollerId, originalActor: rollerId, optional: true };
@@ -321,14 +396,15 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
             // DRAW a second card." The offer is conditional on the DRAWN card being
             // Magic — not on any Magic already in hand.
             if (gameState.mainDeck.length > 0) {
-                const snowballCard = gameState.mainDeck.pop();
+                const snowballCard = drawCards(1, player)[0];
                 if (snowballCard.type === 'Magic Card') {
+                    const heldIndex = player.hand.findIndex(c => c.id === snowballCard.id);
+                    if (heldIndex !== -1) player.hand.splice(heldIndex, 1);
                     gameState.state = 'WAITING_FOR_IMMEDIATE_PLAY';
                     gameState.pendingCard = snowballCard;
                     gameState.pendingAction = { type: 'IMMEDIATE_PLAY_CHOICE', playerToChoose: rollerId, thenDraw: 1 };
                     actionMessage = `${player.id.substring(0, 4)} drew a Magic card with Snowball and may play it immediately (then draw another)!`;
                 } else {
-                    player.hand.push(snowballCard);
                     actionMessage = `${player.id.substring(0, 4)} drew a card with Snowball — not a Magic card, so nothing more happens.`;
                 }
             } else {
@@ -345,8 +421,10 @@ case 'DRAW_CARD':
             break;
         case 'DRAW_AND_PLAY':
             if (gameState.mainDeck.length > 0) {
-                const drawnCard = gameState.mainDeck.pop();
+                const drawnCard = drawCards(1, player)[0];
                 if (drawnCard.type === 'Hero Card') {
+                    const heldIndex = player.hand.findIndex(c => c.id === drawnCard.id);
+                    if (heldIndex !== -1) player.hand.splice(heldIndex, 1);
                     gameState.state = 'WAITING_FOR_IMMEDIATE_PLAY';
                     gameState.pendingCard = drawnCard;
                     gameState.pendingAction = {
@@ -355,7 +433,6 @@ case 'DRAW_CARD':
                     };
                     actionMessage = `${player.id.substring(0, 4)} drew a Hero and can play it immediately!`;
                 } else {
-                    player.hand.push(drawnCard);
                     actionMessage = `${player.id.substring(0, 4)} drew a card.`;
                 }
             } else {
@@ -390,7 +467,7 @@ case 'DRAW_CARD':
             break;
         case 'SKILL_WILY_RED':
             while(player.hand.length < 7 && gameState.mainDeck.length > 0) {
-                player.hand.push(gameState.mainDeck.pop());
+                drawCards(1, player);
             }
             actionMessage = `${player.id.substring(0, 4)} drew cards until they had 7 in their hand!`;
             break;
@@ -421,7 +498,7 @@ case 'DRAW_CARD':
             break;
         case 'SKILL_SMOOTH_MIMIMEOW':
             Object.values(gameState.players).forEach(p => {
-                if (p.id !== rollerId && p.party.some(h => h.class === 'Thief') && p.hand.length > 0) {
+                if (p.id !== rollerId && p.party.some(h => effectiveHeroClass(h) === 'Thief') && p.hand.length > 0) {
                     const randIndex = Math.floor(Math.random() * p.hand.length);
                     player.hand.push(p.hand.splice(randIndex, 1)[0]);
                 }
@@ -861,11 +938,7 @@ function executeMagic(gameState, io, effectId, playerId, targetData) {
     console.log(`Executing magic ${effectId} by player ${playerId}`);
     let actionMessage = `${player.id.substring(0, 4)} successfully cast a spell!`;
 
-    const drawCards = (num, p) => {
-        for(let i=0; i<num; i++) {
-            if(gameState.mainDeck.length > 0) p.hand.push(gameState.mainDeck.pop());
-        }
-    };
+    const drawCards = (num, p) => drawCardsWithPassives(gameState, io, num, p);
 
     switch(effectId) {
         case 'MAGIC_CALL_FALLEN':
@@ -1015,5 +1088,11 @@ function executeMagic(gameState, io, effectId, playerId, targetData) {
 module.exports = {
     executeSkill,
     executeMagic,
-    hasOpponentHeroTarget
+    hasOpponentHeroTarget,
+    effectiveHeroClass,
+    drawCardsWithPassives,
+    triggerCrownedSerpent,
+    prepareImmediateItemPlay,
+    markButtonsFreePlay,
+    returnEquippedItemToOwner
 };

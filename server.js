@@ -4,7 +4,11 @@ const { Server } = require('socket.io');
 const fs = require('fs');
 const path = require('path');
 const { resolveSkill } = require('./card_effects');
-const { executeSkill, executeMagic, hasOpponentHeroTarget } = require('./skill_engine');
+const {
+    executeSkill, executeMagic, hasOpponentHeroTarget, drawCardsWithPassives,
+    triggerCrownedSerpent, prepareImmediateItemPlay, markButtonsFreePlay,
+    returnEquippedItemToOwner
+} = require('./skill_engine');
 const ALL_CARDS = require('./cards.json');
 
 const app = express();
@@ -177,16 +181,10 @@ function dealCards(count, playerSocketId) {
     const player = gameState.players[playerSocketId];
     if (count === 1 && gameState.state === 'PLAYING') {
         if (gameState.mainDeck.length > 0) {
-            const card = gameState.mainDeck.pop();
-            const hasRex = player.slainMonsters && player.slainMonsters.some(m => m.effect_id === 'MONSTER_REX_MAJOR');
+            const nextCard = gameState.mainDeck[gameState.mainDeck.length - 1];
             const hasMalamammoth = player.slainMonsters && player.slainMonsters.some(m => m.effect_id === 'MONSTER_MALAMAMMOTH');
-            const hasOrthus = player.slainMonsters && player.slainMonsters.some(m => m.effect_id === 'MONSTER_ORTHUS');
-
-            if (hasRex && card.type === 'Modifier Card') {
-                io.emit('message', `${getPlayerName(gameState, player.id)} revealed a Modifier due to Rex Major and draws another card!`);
-                player.hand.push(card);
-                if (gameState.mainDeck.length > 0) player.hand.push(gameState.mainDeck.pop());
-            } else if ((hasMalamammoth && card.type === 'Item Card') || (hasOrthus && card.type === 'Magic Card')) {
+            if (hasMalamammoth && nextCard.type === 'Item Card') {
+                const card = gameState.mainDeck.pop();
                 gameState.state = 'WAITING_FOR_IMMEDIATE_PLAY';
                 gameState.pendingCard = card;
                 gameState.pendingAction = {
@@ -197,23 +195,15 @@ function dealCards(count, playerSocketId) {
                 broadcastState();
                 return;
             } else {
-                player.hand.push(card);
-            }
-        }
-    } else {
-        console.log(`[DEBUG] dealCards bulk deal called for ${playerSocketId} with count ${count}`); for (let i = 0; i < count; i++) { console.log(`[DEBUG] dealCards iteration ${i}, mainDeck length: ${gameState.mainDeck.length}`);
-            if (gameState.mainDeck.length > 0) {
-                const card = gameState.mainDeck.pop();
-                const hasRex = player.slainMonsters && player.slainMonsters.some(m => m.effect_id === 'MONSTER_REX_MAJOR');
-                if (hasRex && card.type === 'Modifier Card') {
-                    io.emit('message', `${getPlayerName(gameState, player.id)} revealed a Modifier due to Rex Major and draws another card!`);
-                    player.hand.push(card);
-                    if (gameState.mainDeck.length > 0) player.hand.push(gameState.mainDeck.pop());
-                } else {
-                    player.hand.push(card);
+                drawCardsWithPassives(gameState, io, 1, player);
+                if (gameState.state === 'WAITING_FOR_IMMEDIATE_PLAY') {
+                    broadcastState();
+                    return;
                 }
             }
         }
+    } else {
+        drawCardsWithPassives(gameState, io, count, player);
     }
 }
 
@@ -1157,12 +1147,12 @@ io.on('connection', (socket) => {
             }
 
             const player = gameState.players[socket.id];
-            if (!isFree && player.ap < 1) return; // Costs 1 AP
-
             const cardIndex = player.hand.findIndex(c => c.id === cardId);
             if (cardIndex === -1) return;
 
             const card = player.hand[cardIndex];
+            if (card.freePlay === true) isFree = true;
+            if (!isFree && player.ap < 1) return; // Costs 1 AP
 
             // Block plays whose entire payoff is impossible, so the player doesn't
             // waste AP + cards on a no-op. Entangling Trap's payoff is the steal —
@@ -1198,6 +1188,8 @@ io.on('connection', (socket) => {
                 io.to(socket.id).emit('message', "No Heroes to destroy — you can't play Destructive Spell right now.");
                 return;
             }
+
+            if (card.freePlay === true) delete card.freePlay;
 
             // Clear stale pending cards to prevent locks
             if (gameState.state === 'PLAYING' && gameState.pendingCard) {
@@ -1635,12 +1627,7 @@ io.on('connection', (socket) => {
                 // Crowned Serpent: every owner draws a card each time ANY player
                 // plays a Modifier (auto — it's a pure benefit). Includes the player
                 // who just played it ("including you").
-                Object.values(gameState.players).forEach(pl => {
-                    if (pl.slainMonsters && pl.slainMonsters.some(m => m.effect_id === 'MONSTER_CROWNED_SERPENT') && gameState.mainDeck.length > 0) {
-                        pl.hand.push(gameState.mainDeck.pop());
-                        io.emit('message', `${getPlayerName(gameState, pl.id)} drew a card (Crowned Serpent)!`);
-                    }
-                });
+                triggerCrownedSerpent(gameState, io);
 
                 if (gameState.pendingRoll.type === 'CHALLENGE') {
                     if (data.targetRoll === 'ACTIVE') gameState.pendingRoll.activeModifiers = (gameState.pendingRoll.activeModifiers || 0) + modValue;
@@ -1728,7 +1715,9 @@ io.on('connection', (socket) => {
         const cardIndex = player.hand.findIndex(c => c.id === data.cardId);
         if (cardIndex !== -1) {
             const card = player.hand[cardIndex];
-            if (gameState.pendingAction.allowedTypes.includes(card.type)) {
+            const allowedIds = gameState.pendingAction.allowedCardIds;
+            if (gameState.pendingAction.allowedTypes.includes(card.type)
+                && (!allowedIds || allowedIds.includes(card.id))) {
                 // Capture follow-up draw count, then clear the PLAY_FROM_HAND action.
                 // It has been consumed; leaving it set makes resolvePendingCard mistake
                 // it for a Magic follow-up (forcing PLAYING and clobbering a Hero's
@@ -1739,9 +1728,7 @@ io.on('connection', (socket) => {
                 gameState.pendingCard = card;
 
                 if (thenDraw && gameState.mainDeck.length > 0) {
-                    for(let i=0; i<thenDraw; i++) {
-                        if(gameState.mainDeck.length > 0) player.hand.push(gameState.mainDeck.pop());
-                    }
+                    drawCardsWithPassives(gameState, io, thenDraw, player);
                     io.emit('message', `${getPlayerName(gameState, player.id)} drew ${thenDraw} extra card(s)!`);
                 }
 
@@ -1785,13 +1772,15 @@ socket.on('resolve_immediate_play', (data) => {
         const thenDraw = (gameState.pendingAction && gameState.pendingAction.thenDraw) || 0;
 
         if (data.playNow === true) {
+            if (prepareImmediateItemPlay(gameState, socket.id)) {
+                broadcastState();
+                return;
+            }
             // Clear the IMMEDIATE_PLAY_CHOICE so it can't linger past resolution.
             gameState.pendingAction = null;
 
             if (thenDraw > 0) {
-                for (let i = 0; i < thenDraw; i++) {
-                    if (gameState.mainDeck.length > 0) player.hand.push(gameState.mainDeck.pop());
-                }
+                drawCardsWithPassives(gameState, io, thenDraw, player);
                 io.emit('message', `${getPlayerName(gameState, socket.id)} drew ${thenDraw} card(s) from Snowball!`);
             }
 
@@ -2159,26 +2148,13 @@ socket.on('resolve_immediate_play', (data) => {
                 gameState.pendingAction = null;
             }
         } else if (pAction.type === 'RETURN_ITEM') {
-            for (const pId in gameState.players) {
-                const p = gameState.players[pId];
-                const heroIndex = p.party.findIndex(h => h.id === targetId);
-                if (heroIndex !== -1) {
-                    const hero = p.party[heroIndex];
-                    if (hero.equippedItem) {
-                        player.hand.push(hero.equippedItem);
-                        io.emit('message', `${getPlayerName(gameState, player.id)} returned ${hero.equippedItem.name} to their hand!`);
-                        hero.equippedItem = null;
-                        
-                        // Draw a card as part of Winds of Change
-                        if (gameState.mainDeck.length > 0) {
-                            player.hand.push(gameState.mainDeck.pop());
-                            io.emit('message', `${getPlayerName(gameState, player.id)} drew a card.`);
-                        }
-                    }
-                    gameState.pendingAction = null;
-                    break;
-                }
+            const returned = returnEquippedItemToOwner(gameState, targetId);
+            if (returned) {
+                io.emit('message', `${getPlayerName(gameState, returned.owner.id)} got ${returned.item.name} back in their hand!`);
+                // The caster still receives the separate draw named by the spell.
+                drawCardsWithPassives(gameState, io, 1, player);
             }
+            gameState.pendingAction = null;
         } else if (pAction.type === 'FORCE_DISCARD_TARGET' || pAction.type === 'CONDITIONAL_PULL' || pAction.type === 'PUMA_PULL' || pAction.type === 'LOOK_AND_PULL') {
             const tp = gameState.players[targetId];
             if (tp && targetId !== socket.id) {
@@ -2250,6 +2226,7 @@ socket.on('resolve_immediate_play', (data) => {
                         const rIndex = Math.floor(Math.random() * tp.hand.length);
                         const pulledCard = tp.hand.splice(rIndex, 1)[0];
                         player.hand.push(pulledCard);
+                        markButtonsFreePlay(player, pulledCard);
                         io.emit('message', `${getPlayerName(gameState, player.id)} pulled a card from ${getPlayerName(gameState, tp.id)}'s hand!`);
                     } else {
                         io.emit('message', `${getPlayerName(gameState, tp.id)} had no cards to pull!`);

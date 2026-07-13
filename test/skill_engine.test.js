@@ -6,7 +6,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { executeSkill, executeMagic, hasOpponentHeroTarget } = require('../skill_engine');
+const {
+    executeSkill, executeMagic, hasOpponentHeroTarget, drawCardsWithPassives,
+    triggerCrownedSerpent, prepareImmediateItemPlay, markButtonsFreePlay,
+    returnEquippedItemToOwner
+} = require('../skill_engine');
 
 // ---------------------------------------------------------------------------
 // Test helpers / factories
@@ -940,6 +944,85 @@ test('SKILL_SMOOTH_MIMIMEOW pulls only from opponents who have a Thief', () => {
     assert.equal(alice.hand.length, 1); // only pulled from bob (Thief)
     assert.equal(bob.hand.length, 0);
     assert.equal(carol.hand.length, 1); // untouched
+});
+
+test('SKILL_SMOOTH_MIMIMEOW counts a Hero wearing a Thief Mask', () => {
+    const masked = hero('BobWiz', {
+        id: 'masked', class: 'Wizard',
+        equippedItem: card('Thief Mask', 'Item Card', { effect_id: 'ITEM_MASK' })
+    });
+    const bob = player('bob', { party: [masked], hand: [card('loot', 'Item Card')] });
+    const alice = player('alice', { party: [hero('Smooth Mimimeow', { id: 'sm' })] });
+    const gs = makeState([alice, bob]);
+    withRandom(0, () => executeSkill(gs, makeIo(), 'SKILL_SMOOTH_MIMIMEOW', 'alice', 'sm', null));
+    assert.equal(alice.hand.length, 1);
+    assert.equal(bob.hand.length, 0);
+});
+
+test('Orthus offers a Magic card drawn by a Hero effect for immediate play', () => {
+    const alice = player('alice', {
+        party: [hero('Drawer', { id: 'drawer' })],
+        slainMonsters: [{ effect_id: 'MONSTER_ORTHUS' }]
+    });
+    const magic = card('Spell', 'Magic Card');
+    const gs = makeState([alice], { mainDeck: [magic] });
+    executeSkill(gs, makeIo(), 'DRAW_CARD', 'alice', 'drawer', null);
+    assert.equal(gs.state, 'WAITING_FOR_IMMEDIATE_PLAY');
+    assert.equal(gs.pendingCard, magic);
+    assert.equal(alice.hand.length, 0);
+});
+
+test('Rex Major grants an extra draw when a Magic effect draws a Modifier', () => {
+    const alice = player('alice', { slainMonsters: [{ effect_id: 'MONSTER_REX_MAJOR' }] });
+    const bonus = card('Bonus', 'Hero Card');
+    const modifier = card('+2', 'Modifier Card');
+    const gs = makeState([alice], { mainDeck: [bonus, modifier] });
+    executeMagic(gs, makeIo(), 'MAGIC_CRIT_BOOST', 'alice', null);
+    assert.ok(alice.hand.includes(modifier));
+    assert.ok(alice.hand.includes(bonus));
+});
+
+test('Crowned Serpent owner draws when another player plays a Modifier', () => {
+    const owner = player('owner', { slainMonsters: [{ effect_id: 'MONSTER_CROWNED_SERPENT' }] });
+    const other = player('other');
+    const gs = makeState([owner, other], { mainDeck: [card('reward', 'Hero Card')] });
+    triggerCrownedSerpent(gs, makeIo());
+    assert.equal(owner.hand.length, 1);
+    assert.equal(other.hand.length, 0);
+});
+
+test('Sly Pickings immediate Item play moves the specific item into equip selection', () => {
+    const alice = player('alice');
+    const item = card('Stolen Item', 'Item Card');
+    const gs = makeState([alice], { state: 'WAITING_FOR_IMMEDIATE_PLAY', pendingCard: item });
+    assert.equal(prepareImmediateItemPlay(gs, 'alice'), true);
+    assert.ok(alice.hand.includes(item));
+    assert.equal(gs.state, 'WAITING_FOR_HAND_SELECTION');
+    assert.deepEqual(gs.pendingAction.allowedCardIds, [item.id]);
+    assert.ok(!gs.discardPile.includes(item));
+});
+
+test('Buttons marks only the pulled Magic card for a free play', () => {
+    const alice = player('alice');
+    const magic = card('Taken Spell', 'Magic Card');
+    const other = card('Other Spell', 'Magic Card');
+    alice.hand.push(magic, other);
+    assert.equal(markButtonsFreePlay(alice, magic), true);
+    assert.equal(magic.freePlay, true);
+    assert.notEqual(other.freePlay, true);
+});
+
+test('Winds of Change returns an opponents equipped Item to that original owner', () => {
+    const item = card('Owner Item', 'Item Card');
+    const target = hero('Target', { id: 'target', equippedItem: item });
+    const alice = player('alice');
+    const bob = player('bob', { party: [target] });
+    const gs = makeState([alice, bob]);
+    const result = returnEquippedItemToOwner(gs, 'target');
+    assert.equal(result.owner, bob);
+    assert.ok(bob.hand.includes(item));
+    assert.equal(alice.hand.length, 0);
+    assert.equal(target.equippedItem, null);
 });
 
 test('SKILL_SHARP_FOX reveals the target hand but steals nothing', () => {

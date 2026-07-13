@@ -85,7 +85,7 @@ test('Lucky Bucky: pulled Hero offers immediate play', async ({ browser }) => {
     expect(errors).toEqual([]);
 });
 
-test('Sly Pickings: pulled Item offers immediate play', async ({ browser }) => {
+test('Sly Pickings: pulled Item can be played immediately and equips instead of discarding', async ({ browser }) => {
     const errors = [];
     const { host, p2 } = await startGame(browser);
     host.on('pageerror', e => errors.push(e.message));
@@ -96,7 +96,19 @@ test('Sly Pickings: pulled Item offers immediate play', async ({ browser }) => {
     await expect.poll(() => host.evaluate(() =>
         window.latestGameState.pendingCard && window.latestGameState.pendingCard.type)).toBe('Item Card');
 
-    await host.evaluate(() => window._socket.emit('resolve_immediate_play', { playNow: false }));
-    await expect.poll(() => stateOf(host), { timeout: 8_000 }).toBe('PLAYING');
+    await host.evaluate(() => window._socket.emit('resolve_immediate_play', { playNow: true }));
+    await expect.poll(() => stateOf(host), { timeout: 8_000 }).toBe('WAITING_FOR_HAND_SELECTION');
+
+    await host.evaluate(() => window._socket.emit('play_from_hand', {
+        cardId: 'card_064', targetPlayerId: window.myId, targetHeroId: 'card_054'
+    }));
+    await passChallenge(p2);
+
+    await expect.poll(() => host.evaluate(() => {
+        const me = window.latestGameState.players[window.myId];
+        return me.party.find(h => h.id === 'card_054')?.equippedItem?.id || null;
+    }), { timeout: 8_000 }).toBe('card_064');
+    await expect.poll(() => host.evaluate(() =>
+        window.latestGameState.discardPile.some(c => c.id === 'card_064'))).toBe(false);
     expect(errors).toEqual([]);
 });

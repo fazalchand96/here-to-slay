@@ -157,6 +157,112 @@ softlocks above — until the alignment rework (deck POC, then
 discard/AP/labels) is fully gated PASS. Do not resume streak testing or
 softlock diagnosis until the user says alignment is done.
 
+## ⚠️ Alignment gated PASS + shipped 2026-07-13 — HOLD LIFTED
+
+Round 2 wiring gated PASS by Director (independently verified: 116/116
+tests, all 6 screenshots correct, discard hotspot opens viewer in both
+orientations). Committed `060e531`, pushed to origin/main, confirmed LIVE
+on Render (hts-v71 verified on production /sw.js + deck-stage.generated.css
+served correctly). The whole alignment goal (Track A step 1 rework) is
+DONE. User lifted the hold and requested next batch of work (below).
+
+**IN PROGRESS — card-logic bug batch:** task-mrjjhbog-mz0spm (fresh Codex
+thread 019f5cad-ae8c-79c2-8dd6-4cac682546c2, NOT the alignment thread — no
+--resume-last). Scope: the 6 card bugs + Winds of Change from
+[[card-audit-progress]] (Mimimeow/Thief-Mask, Ortus, Rex Major extra-
+modifier, Serpent-on-any-modifier, Sly Pickings stolen-item-to-discard,
+Buttons free-play, Winds of Change wrong recipient) PLUS the opponent-modal
+missing-slain-monsters UI bug (app.js openOpponentModal + oppModalSignature,
+root-caused above). Told to re-check existing tests first on the ones
+flagged as possible regressions. Requires unit test updates + full suite +
+a real-flow screenshot for the opponent-modal fix. Gate this the same way
+as alignment (Director verifies screenshots/tests personally, doesn't just
+trust the report) before commit/push/deploy.
+
+**QUEUED NEXT #1 (do not start until the card-logic batch above is gated +
+committed — same working tree, avoid concurrent Codex writes), REORDERED
+AHEAD of the landscape UI polish per Director recommendation (functional
+bug > cosmetic, user did not object):** reconnect grace period. User report
+2026-07-13: backgrounding the app briefly (switching to WhatsApp/TikTok for
+a few seconds) gets them kicked "too fast." Director root-caused in
+server.js:
+- `new Server(server)` (line 12) uses Socket.IO DEFAULT ping timing (~25s
+  interval + ~20s timeout ≈ 45s before a stalled connection even fires
+  'disconnect') — mobile OSes commonly throttle/suspend background-tab JS
+  around that same window.
+- WORSE: the `disconnect` handler (line 2406-2464) has ZERO grace period —
+  the instant it fires mid-match, `clearBoard()` wipes activeMonsters/
+  mainDeck/discardPile/pending* AND resets EVERY remaining player's hand/
+  party/slainMonsters/leader back to LOBBY, immediately, for the whole
+  match. One player's phone lock currently costs everyone their game.
+Fix needs TWO parts: (a) raise `new Server(server, { pingInterval, pingTimeout })`
+to something more lenient (e.g. 25s/60s) so brief backgrounding often never
+even fires disconnect; (b) add a real reconnect-grace window (~60-90s)
+that holds the disconnected player's seat/state instead of immediately
+wiping to LOBBY, keyed by a persistent client-side token (socket.id changes
+on reconnect, so identity needs to survive the reconnect some other way) —
+only wipe to LOBBY if the grace period elapses with no reconnect. This is a
+real feature (server session persistence across reconnect), not just a
+config tweak — scope it accordingly, write tests, gate before shipping.
+
+**QUEUED NEXT #2:** landscape-only UI request from user 2026-07-13 (given
+across two messages, consolidated + Director root-caused each item below
+against current code before dispatch):
+- The DRAW / RELOAD / END action buttons (right rail) should be stacked
+  vertically on top of each other in the corner (verify current layout
+  first — may already be a vertical stack; user says DRAW/RELOAD currently
+  sit "a bit too high" — lower their position).
+- DRAW button's blue fill and RELOAD button's amber fill do not fully fill
+  their button/plaque shape.
+- The win tracker ("Slain ooo / Classes X/6", currently top-right in
+  landscape) should move to the LEFT side of the screen, vertically
+  centered (middle of screen height), with Slain and Classes stacked
+  top-to-bottom instead of the current horizontal single-line layout.
+  Portrait is NOT mentioned — landscape only unless told otherwise.
+- **AP indicator overlap — user wants it RE-DESIGNED, not just nudged.**
+  Root cause (Director, public/style.css ~line 6121-6131): `#ap-gems
+  .ap-gems-label` ("AP" text) is `position:absolute; top:-18%` inside the
+  `#ap-gems` stage-relative box, which is only `--ap-track-width: 3.6%`
+  wide / `28%` tall in landscape — pushing the label upward out of that
+  tiny box collides with the gem sockets/other elements. User: scrap the
+  current text-label-above-gems approach, think of a different way to
+  show AP (e.g. drop the redundant "AP" text entirely — the gem column is
+  already visually distinct on the rail, same reasoning as why DECK/
+  DISCARD don't need text labels — or find a placement that cannot
+  collide with the 4-socket track). This is fresh (round-2 wiring, today),
+  not a regression.
+- **Split the two floating icon buttons.** Root cause (Director,
+  public/style.css ~line 3572-3593): `#mute-btn` (sound) and
+  `#game-menu-btn` (☰, toggles the game log — user calls it "chat", it is
+  actually the event/game log) are both `position:fixed; top:8px`,
+  `right:10px` / `right:56px` — clustered together top-right. User wants
+  ONE button top-right, the OTHER moved to top-left (does not say which
+  goes where — Director/Codex judgment call, e.g. sound stays right,
+  game-log moves left, or vice versa; note reasonably not portrait-scoped
+  either since this rule isn't currently orientation-scoped, ask user or
+  keep both orientations consistent).
+- **Button/icon asset scaling — likely the SAME root cause as the
+  DRAW/RELOAD fill issue above, look at all of them together.** Root cause
+  (Director, public/style.css ~line 5070-5092): `#mute-btn`/`#game-menu-btn`
+  background uses `url(assets/skin/buttons/icon-round.png) center/100%
+  100%` stretched into a **non-square** 40x34px box (round plaque asset
+  forced into a non-1:1 box will distort), with a fixed 22x22px icon
+  layered on top via `::after`. Check whether DRAW/RELOAD/END use the same
+  stretch-to-fit pattern against their own plaque assets (draw-blue.png /
+  reload-amber.png / end-seal.png per PREMIUM_SKIN_HANDOFF.md's asset
+  list) — likely why those colors "don't fully fill the square" too. Fix
+  the general pattern (button box aspect ratio should match its plaque
+  asset, or use `contain`/`cover` correctly) rather than patching each
+  button's numbers individually.
+- Gate via landscape screenshots (landscape only per the request) before
+  commit/push/deploy.
+
+**Explicitly deferred (user, 2026-07-13):** the 2 streak-breaker softlocks
+(landscape50i game 11 PROMPT_SKILL_ROLL stall, portrait50d game 8
+WAITING_FOR_CHALLENGES stuck-retry) and resuming the 15-game streak runs —
+"not necessary right now, we will do that later." Do not pick these up
+unless the user asks.
+
 **Queued bugs reported by user during the hold (not yet fixed):**
 - 6 card-logic bugs (Mimimeow/Thief-Mask, Ortus, Rex Major, Serpent, Sly
   Pickings, Buttons) + Winds of Change — logged with full detail in memory
