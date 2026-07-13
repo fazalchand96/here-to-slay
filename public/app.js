@@ -3139,14 +3139,19 @@ function renderBoard(data) {
 
     setRegionHtml(myWinTracker, boardParts.winTrackHtml);
 
-    // The four unlit sockets are painted into the board. Keep four layout anchors
-    // and reveal only the small live glow overlays for currently available AP.
+    // The four unlit sockets are painted into the board. Overlay the matching
+    // pre-baked rail crop for the current AP; zero AP needs no overlay at all.
     const apGemsEl = document.getElementById('ap-gems');
     if (apGemsEl) {
-        const ap = me.ap || 0;
-        const apHtml = `<span class="ap-gems-label">AP</span>` +
-            Array.from({ length: 4 }, (_, i) => `<span class="ap-gem${i < ap ? ' on' : ''}" data-slot="${i + 1}"></span>`).join('');
-        setRegionHtml(apGemsEl, apHtml);
+        const ap = Math.min(4, Math.max(0, Math.floor(Number(me.ap) || 0)));
+        if (ap === 0) {
+            apGemsEl.hidden = true;
+            apGemsEl.removeAttribute('src');
+        } else {
+            const orientation = document.body.classList.contains('portrait') ? 'portrait' : 'landscape';
+            apGemsEl.src = `assets/skin/ap-rail-${orientation}-${ap}.png`;
+            apGemsEl.hidden = false;
+        }
     }
 
     // Reward toast (Phase 7): celebrate when MY slain count grows. Client-side

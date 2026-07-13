@@ -367,8 +367,17 @@ Gate via screenshots the same way as dea3545 (Codex's sandbox has had no
 browser available the last two UI tasks — Director will likely need to
 verify independently again via a Playwright script, budget for that).
 
-**QUEUED — landscape UI round 3 (user, 2026-07-13), dispatch after the
-frame-template task above completes (same file, style.css):**
+**DONE — class-colored Hero frame templates: GATED PASS + SHIPPED
+2026-07-13.** task-mrjogdjd-ks7ut9, committed `79ba0a1`, pushed, deploy
+verifying (hts-v77). Director independently viewed 2 of the 6 new frame
+PNGs directly (hero-fighter.png, hero-thief.png) — genuine full-frame
+recolor with carved detail intact (tint technique worked, no repeat of
+the past pink-parchment hue-rotate bug) and crest baked into the corner
+art itself, exactly matching what the user asked for. Confirmed live in
+game via Playwright: each class shows a truly distinct colored frame, not
+a border line. 131/131 tests independently reverified.
+
+**IN PROGRESS — landscape UI round 3 (user, 2026-07-13):**
 1. DRAW/RELOAD/END should be stacked EVEN closer together than the round-2
    fix landed (round-2 tightened it but user wants it tighter still).
 2. **AP gems — architecture change, not a tweak.** Replace the live

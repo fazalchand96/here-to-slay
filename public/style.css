@@ -3756,27 +3756,6 @@ body.landscape #player-win-tracker { font-size: 0.72rem !important; }
 .wt-classes b { color: var(--gold); }
 
 /* AP gems — one amber gem per current AP (from me.ap; 4th slot only when AP > 3). */
-#ap-gems { display: flex; align-items: center; gap: 5px; }
-.ap-gems-label {
-    font-family: var(--font-body);
-    font-weight: 800;
-    font-size: 0.7rem;
-    letter-spacing: 0.5px;
-    color: var(--text-muted);
-    margin-right: 2px;
-}
-.ap-gem {
-    width: 11px;
-    height: 11px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.12);
-    box-shadow: inset 0 0 2px rgba(0, 0, 0, 0.5);
-}
-.ap-gem.on {
-    background: radial-gradient(circle at 35% 30%, #ffe08a, var(--accent));
-    box-shadow: 0 0 7px 1px rgba(245, 158, 11, 0.75);
-}
-
 /* Raised party leader — stands proud of the party row. Landscape origin left
    (raised left), portrait origin center. */
 #player-party .card.card-leader {
@@ -4812,20 +4791,6 @@ body.landscape #player-hand .card {
 }
 
 /* Production skin assets + crowded card layout behavior. */
-.ap-gem {
-    width: 15px !important;
-    height: 15px !important;
-    border-radius: 0 !important;
-    background: url('assets/skin/icons/ap-empty.png') center / contain no-repeat !important;
-    box-shadow: none !important;
-    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.65));
-}
-
-.ap-gem.on {
-    background-image: url('assets/skin/icons/ap-full.png') !important;
-    filter: drop-shadow(0 0 5px rgba(69, 169, 232, 0.85));
-}
-
 #player-hand,
 #player-party {
     scroll-snap-type: x proximity;
@@ -5296,20 +5261,6 @@ body.landscape #ap-gems {
     gap: 8% !important;
     transform: rotate(-4deg) !important; transform-origin: center center !important;
 }
-body.landscape .ap-gems-label {
-    font-family: var(--font-display) !important;
-    font-size: clamp(0.5rem, 1.6vh, 0.8rem) !important;
-    font-weight: 900 !important;
-    letter-spacing: 2px !important;
-    color: #f2e2b4 !important;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.7) !important;
-    margin-bottom: 4px !important;
-}
-body.landscape .ap-gem {
-    width: clamp(28px, 9vh, 44px) !important;
-    height: clamp(28px, 9vh, 44px) !important;
-}
-
 /* Opponent chip → dark ornate plaque. */
 body.landscape #opponents-bar .opponent-chip {
     flex: 0 1 auto !important;
@@ -5646,20 +5597,6 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
 }
 
 /* AP gems — the amber diamonds up the right green rail, "AP" label on top. */
-#game-board.portrait .ap-gems-label {
-    font-family: var(--font-display) !important;
-    font-size: clamp(0.42rem, 1.3vh, 0.64rem) !important;
-    font-weight: 900 !important; letter-spacing: 0.5px !important;
-    color: #f2e2b4 !important; text-shadow: 0 1px 2px rgba(0,0,0,0.7) !important;
-    margin-bottom: 3px !important;
-}
-#game-board.portrait .ap-gem {
-    width: clamp(20px, 5.4vh, 32px) !important;
-    height: clamp(20px, 5.4vh, 32px) !important;
-    /* Nudge just the gems left onto the rail (the "AP" label stays centred). */
-    transform: translateX(-6px) !important;
-}
-
 /* Opponent chip → dark ornate plaque. */
 #game-board.portrait #opponents-bar .opponent-chip {
     flex: 0 1 auto !important;
@@ -5889,23 +5826,6 @@ body.monster-strike-playing .overlay:not(#dice-overlay) {
 
 /* DEPTH-PROPOSAL-2 — AP gems seated in inset rail sockets.
    Independently removable: delete only this block. */
-:is(body:not([class*="depth-only-"]), body.depth-only-2) .ap-gem {
-    border-radius: 50%;
-    box-shadow:
-        0 1px 0 rgba(255, 231, 153, 0.32),
-        0 3px 4px rgba(0, 0, 0, 0.72),
-        inset 0 2px 2px rgba(255, 255, 255, 0.22),
-        inset 0 -3px 4px rgba(0, 20, 25, 0.72);
-    filter: saturate(1.12) contrast(1.06);
-}
-:is(body:not([class*="depth-only-"]), body.depth-only-2) .ap-gem.on {
-    box-shadow:
-        0 1px 0 rgba(255, 244, 190, 0.65),
-        0 4px 7px rgba(0, 0, 0, 0.78),
-        0 0 8px rgba(28, 183, 255, 0.36),
-        inset 0 2px 2px rgba(255, 255, 255, 0.42),
-        inset 0 -3px 4px rgba(0, 30, 45, 0.62);
-}
 
 /* DEPTH-PROPOSAL-3 — Hand cards fan as individually elevated pieces.
    Independently removable: delete only this block. */
@@ -6096,8 +6016,8 @@ body.landscape #game-board > #discard-pile::after,
     display: none !important;
 }
 
-/* Four empty sockets are part of the painted rail. The DOM keeps four invisible
-   anchors and reveals only a smaller blue lit-gem overlay for available AP. */
+/* Four empty sockets are part of the painted rail. A single pre-baked rail crop
+   replaces it for AP states 1-4; AP 0 leaves the native unlit art untouched. */
 body.landscape #game-board > #ap-gems,
 #game-board.portrait > #ap-gems {
     position: absolute !important;
@@ -6109,65 +6029,25 @@ body.landscape #game-board > #ap-gems,
     bottom: auto !important;
     margin: 0 !important;
     padding: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: 0 !important;
+    display: block !important;
     transform: translate(-50%, -50%) rotate(var(--ap-track-rotate)) !important;
     transform-origin: center !important;
     background: transparent !important;
     border: 0 !important;
     box-shadow: none !important;
     pointer-events: none !important;
-    overflow: visible !important;
+    object-fit: fill !important;
     z-index: 7 !important;
 }
 
-#game-board #ap-gems .ap-gems-label {
-    position: absolute !important;
-    left: 50% !important;
-    top: -18% !important;
-    transform: translateX(-50%) !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    color: #f2e2b4 !important;
-    font-size: clamp(8px, 1.3cqh, 13px) !important;
-    line-height: 1 !important;
-}
-
-#game-board #ap-gems .ap-gem {
-    flex: none !important;
-    width: 70% !important;
-    height: auto !important;
-    aspect-ratio: 250 / 313 !important;
-    margin: 0 !important;
-    background: none !important;
-    border: 0 !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    filter: none !important;
-    transform: none !important;
-    visibility: hidden !important;
-}
-
-#game-board #ap-gems .ap-gem.on {
-    visibility: visible !important;
-    background: url('assets/skin/icons/ap-full.png') center / contain no-repeat !important;
-    filter: brightness(1.15) saturate(1.2)
-        drop-shadow(0 0 4px rgba(69, 169, 232, 0.95))
-        drop-shadow(0 0 9px rgba(35, 143, 255, 0.58)) !important;
+body.landscape #game-board > #ap-gems[hidden],
+#game-board.portrait > #ap-gems[hidden] {
+    display: none !important;
 }
 
 /* --------------------------------------------------------------------------
    Landscape HUD polish: keep board controls aligned to their native artwork.
    These overrides intentionally leave the portrait shell unchanged. */
-
-/* The board art already identifies the AP rail.  Hiding the duplicate live
-   label leaves the socket/glow track as the AP readout without text collisions. */
-body.landscape #game-board #ap-gems .ap-gems-label {
-    display: none !important;
-}
 
 /* Put the two win conditions on a compact, vertically stacked plaque halfway
    down the left edge. */
@@ -6183,15 +6063,19 @@ body.landscape #player-win-tracker {
     padding: 7px 10px !important;
 }
 
-/* Sound stays top-right; the event-log toggle gets its own top-left corner.
-   The square boxes and `contain` sizing preserve icon-round.png's 1:1 shape. */
+/* Sound stays top-right; the event-log toggle gets its own top-left corner. */
 body.landscape #mute-btn,
 body.landscape #game-menu-btn {
     width: 40px !important;
     height: 40px !important;
-    background-size: auto, contain !important;
-    background-position: center, center !important;
-    background-repeat: no-repeat !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 50% !important;
+    overflow: hidden !important;
+    background: transparent url('assets/skin/buttons/icon-round.png') center / 100% 100% no-repeat !important;
 }
 body.landscape #mute-btn {
     left: auto !important;
@@ -6214,15 +6098,15 @@ body.landscape #end-turn-btn {
     background-repeat: no-repeat !important;
 }
 body.landscape #draw-card-btn {
-    top: 61% !important;
+    top: 64% !important;
     aspect-ratio: 390 / 190 !important;
 }
 body.landscape #discard-draw-btn {
-    top: 73.5% !important;
+    top: 74% !important;
     aspect-ratio: 363 / 190 !important;
 }
 body.landscape #end-turn-btn {
-    top: 86.8% !important;
+    top: 84% !important;
     aspect-ratio: 385 / 190 !important;
 }
 
