@@ -111,6 +111,40 @@ function hasOpponentHeroTarget(gameState, actorId, action = 'DESTROY') {
     });
 }
 
+// Decide how a deferred Hero skill should begin resolving. Most targeting skills
+// are a single Hero-target clause, but the AND cards must be allowed to continue
+// when only their independent non-primary clause can resolve.
+function getTargetingSkillPlan(gameState, actorId, skillId) {
+    const canSteal = hasOpponentHeroTarget(gameState, actorId, 'STEAL');
+    const canDestroy = hasOpponentHeroTarget(gameState, actorId, 'DESTROY');
+
+    if (skillId === 'SKILL_SERIOUS_GREY') {
+        return canDestroy
+            ? { type: 'SKILL_TARGET_HERO', targetAction: 'DESTROY' }
+            : { type: 'EXECUTE_SKILL_IMMEDIATE', skippedClause: 'DESTROY' };
+    }
+
+    if (skillId === 'SKILL_WHISKERS') {
+        if (canSteal) return { type: 'SKILL_TARGET_HERO', targetAction: 'STEAL' };
+        if (canDestroy) return { type: 'DESTROY', skippedClause: 'STEAL' };
+        return null;
+    }
+
+    if (skillId === 'SKILL_MEOWZIO') {
+        if (canSteal) return { type: 'SKILL_TARGET_HERO', targetAction: 'STEAL' };
+        const canPull = Object.entries(gameState.players || {}).some(([id, opponent]) =>
+            id !== actorId && opponent && (opponent.hand || []).length > 0);
+        if (canPull) return { type: 'SKILL_TARGET_PLAYER', skippedClause: 'STEAL' };
+        return null;
+    }
+
+    const stealSkills = ['STEAL_HERO', 'SKILL_TIPSY_TOOTIE', 'SKILL_WIGGLES'];
+    const targetAction = stealSkills.includes(skillId) ? 'STEAL' : 'DESTROY';
+    return hasOpponentHeroTarget(gameState, actorId, targetAction)
+        ? { type: 'SKILL_TARGET_HERO', targetAction }
+        : null;
+}
+
 // keepItem: Shurikitty's special — when an equipped Item would be discarded by the
 // destroy, the initiator takes it into hand instead.
 function resolveDestroyAction(gameState, initiatorId, targetPlayerId, targetHeroId, keepItem = false) {
@@ -512,28 +546,30 @@ case 'DRAW_CARD':
             // Card: "Choose a player. STEAL a Hero from that player and pull a card
             // from that player's hand." NOT a destroy, and the ROLLER pulls a card
             // (does not discard). Respect Calming Voice (cannotBeStolen).
-            if (targetData && targetData.targetPlayerId && targetData.targetHeroId) {
+            if (targetData && targetData.targetPlayerId) {
                 const tp = gameState.players[targetData.targetPlayerId];
-                if (tp && tp.cannotBeStolen) {
-                    actionMessage = `${player.id.substring(0, 4)} tried to use Meowzio, but ${tp.id.substring(0, 4)}'s Heroes are protected from stealing!`;
-                } else if (tp) {
-                    const tHeroIndex = tp.party.findIndex(h => h.id === targetData.targetHeroId);
-                    if (tHeroIndex !== -1) {
+                if (tp) {
+                    let msg = `${player.id.substring(0, 4)} used Meowzio on ${tp.id.substring(0, 4)}`;
+                    const tHeroIndex = tp.cannotBeStolen || !targetData.targetHeroId
+                        ? -1
+                        : tp.party.findIndex(h => h.id === targetData.targetHeroId);
+                    if (tHeroIndex >= 0) {
                         const targetHero = tp.party[tHeroIndex];
                         tp.party.splice(tHeroIndex, 1);
                         targetHero.usedSkillThisTurn = false;
                         player.party.push(targetHero);
-                        let msg = `${player.id.substring(0, 4)} used Meowzio to STEAL ${targetHero.name} from ${tp.id.substring(0, 4)}`;
-                        if (tp.hand.length > 0) {
-                            const randIndex = Math.floor(Math.random() * tp.hand.length);
-                            const pulled = tp.hand.splice(randIndex, 1)[0];
-                            player.hand.push(pulled);
-                            msg += ` and pulled a card from their hand!`;
-                        } else {
-                            msg += ` (they had no cards in hand to pull).`;
-                        }
-                        actionMessage = msg;
+                        msg += `, STEALING ${targetHero.name}`;
+                    } else {
+                        msg += `; the STEAL clause had no legal target`;
                     }
+                    if (tp.hand.length > 0) {
+                        const randIndex = Math.floor(Math.random() * tp.hand.length);
+                        player.hand.push(tp.hand.splice(randIndex, 1)[0]);
+                        msg += ` and pulling a card from their hand!`;
+                    } else {
+                        msg += ` (they had no cards in hand to pull).`;
+                    }
+                    actionMessage = msg;
                 }
             }
             break;
@@ -579,15 +615,27 @@ case 'DRAW_CARD':
                     actionMessage += ` (no Hero left to destroy).`;
                 }
             }
+            if (!targetData || !targetData.targetHeroId) {
+                actionMessage = `${player.id.substring(0, 4)} used Whiskers, but there was no Hero to STEAL.`;
+                if (hasOpponentHeroTarget(gameState, rollerId, 'DESTROY')) {
+                    gameState.state = 'PLAYING';
+                    gameState.pendingAction = { type: 'DESTROY', playerToChoose: rollerId, originalActor: rollerId };
+                    actionMessage += ` Choose a Hero to DESTROY.`;
+                } else {
+                    actionMessage += ` There was also no Hero to DESTROY.`;
+                }
+            }
             break;
         case 'SKILL_SERIOUS_GREY':
             // "DESTROY a Hero AND DRAW a card." The draw is unconditional (not gated on
             // the destroyed Hero having had an Item).
             if (targetData && targetData.targetPlayerId && targetData.targetHeroId) {
                 actionMessage = resolveDestroyAction(gameState, rollerId, targetData.targetPlayerId, targetData.targetHeroId);
-                drawCards(1, player);
-                actionMessage += ` Serious Grey also drew a card.`;
+            } else {
+                actionMessage = `${player.id.substring(0, 4)} used Serious Grey, but there was no Hero to DESTROY.`;
             }
+            drawCards(1, player);
+            actionMessage += ` Serious Grey still drew a card.`;
             break;
         case 'SKILL_WIGGLES':
             if (targetData && targetData.targetPlayerId && targetData.targetHeroId) {
@@ -1089,6 +1137,7 @@ module.exports = {
     executeSkill,
     executeMagic,
     hasOpponentHeroTarget,
+    getTargetingSkillPlan,
     effectiveHeroClass,
     drawCardsWithPassives,
     triggerCrownedSerpent,

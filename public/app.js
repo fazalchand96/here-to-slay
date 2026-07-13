@@ -4,15 +4,17 @@ window.onerror = function(msg, url, line, col, error) {
 
 function getPlayerName(id) {
 
+    const fallback = 'Player ' + String(id || '').substring(0, 4);
+
     if (!latestGameState || !latestGameState.players || !latestGameState.players[id]) {
 
-        return 'Player ' + id.substring(0, 4);
+        return fallback;
 
     }
 
     const p = latestGameState.players[id];
 
-    return p.name && p.name !== 'Player' ? p.name : 'Player ' + id.substring(0, 4);
+    return p.name && p.name !== 'Player' ? p.name : fallback;
 
 }
 
@@ -278,7 +280,7 @@ function renderDiceAttackTarget(data) {
         ? (data.activeMonsters || []).find(m => m.id === pr.targetId)
         : null;
     if (!mon) { preview.innerHTML = ''; preview.style.display = 'none'; return; }
-    const rollerName = (data.players[pr.rollerId] && data.players[pr.rollerId].name) || 'Player';
+    const rollerName = getPlayerName(pr.rollerId);
     const reasonEl = document.getElementById('dice-reason');
     if (reasonEl) reasonEl.innerText = `${rollerName} is attacking:`;
     // Show the roll thresholds so watchers know which way to swing a modifier.
@@ -3900,7 +3902,11 @@ skillPromptYes.addEventListener('click', () => {
 
                 }
 
-                if (!hasOpponentHero) {
+                const hasMeowzioPullTarget = skillId === 'SKILL_MEOWZIO' && latestGameState
+                    && Object.entries(latestGameState.players).some(([pId, p]) =>
+                        pId !== myId && (p.hand || []).length > 0);
+
+                if (!hasOpponentHero && !hasMeowzioPullTarget) {
 
                     showNotification("No valid Heroes to target!");
 
@@ -4372,7 +4378,23 @@ window.resolveGlobalAction = function(cardId) {
 function showNotification(msg) {
     // Messages now live in the scrollable event log (chat box) in the event
     // console, rather than as transient floating toasts.
-    logEvent(msg);
+    let resolvedMessage = String(msg == null ? '' : msg);
+    // Some engine result strings predate named players and contain a four-character
+    // socket-id prefix. Resolve those legacy tokens at display time from the same
+    // current game state used everywhere else in the client.
+    if (latestGameState && latestGameState.players) {
+        Object.keys(latestGameState.players).forEach(id => {
+            const player = latestGameState.players[id];
+            const rawPrefix = String(id).substring(0, 4);
+            if (!rawPrefix || !player || !player.name || player.name === 'Player') return;
+            // Match the exact "Player <prefix>" phrase getPlayerName()'s fallback
+            // produces, not a bare 4-char substring -- that could coincidentally
+            // match inside an unrelated word (a card name, etc.) and mangle it.
+            const legacyPhrase = 'Player ' + rawPrefix;
+            resolvedMessage = resolvedMessage.split(legacyPhrase).join(getPlayerName(id));
+        });
+    }
+    logEvent(resolvedMessage);
 }
 
 // Phase 5.4: show/hide the game log/chat (the ☰ button). Hidden by default; the
@@ -4699,7 +4721,11 @@ function useSkillLater(id) {
 
         }
 
-        if (!hasOpponentHero) {
+        const hasMeowzioPullTarget = skillId === 'SKILL_MEOWZIO' && latestGameState
+            && Object.entries(latestGameState.players).some(([pId, p]) =>
+                pId !== myId && (p.hand || []).length > 0);
+
+        if (!hasOpponentHero && !hasMeowzioPullTarget) {
 
             showNotification("No valid Heroes to target!");
 

@@ -188,13 +188,25 @@ alignment prompts (round 1/2 both bumped it correctly) but NOT in this
 card-logic prompt since Director didn't think to ask, and Codex didn't
 infer it from project convention on its own.
 
-**IN PROGRESS — reconnect grace period:** task-mrjkmy6u-pu55nv, fresh
-thread 019f5ccb-5064-7bb3-b443-6e5a0b7d9833. Dispatched with the full
-root-cause + two-part fix spec below, explicit reminder to bump
-CACHE_VERSION (currently hts-v72) if it touches any public/*.js|html|css,
-and instructions to write unit tests + attempt a real e2e reconnect sim.
-Gate the same way as the last two batches (Director verifies independently,
-does not just trust the report) before commit/push/deploy. User report
+**DONE — reconnect grace period: GATED PASS + SHIPPED 2026-07-13.**
+task-mrjkmy6u-pu55nv. New reconnect.js: pingInterval 25s/pingTimeout 60s,
+90s grace window (RECONNECT_GRACE_MS), persistent localStorage session
+token (server-side only, never broadcast — Director verified via
+socket.emit, not io.emit), away players dimmed + AWAY label, away
+player's own pending turn action pauses rather than auto-resolving
+(Codex's judgment call, Director accepted, not yet re-confirmed with user).
+Director independently: reran unit suite (125/125), reran the new
+Playwright reconnect e2e (test/e2e/reconnect.spec.js, passes ~3.5s), read
+reconnect.js + its server.js wiring line-by-line (token generation/
+validation, targeted vs broadcast emits, disconnect/expire/restore paths).
+Committed `3a7c6ad`, pushed, deploy CONFIRMED LIVE (hts-v73 on production
+/sw.js).
+**Found a related-but-separate bug while reviewing:** new players start
+with `name: ''` (server.js ~line 973); `getPlayerName()`'s fallback
+(`'Player ' + id`) fires for any message generated before their
+`set_player_name` event reaches the server — likely part of the user's
+"sometimes shows wrong name/ID" report below. NOT fixed by this batch,
+queued separately. User report
 2026-07-13: backgrounding the app briefly (switching to WhatsApp/TikTok for
 a few seconds) gets them kicked "too fast." Director root-caused in
 server.js:
@@ -309,16 +321,25 @@ against current code instead — this is 2026-07-13):
   to choose them just to pull? Flagged for Codex to reason through and
   report its choice, not decide unilaterally.
 
-Dispatch instructions for Codex: fix Serious Grey and Whiskers per the AND
-rule (let the independent half resolve when only one target type is
-legal), reason through and resolve the Meowzio edge case explicitly
-(report the decision), do NOT touch Bad Axe/Kit Napper/Destructive
-Spell/Shurikitty/Tipsy Tootie/Wiggles (already correct — re-verify with
-existing tests, don't "fix" them). Add unit tests for the newly-fixed
-partial-resolution paths. Remember the CACHE_VERSION bump rule if any
-public/*.js|html|css file changes (check current value in public/sw.js
-first, do not assume hts-v72 — Director bumped it once already this
-session and Codex's own reconnect-fix task may have bumped it again).
+**IN PROGRESS:** task-mrjlbfja-rha754, fresh thread
+019f5cdc-bf32-7fa0-9c39-f826124f26bb. Dispatched bundled with the name-bug
+below (both small, contained server/app.js fixes). Full classification +
+instructions given per above. Gate independently before commit/push/deploy
+(rerun tests, spot-check the Meowzio judgment call, check CACHE_VERSION
+was bumped given it touches app.js).
+
+**Bundled into the same dispatch — player name sometimes shows wrong/as
+raw ID in the game log**, user report 2026-07-13. Director found two
+candidate causes, told Codex to verify which is real rather than assume
+both: (a) server.js new players start `name: ''`, so any message in the
+window before `set_player_name` arrives falls through getPlayerName()'s
+`'Player '+id` fallback; (b) public/app.js has at least TWO inconsistent
+name-resolution implementations — the shared `getPlayerName(id)` helper
+(line 5) vs an ad-hoc inline one near the roll-display code (~line 281,
+`data.players[pr.rollerId].name || 'Player'`, reads from a possibly-stale
+`data` param instead of `latestGameState`, falls back to bare "Player"
+with no id at all). Told to audit ALL name-resolution call sites in app.js
+and consolidate to one consistent always-current source.
 
 **Explicitly deferred (user, 2026-07-13):** the 2 streak-breaker softlocks
 (landscape50i game 11 PROMPT_SKILL_ROLL stall, portrait50d game 8

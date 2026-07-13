@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const { resolveSkill } = require('./card_effects');
 const {
-    executeSkill, executeMagic, hasOpponentHeroTarget, drawCardsWithPassives,
+    executeSkill, executeMagic, hasOpponentHeroTarget, getTargetingSkillPlan, drawCardsWithPassives,
     triggerCrownedSerpent, prepareImmediateItemPlay, markButtonsFreePlay,
     returnEquippedItemToOwner
 } = require('./skill_engine');
@@ -84,6 +84,17 @@ function hasStealOrDestroyTarget(actorId, type) {
         return true;
     }
     return false;
+}
+
+function pendingActionForTargetingPlan(plan, rollerId, skillId, heroId) {
+    if (!plan) return null;
+    if (plan.type === 'EXECUTE_SKILL_IMMEDIATE') {
+        return { type: plan.type, rollerId, skillId, heroId };
+    }
+    if (plan.type === 'DESTROY') {
+        return { type: 'DESTROY', playerToChoose: rollerId, originalActor: rollerId };
+    }
+    return { type: plan.type, originalActor: rollerId, skillId, heroId };
 }
 
 const CLASSES = ['Fighter', 'Bard', 'Guardian', 'Ranger', 'Thief', 'Wizard'];
@@ -648,18 +659,23 @@ function resolvePendingRoll() {
                     dealCards(1, rollerId);
                 }
 
+                const targetingPlan = TARGETING_SKILLS.includes(hero.skill_id)
+                    ? getTargetingSkillPlan(gameState, rollerId, hero.skill_id)
+                    : null;
+                if (TARGETING_SKILLS.includes(hero.skill_id) && !targetingPlan) {
+                    io.emit('message', `${getPlayerName(gameState, player.id)} successfully rolled for ${hero.name}, but there is no legal target for its effect.`);
+                    resetToPlayingState();
+                    broadcastState();
+                    return;
+                }
+
                 // Check for Suspiciously Shiny Coin!
                 const hasShinyCoin = hero.equippedItem && hero.equippedItem.effect_id === 'CURSE_COIN_SHINY';
 
                 if (hasShinyCoin && player.hand.length > 0) {
                     let nextAction = null;
                     if (TARGETING_SKILLS.includes(hero.skill_id)) {
-                        nextAction = {
-                            type: 'SKILL_TARGET_HERO',
-                            originalActor: rollerId,
-                            skillId: hero.skill_id,
-                            heroId: hero.id
-                        };
+                        nextAction = pendingActionForTargetingPlan(targetingPlan, rollerId, hero.skill_id, hero.id);
                     } else if (PLAYER_TARGETING_SKILLS.includes(hero.skill_id)) {
                         nextAction = {
                             type: 'SKILL_TARGET_PLAYER',
@@ -704,22 +720,19 @@ function resolvePendingRoll() {
                 } else {
                     // DEFERRED TARGETING LOGIC
                     if (TARGETING_SKILLS.includes(hero.skill_id)) {
-                        const stealSkills = ['STEAL_HERO', 'SKILL_MEOWZIO', 'SKILL_TIPSY_TOOTIE', 'SKILL_WHISKERS', 'SKILL_WIGGLES'];
-                        const targetAction = stealSkills.includes(hero.skill_id) ? 'STEAL' : 'DESTROY';
-                        if (!hasOpponentHeroTarget(gameState, rollerId, targetAction)) {
-                            io.emit('message', `${getPlayerName(gameState, player.id)} successfully rolled for ${hero.name}, but there is no legal Hero target.`);
-                            resetToPlayingState();
-                            broadcastState();
-                            return;
+                        const nextAction = pendingActionForTargetingPlan(targetingPlan, rollerId, hero.skill_id, hero.id);
+                        if (nextAction.type === 'EXECUTE_SKILL_IMMEDIATE') {
+                            executeSkill(gameState, io, hero.skill_id, rollerId, hero.id, null);
+                            io.emit('message', `No legal Hero could be destroyed, so that independent clause was skipped.`);
+                        } else {
+                            gameState.pendingAction = nextAction;
+                            gameState.state = nextAction.type === 'DESTROY' ? 'PLAYING' : 'WAITING_FOR_SKILL_TARGET';
+                            if (targetingPlan.skippedClause) {
+                                io.emit('message', `${getPlayerName(gameState, player.id)} successfully rolled for ${hero.name}. The ${targetingPlan.skippedClause} clause has no legal target, so it is skipped; choose a target for the remaining clause.`);
+                            } else {
+                                io.emit('message', `${getPlayerName(gameState, player.id)} successfully rolled for ${hero.name}! Waiting for them to select a target...`);
+                            }
                         }
-                        gameState.state = 'WAITING_FOR_SKILL_TARGET';
-                        gameState.pendingAction = {
-                            type: 'SKILL_TARGET_HERO',
-                            originalActor: rollerId,
-                            skillId: hero.skill_id,
-                            heroId: hero.id
-                        };
-                        io.emit('message', `${getPlayerName(gameState, player.id)} successfully rolled for ${hero.name}! Waiting for them to select a target...`);
                         broadcastState();
                     } else if (PLAYER_TARGETING_SKILLS.includes(hero.skill_id)) {
                         gameState.state = 'WAITING_FOR_SKILL_TARGET';

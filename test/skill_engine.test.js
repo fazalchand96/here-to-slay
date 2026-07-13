@@ -7,7 +7,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
-    executeSkill, executeMagic, hasOpponentHeroTarget, drawCardsWithPassives,
+    executeSkill, executeMagic, hasOpponentHeroTarget, getTargetingSkillPlan, drawCardsWithPassives,
     triggerCrownedSerpent, prepareImmediateItemPlay, markButtonsFreePlay,
     returnEquippedItemToOwner
 } = require('../skill_engine');
@@ -108,6 +108,25 @@ test('deferred Hero targeting respects steal/destroy protections', () => {
     assert.equal(hasOpponentHeroTarget(gs, 'alice', 'DESTROY'), true);
     target.cannotBeDestroyed = true;
     assert.equal(hasOpponentHeroTarget(gs, 'alice', 'DESTROY'), false);
+});
+
+test('deferred AND-skill plans keep an independently legal clause', () => {
+    const protectedHero = hero('Protected', { id: 'protected' });
+    const bob = player('bob', { party: [protectedHero], cannotBeStolen: true });
+    const gs = makeState([player('alice'), bob]);
+
+    assert.deepEqual(getTargetingSkillPlan(gs, 'alice', 'SKILL_WHISKERS'), {
+        type: 'DESTROY', skippedClause: 'STEAL'
+    });
+
+    bob.party = [];
+    bob.hand = [card('pullable', 'Item Card')];
+    assert.deepEqual(getTargetingSkillPlan(gs, 'alice', 'SKILL_MEOWZIO'), {
+        type: 'SKILL_TARGET_PLAYER', skippedClause: 'STEAL'
+    });
+    assert.deepEqual(getTargetingSkillPlan(gs, 'alice', 'SKILL_SERIOUS_GREY'), {
+        type: 'EXECUTE_SKILL_IMMEDIATE', skippedClause: 'DESTROY'
+    });
 });
 
 test('SKILL_VIBRANT_GLOW grants +5 roll bonus', () => {
@@ -810,6 +829,17 @@ test('SKILL_MEOWZIO steals a hero and pulls a card from that player', () => {
     assert.equal(bob.hand.length, 0);
 });
 
+test('SKILL_MEOWZIO pulls from the chosen player when no Hero can be stolen', () => {
+    const bob = player('bob', { hand: [card('x', 'Item Card')] });
+    const alice = player('alice', { party: [hero('Meowzio', { id: 'mz' })] });
+    const gs = makeState([alice, bob]);
+    const io = makeIo();
+    executeSkill(gs, io, 'SKILL_MEOWZIO', 'alice', 'mz', { targetPlayerId: 'bob' });
+    assert.equal(alice.hand.length, 1);
+    assert.equal(bob.hand.length, 0);
+    assert.match(io.lastMessage(), /STEAL clause had no legal target/);
+});
+
 test('SKILL_WHISKERS steals the targeted hero, then queues a DESTROY for a second', () => {
     const stolen = hero('Stolen', { id: 'v1' });
     const other = hero('Other', { id: 'v2' });
@@ -835,6 +865,31 @@ test('SKILL_WHISKERS with no second hero leaves no pending destroy', () => {
     assert.equal(gs.pendingAction, null);
 });
 
+test('SKILL_WHISKERS queues DESTROY when STEAL has no legal target', () => {
+    const victim = hero('Destroyable only', { id: 'v1' });
+    const bob = player('bob', { party: [victim], cannotBeStolen: true });
+    const alice = player('alice', { party: [hero('Whiskers', { id: 'wh' })] });
+    const gs = makeState([alice, bob]);
+    const io = makeIo();
+    executeSkill(gs, io, 'SKILL_WHISKERS', 'alice', 'wh', null);
+    assert.equal(gs.pendingAction.type, 'DESTROY');
+    assert.equal(gs.pendingAction.playerToChoose, 'alice');
+    assert.equal(bob.party.length, 1);
+    assert.match(io.lastMessage(), /no Hero to STEAL/i);
+});
+
+test('SKILL_WHISKERS resolves STEAL when DESTROY has no legal target', () => {
+    const victim = hero('Stealable only', { id: 'v1' });
+    const bob = player('bob', { party: [victim], cannotBeDestroyed: true });
+    const alice = player('alice', { party: [hero('Whiskers', { id: 'wh' })] });
+    const gs = makeState([alice, bob]);
+    executeSkill(gs, makeIo(), 'SKILL_WHISKERS', 'alice', 'wh', {
+        targetPlayerId: 'bob', targetHeroId: 'v1'
+    });
+    assert.ok(alice.party.includes(victim));
+    assert.equal(gs.pendingAction, null);
+});
+
 test('SKILL_SERIOUS_GREY destroys a hero and ALWAYS draws a card', () => {
     const victim = hero('Victim', { id: 'v1' });
     const bob = player('bob', { party: [victim] });
@@ -843,6 +898,16 @@ test('SKILL_SERIOUS_GREY destroys a hero and ALWAYS draws a card', () => {
     executeSkill(gs, makeIo(), 'SKILL_SERIOUS_GREY', 'alice', 'sg', { targetPlayerId: 'bob', targetHeroId: 'v1' });
     assert.equal(bob.party.length, 0);
     assert.equal(alice.hand.length, 1); // draw is unconditional ("DESTROY ... AND DRAW")
+});
+
+test('SKILL_SERIOUS_GREY still draws when no destroy target exists', () => {
+    const alice = player('alice', { party: [hero('Serious Grey', { id: 'sg' })] });
+    const gs = makeState([alice, player('bob')], { mainDeck: [card('reward', 'Hero Card')] });
+    const io = makeIo();
+    executeSkill(gs, io, 'SKILL_SERIOUS_GREY', 'alice', 'sg', null);
+    assert.equal(alice.hand.length, 1);
+    assert.match(io.lastMessage(), /no Hero to DESTROY/);
+    assert.match(io.lastMessage(), /still drew a card/);
 });
 
 test('SKILL_SHURIKITTY takes the destroyed hero\'s equipped item into hand', () => {
