@@ -6218,6 +6218,73 @@ body.landscape #game-board > #ap-gems,
         drop-shadow(0 0 9px rgba(35, 143, 255, 0.58)) !important;
 }
 
+/* --------------------------------------------------------------------------
+   Landscape HUD polish: keep board controls aligned to their native artwork.
+   These overrides intentionally leave the portrait shell unchanged. */
+
+/* The board art already identifies the AP rail.  Hiding the duplicate live
+   label leaves the socket/glow track as the AP readout without text collisions. */
+body.landscape #game-board #ap-gems .ap-gems-label {
+    display: none !important;
+}
+
+/* Put the two win conditions on a compact, vertically stacked plaque halfway
+   down the left edge. */
+body.landscape #player-win-tracker {
+    left: 1.2% !important;
+    right: auto !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+    padding: 7px 10px !important;
+}
+
+/* Sound stays top-right; the event-log toggle gets its own top-left corner.
+   The square boxes and `contain` sizing preserve icon-round.png's 1:1 shape. */
+body.landscape #mute-btn,
+body.landscape #game-menu-btn {
+    width: 40px !important;
+    height: 40px !important;
+    background-size: auto, contain !important;
+    background-position: center, center !important;
+    background-repeat: no-repeat !important;
+}
+body.landscape #mute-btn {
+    left: auto !important;
+    right: 10px !important;
+}
+body.landscape #game-menu-btn {
+    left: 10px !important;
+    right: auto !important;
+}
+
+/* DRAW / RELOAD / END form one vertical right-rail stack. Their boxes use the
+   corresponding plaque ratios so the artwork no longer has to stretch. */
+body.landscape #draw-card-btn,
+body.landscape #discard-draw-btn,
+body.landscape #end-turn-btn {
+    width: 11.5% !important;
+    height: auto !important;
+    background-size: auto, contain !important;
+    background-position: center, center !important;
+    background-repeat: no-repeat !important;
+}
+body.landscape #draw-card-btn {
+    top: 61% !important;
+    aspect-ratio: 390 / 190 !important;
+}
+body.landscape #discard-draw-btn {
+    top: 73.5% !important;
+    aspect-ratio: 363 / 190 !important;
+}
+body.landscape #end-turn-btn {
+    top: 86.8% !important;
+    aspect-ratio: 385 / 190 !important;
+}
+
 /* MONSTERS and YOUR PARTY are engraved in both native backgrounds. */
 body.landscape #board-center .monsters-area > .area-label,
 body.landscape #party-zone > .area-label,

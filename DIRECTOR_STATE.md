@@ -304,26 +304,58 @@ itself). All deployed and confirmed live via production `/sw.js` cache
 version checks except item 4 (server-only, no client files touched, no
 cache bump needed).
 
-**IN PROGRESS — two new UI requests (2026-07-13, user):** task-mrjncenl-ui5ijh,
-fresh thread 019f5d10-b294-7400-88ad-c6a6f9d7b804. Client-only
-(public/app.js + public/style.css). Scope:
-(1) show the hero card to ALL players during a HERO_SKILL roll — Director
-root-caused: `renderDiceAttackTarget` in app.js only handles
-`pr.type === 'ATTACK'`, clears/hides the preview for any other roll type
-including HERO_SKILL. Extend it to also render the hero card via
-`pr.targetHeroId` for HERO_SKILL rolls. (2) per-class colors on Hero card
-frames (Fighter=red, Guardian=yellow, Ranger=green, Wizard=purple,
-Bard=orange, Thief=blue) — Director found the exact color values already
-exist as UNUSED CSS vars (`--class-fighter` etc., style.css ~line 39-45,
-zero usages anywhere) — apply them. (3) class-crest icon (currently
-leader-only via `.card.card-leader::after`) extended to regular Hero
-cards — told explicitly NOT to blindly copy the leader's top-center
-medallion position since Hero frames have a different layout (art window
-+ recent `.board-card-name` ribbon + `.card-req` badge + item thumbnail
-already occupy space) — find a non-colliding spot, likely a corner badge.
-Gate independently before commit/push/deploy: screenshots of hand+party in
-both orientations with mixed classes, plus a second-viewport screenshot of
-a live HERO_SKILL roll proving the preview is visible to a non-roller.
+**DONE — two new UI requests: GATED PASS + SHIPPED 2026-07-13.**
+task-mrjncenl-ui5ijh, committed `dea3545`, pushed, deploy verifying
+(hts-v75). (1) HERO_SKILL rolls now show the hero card to everyone —
+`renderDiceAttackTarget` extended. (2) Hero cards get a class-colored edge
+accent (using the previously-unused `--class-*` vars) + a class-crest
+top-left seal (Leader cards intentionally kept their existing gold/pink
+treatment, Codex's judgment call, Director agrees). Codex's sandbox again
+had no browser for screenshots (same limitation as the opponent-modal fix)
+— Director independently verified with a real 2-browser Playwright script
+(screenshots/verify-hero-classes-and-roll.js, not committed): all 6 class
+colors + crests confirmed correct in both orientations (one hero per class
+staged via debug_inject_to_party), and the skill-roll preview confirmed
+visible from the NON-rolling player's own browser context, not just the
+roller's — screenshot shows "DirectorHost is rolling for Bad Axe: [card]
+Skill 8+" on P2's screen. 131/131 tests independently reverified.
+
+**QUEUED — class-colored Hero FRAME TEMPLATES (rework of what just
+shipped in dea3545), user 2026-07-13.** User reviewed the shipped CSS
+accent-border + DOM crest overlay and rejected the technique: wants the
+actual card frame template art itself recolored per class (not a color
+line drawn on top), and the crest genuinely baked into that template
+image (like the leader's, which LOOKS baked-in — user's mental model —
+though it is technically also a DOM overlay onto an intentionally-empty
+medallion; worth being aware of but match the user's literal ask: bake it
+for real this time). Dispatch after the landscape button/AP/tracker task
+above completes — both touch style.css, avoid concurrent Codex writes.
+
+Technique to hand Codex (Director-researched precedent already in this
+repo, don't let it reinvent or repeat a past mistake):
+- `scripts/frames-derive.js` already generates the leader/cursed frame
+  variants by tinting `hero.png`/`item.png` with sharp's **luminance-
+  preserving `.tint()`** — HANDOFF.md flags that a naive CSS hue-rotate
+  was tried first and turned the leader PINK (it shifted the parchment
+  background too, not just the metal/color accents) — `.tint()` was the
+  fix. Reuse/extend this exact script pattern to generate 6 new hero frame
+  variants (one per class color) instead of a live CSS filter, which would
+  risk repeating that same bug.
+- For baking the crest into each colored frame: reuse the sharp pixel-
+  compositing pattern from `scripts/bake-deck-backgrounds.js` (built
+  earlier this session for the deck/discard board-alignment rework) —
+  composite each `crest-v2/<class>.png` onto its matching new tinted frame
+  PNG at build time, deterministic, no AI image generation needed.
+- Wire-up: `renderCard` already adds a `class-<slug>` CSS class to every
+  Hero card (existing mechanism, used for the crest/accent that just
+  shipped) — swap the frame `background-image` per class using that same
+  selector so no per-render-site changes are needed. Remove the
+  now-superseded CSS accent-border + DOM crest-overlay rules added in
+  dea3545 for Hero cards once the baked frame variants replace them
+  (Leader cards keep their separate existing treatment, untouched).
+Gate via screenshots the same way as dea3545 (Codex's sandbox has had no
+browser available the last two UI tasks — Director will likely need to
+verify independently again via a Playwright script, budget for that).
 
 **Explicitly deferred (user, 2026-07-13):** the 2 streak-breaker softlocks
 (landscape50i game 11 PROMPT_SKILL_ROLL stall, portrait50d game 8
