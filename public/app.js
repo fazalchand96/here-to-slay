@@ -619,6 +619,8 @@ const endTurnBtn = document.getElementById('end-turn-btn');
 
 const drawCardBtn = document.getElementById('draw-card-btn');
 
+const mainDeckHotspot = document.getElementById('main-deck');
+
 const discardDrawBtn = document.getElementById('discard-draw-btn');
 
 
@@ -1961,22 +1963,9 @@ function buildBoardParts(data, ctx) {
     const monstersHtml = (data.activeMonsters || []).map(m => renderCard(m, false, false, true, isMyTurn)).join('');
 
     // --- Discard pile ---
-    const safeDiscardPile = data.discardPile || [];
-    let discardHtml;
-    if (safeDiscardPile.length > 0) {
-        const topDiscard = safeDiscardPile[safeDiscardPile.length - 1];
-        // The whole pile is tappable to open the read-only viewer. The inner card
-        // has pointer-events:none so the tap reaches the wrapper (not the generic
-        // card-inspect handler).
-        discardHtml = `
-            <div onclick="openDiscardViewer()" title="View discard pile" style="cursor:pointer; position:relative;">
-                <div style="pointer-events:none;">${renderCard(topDiscard, false, false, false, false)}</div>
-                <div class="discard-count" style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-top:5px; position:absolute; bottom:-25px; width:120px;">Discard: ${safeDiscardPile.length}</div>
-            </div>
-        `;
-    } else {
-        discardHtml = '<div class="card empty-slot">Discard</div>';
-    }
+    // Its empty well is painted into the board. The stage-relative DOM node stays
+    // visually empty and opens the read-only viewer regardless of pile contents.
+    const discardHtml = '';
 
     // --- My party leader (rendered into #leader-slot on the tray, NOT prepended
     //     to the party row) + party + slain ---
@@ -3104,14 +3093,13 @@ function renderBoard(data) {
 
     setRegionHtml(myWinTracker, boardParts.winTrackHtml);
 
-    // AP gems (Phase 7): one amber gem per current AP, from the real me.ap (can be
-    // 4 with Mega Slime — show a 4th slot only then, otherwise a 3-slot track).
+    // The four unlit sockets are painted into the board. Keep four layout anchors
+    // and reveal only the small live glow overlays for currently available AP.
     const apGemsEl = document.getElementById('ap-gems');
     if (apGemsEl) {
         const ap = me.ap || 0;
-        const slots = ap > 3 ? 4 : 3;
         const apHtml = `<span class="ap-gems-label">AP</span>` +
-            Array.from({ length: slots }, (_, i) => `<span class="ap-gem${i < ap ? ' on' : ''}"></span>`).join('');
+            Array.from({ length: 4 }, (_, i) => `<span class="ap-gem${i < ap ? ' on' : ''}" data-slot="${i + 1}"></span>`).join('');
         setRegionHtml(apGemsEl, apHtml);
     }
 
@@ -5217,6 +5205,22 @@ drawCardBtn.addEventListener('click', () => {
 
     socket.emit('draw_card_action');
 
+});
+
+// The deck artwork is part of the fixed-aspect stage background. Keep drawing
+// through the existing button so disabled/pending-turn behaviour stays identical.
+mainDeckHotspot.addEventListener('click', () => drawCardBtn.click());
+mainDeckHotspot.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    drawCardBtn.click();
+});
+
+discardPile.addEventListener('click', () => window.openDiscardViewer());
+discardPile.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    window.openDiscardViewer();
 });
 
 

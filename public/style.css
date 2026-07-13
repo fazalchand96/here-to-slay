@@ -5965,3 +5965,210 @@ body.monster-strike-playing .overlay:not(#dice-overlay) {
     font-size: 0.9rem !important;
     padding: 8px 14px !important;
 }
+
+/* ============================================================================
+   FIXED-ASPECT BOARD STAGE — deck-zone proof of concept
+
+   The viewport is only a dark letterbox. Every board overlay remains inside
+   #game-board, which now exactly fills a native-ratio stage, so its percentage
+   coordinates resolve against the same rectangle as the background artwork.
+   Stage coordinate variables/background URLs live in deck-stage.generated.css.
+   ============================================================================ */
+body,
+body.landscape,
+body.portrait {
+    background: #100a07 !important;
+}
+
+#app-container:not(.hidden) {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+    background: #100a07 !important;
+}
+
+#board-stage {
+    position: relative;
+    flex: none;
+    overflow: hidden;
+    isolation: isolate;
+    /* Also makes fixed board HUD descendants resolve to the stage, not viewport. */
+    transform: translateZ(0);
+}
+
+body.landscape #board-stage {
+    width: min(100vw, calc(100dvh * var(--stage-width) / var(--stage-height)));
+    height: min(100dvh, calc(100vw * var(--stage-height) / var(--stage-width)));
+}
+
+body.portrait #board-stage {
+    width: min(100vw, calc(100dvh * var(--stage-width) / var(--stage-height)));
+    height: min(100dvh, calc(100vw * var(--stage-height) / var(--stage-width)));
+}
+
+body.landscape #game-board,
+#game-board.portrait {
+    position: relative !important;
+    width: 100% !important;
+    height: 100% !important;
+    background-position: center !important;
+    background-size: 100% 100% !important;
+    background-repeat: no-repeat !important;
+}
+
+/* Direct stage child: these exact generated percentages also place the pixels
+   composited by scripts/bake-deck-backgrounds.js. No visual deck DOM remains. */
+body.landscape #game-board > #main-deck,
+#game-board.portrait > #main-deck {
+    position: absolute !important;
+    left: var(--deck-x) !important;
+    top: var(--deck-y) !important;
+    width: var(--deck-width) !important;
+    height: var(--deck-height) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    transform: translate(-50%, -50%) !important;
+    transform-origin: center !important;
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    filter: none !important;
+    opacity: 1 !important;
+    overflow: hidden !important;
+    cursor: pointer;
+    z-index: 8 !important;
+}
+
+body.landscape #game-board > #main-deck::before,
+body.landscape #game-board > #main-deck::after,
+#game-board.portrait > #main-deck::before,
+#game-board.portrait > #main-deck::after {
+    content: none !important;
+    display: none !important;
+}
+
+/* Native-art interaction zones. The deck and discard visuals are painted into
+   the background; these direct stage children are interaction geometry only. */
+body.landscape #game-board > #discard-pile,
+#game-board.portrait > #discard-pile {
+    position: absolute !important;
+    left: var(--discard-x) !important;
+    top: var(--discard-y) !important;
+    width: var(--discard-width) !important;
+    height: var(--discard-height) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    transform: translate(-50%, -50%) !important;
+    transform-origin: center !important;
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    filter: none !important;
+    overflow: hidden !important;
+    cursor: pointer;
+    z-index: 8 !important;
+}
+
+body.landscape #game-board > #discard-pile::before,
+body.landscape #game-board > #discard-pile::after,
+#game-board.portrait > #discard-pile::before,
+#game-board.portrait > #discard-pile::after {
+    content: none !important;
+    display: none !important;
+}
+
+#game-board > #discard-pile > * {
+    display: none !important;
+}
+
+/* Four empty sockets are part of the painted rail. The DOM keeps four invisible
+   anchors and reveals only a smaller blue lit-gem overlay for available AP. */
+body.landscape #game-board > #ap-gems,
+#game-board.portrait > #ap-gems {
+    position: absolute !important;
+    left: var(--ap-track-x) !important;
+    top: var(--ap-track-y) !important;
+    width: var(--ap-track-width) !important;
+    height: var(--ap-track-height) !important;
+    right: auto !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 0 !important;
+    transform: translate(-50%, -50%) rotate(var(--ap-track-rotate)) !important;
+    transform-origin: center !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    pointer-events: none !important;
+    overflow: visible !important;
+    z-index: 7 !important;
+}
+
+#game-board #ap-gems .ap-gems-label {
+    position: absolute !important;
+    left: 50% !important;
+    top: -18% !important;
+    transform: translateX(-50%) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    color: #f2e2b4 !important;
+    font-size: clamp(8px, 1.3cqh, 13px) !important;
+    line-height: 1 !important;
+}
+
+#game-board #ap-gems .ap-gem {
+    flex: none !important;
+    width: 70% !important;
+    height: auto !important;
+    aspect-ratio: 250 / 313 !important;
+    margin: 0 !important;
+    background: none !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    filter: none !important;
+    transform: none !important;
+    visibility: hidden !important;
+}
+
+#game-board #ap-gems .ap-gem.on {
+    visibility: visible !important;
+    background: url('assets/skin/icons/ap-full.png') center / contain no-repeat !important;
+    filter: brightness(1.15) saturate(1.2)
+        drop-shadow(0 0 4px rgba(69, 169, 232, 0.95))
+        drop-shadow(0 0 9px rgba(35, 143, 255, 0.58)) !important;
+}
+
+/* MONSTERS and YOUR PARTY are engraved in both native backgrounds. */
+body.landscape #board-center .monsters-area > .area-label,
+body.landscape #party-zone > .area-label,
+#game-board.portrait #board-center .monsters-area > .area-label,
+#game-board.portrait #party-zone > .area-label {
+    display: none !important;
+}
+
+/* The new portrait MONSTERS plaque occupies the top of the red panel. Seat the
+   live cards below it so the native label remains fully readable. */
+#game-board.portrait #board-center .monsters-area {
+    top: 23.4% !important;
+    height: 8.7% !important;
+}
+
+#game-board.portrait #board-center .monsters-area .card {
+    height: min(10dvh, 78px) !important;
+    max-height: min(10dvh, 78px) !important;
+}

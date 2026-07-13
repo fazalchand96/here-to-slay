@@ -5,9 +5,9 @@
  * then copy the CSS it produces and paste it into style.css. Values are written
  * as inline `!important` styles so they beat the stylesheet while you tweak.
  *
- * left/top are expressed as % of the element's OFFSET PARENT (which is how the
- * real rules are written — e.g. #main-deck is positioned inside .deck-area, not
- * the board), width/height in px, plus rotate(Z), rotateX(tilt) and perspective.
+ * left/top are expressed as % of the element's OFFSET PARENT. The draw hotspot
+ * is a direct child of #game-board, so its values are always stage percentages;
+ * other zones keep their existing offset-parent behaviour for now.
  *
  * Tweaks persist in localStorage so a reload keeps your work-in-progress.
  * =========================================================================== */
@@ -15,18 +15,19 @@
   'use strict';
   if (window.__alignTool) return;
 
-  const STORE = 'hts-align-v1';
+  // v2 invalidates v1's draw-pile offsets, which were relative to .deck-area.
+  const STORE = 'hts-align-v2';
   const SNAP = 0.1;                       // % rounding for left/top
 
   // Each target maps to the selector its real rule uses, per orientation, so the
   // exported CSS can be pasted straight over the existing block.
   const TARGETS = [
     { key: 'main-deck',    label: 'Draw pile',      sel: '#main-deck',        centered: true,
-      css: { landscape: 'body.landscape #board-center .deck-area > #main-deck',
-             portrait:  '#game-board.portrait #board-center .deck-area > #main-deck' } },
+      css: { landscape: 'body.landscape #game-board > #main-deck',
+             portrait:  '#game-board.portrait > #main-deck' } },
     { key: 'discard-pile', label: 'Discard pile',   sel: '#discard-pile',     centered: true,
-      css: { landscape: 'body.landscape #board-center .deck-area > #discard-pile',
-             portrait:  '#game-board.portrait #board-center .deck-area > #discard-pile' } },
+      css: { landscape: 'body.landscape #game-board > #discard-pile',
+             portrait:  '#game-board.portrait > #discard-pile' } },
     { key: 'deck-area',    label: 'Deck area (box)', sel: '.deck-area',       centered: false,
       css: { landscape: 'body.landscape #board-center .deck-area',
              portrait:  '#game-board.portrait #board-center .deck-area' } },

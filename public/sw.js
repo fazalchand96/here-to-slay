@@ -2,11 +2,12 @@
 // NOTE: bump CACHE_VERSION whenever the app shell (HTML/JS/CSS) changes so old
 // caches are purged on activate. A stale shell can serve outdated JS and break
 // the app (e.g. "io is not defined" when an old index.html/app.js is served).
-const CACHE_VERSION = 'hts-v69';
+const CACHE_VERSION = 'hts-v71';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/style.css',
+  '/deck-stage.generated.css',
   '/app.js',
   '/anim.js',
   '/manifest.json',

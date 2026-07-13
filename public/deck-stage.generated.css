@@ -1,0 +1,42 @@
+/* Fixed-stage coordinate manifest measured against the native board artwork. */
+body.landscape #board-stage {
+    --stage-width: 1672;
+    --stage-height: 941;
+    --deck-x: 13.4%;
+    --deck-y: 33.5%;
+    --deck-width: 10%;
+    --deck-height: 28.5%;
+    --discard-x: 11.5%;
+    --discard-y: 64%;
+    --discard-width: 10.5%;
+    --discard-height: 28%;
+    --ap-track-x: 87.8%;
+    --ap-track-y: 44.2%;
+    --ap-track-width: 3.6%;
+    --ap-track-height: 28%;
+    --ap-track-rotate: -4deg;
+}
+body.landscape #game-board {
+    background-image: url('assets/skin/premium-tabletop-landscape.png') !important;
+}
+
+body.portrait #board-stage {
+    --stage-width: 863;
+    --stage-height: 1823;
+    --deck-x: 36.4%;
+    --deck-y: 14.3%;
+    --deck-width: 19%;
+    --deck-height: 12.5%;
+    --discard-x: 60%;
+    --discard-y: 14.3%;
+    --discard-width: 19%;
+    --discard-height: 12.5%;
+    --ap-track-x: 85.2%;
+    --ap-track-y: 48.3%;
+    --ap-track-width: 4.5%;
+    --ap-track-height: 17%;
+    --ap-track-rotate: -4deg;
+}
+body.portrait #game-board {
+    background-image: url('assets/skin/premium-tabletop-portrait.png') !important;
+}
