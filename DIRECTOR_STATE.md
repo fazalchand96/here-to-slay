@@ -166,23 +166,35 @@ on Render (hts-v71 verified on production /sw.js + deck-stage.generated.css
 served correctly). The whole alignment goal (Track A step 1 rework) is
 DONE. User lifted the hold and requested next batch of work (below).
 
-**IN PROGRESS — card-logic bug batch:** task-mrjjhbog-mz0spm (fresh Codex
-thread 019f5cad-ae8c-79c2-8dd6-4cac682546c2, NOT the alignment thread — no
---resume-last). Scope: the 6 card bugs + Winds of Change from
-[[card-audit-progress]] (Mimimeow/Thief-Mask, Ortus, Rex Major extra-
-modifier, Serpent-on-any-modifier, Sly Pickings stolen-item-to-discard,
-Buttons free-play, Winds of Change wrong recipient) PLUS the opponent-modal
-missing-slain-monsters UI bug (app.js openOpponentModal + oppModalSignature,
-root-caused above). Told to re-check existing tests first on the ones
-flagged as possible regressions. Requires unit test updates + full suite +
-a real-flow screenshot for the opponent-modal fix. Gate this the same way
-as alignment (Director verifies screenshots/tests personally, doesn't just
-trust the report) before commit/push/deploy.
+**DONE — card-logic bug batch: GATED PASS + SHIPPED 2026-07-13.**
+task-mrjjhbog-mz0spm. All 8 items fixed (Mimimeow/Mask, Orthus, Rex Major,
+Crowned Serpent confirmed not-actually-regressed + hardened, Sly Pickings,
+Buttons free-play, Winds of Change, opponent-modal slain monsters).
+Director independently reran `node --test "test/**/*.test.js"` → 123/123
+(not just trusted Codex's report). Codex's own sandbox had NO browser
+available so it could not produce the opponent-modal screenshot it was
+asked for — Director wrote a standalone Playwright script
+(screenshots/verify-opponent-slain.js, NOT committed, kept locally as
+scratch) to independently prove it: 2 slain-monster icons render in the
+opponent modal, screenshot confirms visually. Committed `481434e`.
+**GOTCHA — Codex changed public/app.js but did NOT bump CACHE_VERSION in
+public/sw.js** (project convention requires this on every client-file
+change or the PWA serves stale JS to installed clients). Director caught
+this before it shipped, bumped hts-v71→hts-v72, committed `3a76fc1`
+separately. Pushed both; live-deploy verification in progress. **Add "bump
+CACHE_VERSION in public/sw.js if you touch any public/*.js|html|css file"
+to future Codex dispatch prompts explicitly** — it was in the original
+alignment prompts (round 1/2 both bumped it correctly) but NOT in this
+card-logic prompt since Director didn't think to ask, and Codex didn't
+infer it from project convention on its own.
 
-**QUEUED NEXT #1 (do not start until the card-logic batch above is gated +
-committed — same working tree, avoid concurrent Codex writes), REORDERED
-AHEAD of the landscape UI polish per Director recommendation (functional
-bug > cosmetic, user did not object):** reconnect grace period. User report
+**IN PROGRESS — reconnect grace period:** task-mrjkmy6u-pu55nv, fresh
+thread 019f5ccb-5064-7bb3-b443-6e5a0b7d9833. Dispatched with the full
+root-cause + two-part fix spec below, explicit reminder to bump
+CACHE_VERSION (currently hts-v72) if it touches any public/*.js|html|css,
+and instructions to write unit tests + attempt a real e2e reconnect sim.
+Gate the same way as the last two batches (Director verifies independently,
+does not just trust the report) before commit/push/deploy. User report
 2026-07-13: backgrounding the app briefly (switching to WhatsApp/TikTok for
 a few seconds) gets them kicked "too fast." Director root-caused in
 server.js:
@@ -256,6 +268,57 @@ against current code before dispatch):
   button's numbers individually.
 - Gate via landscape screenshots (landscape only per the request) before
   commit/push/deploy.
+
+**QUEUED NEXT #3 (dispatch after reconnect-grace is gated+committed):**
+AND-vs-THEN hero-skill targeting bug, user-reported via Serious Grey
+2026-07-13, user correctly suspected it affects other cards too. Root
+cause (Director, server.js ~line 706-714): the deferred-targeting gate for
+EVERY skill in `TARGETING_SKILLS` (server.js line 91) does ONE blanket
+check — `hasOpponentHeroTarget(...)`, and if false, fizzles the ENTIRE
+skill with a message and `resetToPlayingState()`, no partial effect at
+all. This is correct for THEN/single-clause cards but wrong for AND cards
+with an independent second clause — violates [[then-vs-and-card-playability]]
+("X AND Y → playable if either part can").
+
+Director pre-classified every card in TARGETING_SKILLS against its actual
+cards.json text before dispatch (do not re-derive from scratch, verify
+against current code instead — this is 2026-07-13):
+- Bad Axe (DESTROY_HERO), Kit Napper (STEAL_HERO): single-clause, ALREADY
+  CORRECT, not a bug.
+- Destructive Spell (MAGIC_DESTRUCTIVE): explicit "DISCARD... then
+  DESTROY" — sequential, ALREADY CORRECT (matches prior fix in
+  [[card-audit-progress]]).
+- Shurikitty: item-transfer is a CONSEQUENCE of the destroy (conditional
+  on it happening), not an independent action — ALREADY CORRECT.
+- Tipsy Tootie: "steal... and move Tipsy Tootie to that party" is one
+  combined steal action, not two independent ones — ALREADY CORRECT.
+- Wiggles: surface wording says "and" but "roll to use its effect
+  immediately" is entirely dependent on WHICH hero got stolen — correctly
+  sequential despite the "and", ALREADY CORRECT.
+- **Serious Grey ("DESTROY a Hero and DRAW a card") — CONFIRMED BUG**,
+  matches user report exactly. No destroy target should still allow the
+  draw.
+- **Whiskers ("STEAL a Hero card and DESTROY a Hero card") — LIKELY SAME
+  BUG.** Two independent hero-targeting actions; current flow (per
+  [[card-audit-progress]]) checks for a legal STEAL target upfront via
+  this same gate — if none exists but a DESTROY target does, it should
+  still fire the destroy half instead of fully fizzling.
+- **Meowzio ("STEAL a Hero from that player AND pull a card from that
+  player's hand") — AMBIGUOUS, needs judgment, do not auto-fix.** If the
+  chosen player has no Hero but has hand cards, should you still be able
+  to choose them just to pull? Flagged for Codex to reason through and
+  report its choice, not decide unilaterally.
+
+Dispatch instructions for Codex: fix Serious Grey and Whiskers per the AND
+rule (let the independent half resolve when only one target type is
+legal), reason through and resolve the Meowzio edge case explicitly
+(report the decision), do NOT touch Bad Axe/Kit Napper/Destructive
+Spell/Shurikitty/Tipsy Tootie/Wiggles (already correct — re-verify with
+existing tests, don't "fix" them). Add unit tests for the newly-fixed
+partial-resolution paths. Remember the CACHE_VERSION bump rule if any
+public/*.js|html|css file changes (check current value in public/sw.js
+first, do not assume hts-v72 — Director bumped it once already this
+session and Codex's own reconnect-fix task may have bumped it again).
 
 **Explicitly deferred (user, 2026-07-13):** the 2 streak-breaker softlocks
 (landscape50i game 11 PROMPT_SKILL_ROLL stall, portrait50d game 8

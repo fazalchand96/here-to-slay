@@ -1,6 +1,7 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const { createReconnectManager, RECONNECT_GRACE_MS } = require('./reconnect');
 const fs = require('fs');
 const path = require('path');
 const { resolveSkill } = require('./card_effects');
@@ -13,7 +14,10 @@ const ALL_CARDS = require('./cards.json');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+    pingInterval: 25_000,
+    pingTimeout: 60_000,
+});
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -879,8 +883,81 @@ function resolvePendingRoll() {
     broadcastState();
 }
 
+// Apply the pre-reconnect disconnect fallback. Mid-match this deliberately
+// keeps the remaining sockets in the lobby, but clears every per-match field and
+// every board/pending-action field so a fresh match cannot inherit stale cards.
+function removePlayerAndResetMatch(socketId) {
+    if (!gameState.players[socketId]) return;
+    const name = getPlayerName(gameState, socketId) || socketId.substring(0, 4);
+
+    delete gameState.players[socketId];
+    gameState.playerOrder = gameState.playerOrder.filter(id => id !== socketId);
+
+    const clearBoard = () => {
+        gameState.activePlayerSocketId = null;
+        gameState.pendingAction = null;
+        gameState.pendingCard = null;
+        gameState.pendingRoll = null;
+        gameState.pendingChallenge = null;
+        gameState.pendingGlobalAction = null;
+        gameState.winner = null;
+        gameState.discardPile = [];
+        gameState.activeMonsters = [];
+        gameState.mainDeck = [];
+        gameState.monsterDeck = [];
+        gameState.availableLeaders = [...PARTY_LEADERS];
+        debugForcedRoll = null;
+        if (modifierTimer) { clearTimeout(modifierTimer); modifierTimer = null; }
+    };
+
+    if (gameState.playerOrder.length === 0) {
+        gameState.state = 'LOBBY';
+        gameState.players = {};
+        clearBoard();
+        broadcastState();
+        return;
+    }
+
+    if (gameState.state !== 'LOBBY') {
+        clearBoard();
+        gameState.state = 'LOBBY';
+        Object.values(gameState.players).forEach(player => {
+            player.hand = [];
+            player.party = [];
+            player.slainMonsters = [];
+            player.leader = null;
+            player.ap = 0;
+            player.hasSelectedLeader = false;
+            player.hasRerolledLeader = false;
+        });
+        io.emit('message', `${name} did not reconnect in time. Returning to lobby.`);
+        broadcastState();
+        return;
+    }
+
+    io.emit('message', `${name} left the lobby.`);
+    broadcastState();
+}
+
+const reconnectManager = createReconnectManager({
+    gameState,
+    graceMs: RECONNECT_GRACE_MS,
+    onPlayerExpired: removePlayerAndResetMatch,
+    onPlayerAway: player => {
+        io.emit('message', `${getPlayerName(gameState, player.id)} is away. Waiting up to ${RECONNECT_GRACE_MS / 1000} seconds for them to reconnect.`);
+        broadcastState();
+    },
+    onPlayerRestored: player => {
+        io.emit('message', `${getPlayerName(gameState, player.id)} reconnected.`);
+        broadcastState();
+    },
+});
+
 io.on('connection', (socket) => {
     console.log('Player connected:', socket.id);
+
+    const requestedSessionToken = socket.handshake.auth && socket.handshake.auth.sessionToken;
+    const restoredSession = reconnectManager.restore(socket.id, requestedSessionToken);
 
     // Force send lobby data upon connection
     socket.emit('lobby_data_update', {
@@ -888,7 +965,9 @@ io.on('connection', (socket) => {
         state: gameState.state
     });
 
-    if (gameState.state === 'LOBBY' && gameState.playerOrder.length < 6) {
+    if (restoredSession) {
+        socket.emit('session_token', requestedSessionToken.trim());
+    } else if (gameState.state === 'LOBBY' && gameState.playerOrder.length < 6) {
         gameState.players[socket.id] = {
             id: socket.id,
             name: '',
@@ -897,10 +976,15 @@ io.on('connection', (socket) => {
             slainMonsters: [],
             leader: null,
             ap: 0,
+            connected: true,
+            away: false,
+            disconnectedAt: null,
             hasSelectedLeader: false,
             hasRerolledLeader: false
         };
         gameState.playerOrder.push(socket.id);
+        const sessionToken = reconnectManager.register(socket.id, requestedSessionToken);
+        socket.emit('session_token', sessionToken);
     } else {
         // Observers not fully supported, but let them connect
         socket.emit('message', 'Game is full or already in progress.');
@@ -937,6 +1021,15 @@ io.on('connection', (socket) => {
             gameState.players[socket.id].name = name || 'Player'; // Save as .name, do NOT overwrite .id
             broadcastState();
         }
+    });
+
+    // The browser UI has no leave button today; this event exists so controlled
+    // clients/test harnesses can explicitly abandon a seat without waiting out
+    // the reconnect grace timer.
+    socket.on('leave_game', acknowledgement => {
+        reconnectManager.leaveNow(socket.id);
+        if (typeof acknowledgement === 'function') acknowledgement();
+        socket.disconnect(true);
     });
 
     socket.on('roll_leader', () => {
@@ -2382,67 +2475,7 @@ socket.on('resolve_immediate_play', (data) => {
 /* --- CONNECTION --- */
     socket.on('disconnect', () => {
         console.log('Player disconnected:', socket.id);
-        if (!gameState.players[socket.id]) return;
-
-        const name = getPlayerName(gameState, socket.id) || socket.id.substring(0, 4);
-
-        // Remove ONLY the player who left — never wipe everyone. A single flaky
-        // client (e.g. a phone reloading to pick up new code) dropping must not
-        // kick the remaining players or connected bots out of the game.
-        delete gameState.players[socket.id];
-        gameState.playerOrder = gameState.playerOrder.filter(id => id !== socket.id);
-
-        // Helper: clear ALL board state so leftover cards (e.g. a destroyed Hero
-        // in discardPile) can't survive and collide by id with a fresh deck.
-        const clearBoard = () => {
-            gameState.activePlayerSocketId = null;
-            gameState.pendingAction = null;
-            gameState.pendingRoll = null;
-            gameState.pendingChallenge = null;
-            gameState.pendingGlobalAction = null;
-            gameState.winner = null;
-            gameState.discardPile = [];
-            gameState.activeMonsters = [];
-            gameState.mainDeck = [];
-            gameState.monsterDeck = [];
-            gameState.availableLeaders = [...PARTY_LEADERS];
-            debugForcedRoll = null;
-            if (modifierTimer) { clearTimeout(modifierTimer); modifierTimer = null; }
-        };
-
-        if (gameState.playerOrder.length === 0) {
-            // Nobody left — full reset to a clean empty lobby.
-            gameState.state = 'LOBBY';
-            gameState.players = {};
-            clearBoard();
-            broadcastState();
-            return;
-        }
-
-        if (gameState.state !== 'LOBBY') {
-            // A player dropped mid-match: the turn/roll machine can't safely
-            // continue (active player or a pending target may be gone), so abort
-            // the match back to LOBBY — but KEEP the remaining players/bots so
-            // they aren't kicked. Reset their per-match fields for a clean re-pick.
-            clearBoard();
-            gameState.state = 'LOBBY';
-            Object.values(gameState.players).forEach(p => {
-                p.hand = [];
-                p.party = [];
-                p.slainMonsters = [];
-                p.leader = null;
-                p.ap = 0;
-                p.hasSelectedLeader = false;
-                p.hasRerolledLeader = false;
-            });
-            io.emit('message', `${name} disconnected mid-game. Returning to lobby.`);
-            broadcastState();
-            return;
-        }
-
-        // Was only in the lobby — just drop them, leave everyone else untouched.
-        io.emit('message', `${name} left the lobby.`);
-        broadcastState();
+        reconnectManager.disconnect(socket.id);
     });
 });
 
@@ -2487,4 +2520,6 @@ module.exports = {
     loadCards,
     spawnMonsters,
     gameState,
+    removePlayerAndResetMatch,
+    RECONNECT_GRACE_MS,
 };

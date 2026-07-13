@@ -6172,3 +6172,7 @@ body.landscape #party-zone > .area-label,
     height: min(10dvh, 78px) !important;
     max-height: min(10dvh, 78px) !important;
 }
+:is(#opponents-bar .opponent-chip, .opponent-chip).is-away {
+    opacity: 0.58;
+    filter: grayscale(0.55);
+}

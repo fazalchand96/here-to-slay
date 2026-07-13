@@ -18,8 +18,32 @@ function getPlayerName(id) {
 
 
 
-const socket = io();
+const SESSION_TOKEN_KEY = 'hts-player-session-token';
+
+function getOrCreateSessionToken() {
+    try {
+        let token = localStorage.getItem(SESSION_TOKEN_KEY);
+        if (!token) {
+            token = window.crypto && typeof window.crypto.randomUUID === 'function'
+                ? window.crypto.randomUUID()
+                : `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+            localStorage.setItem(SESSION_TOKEN_KEY, token);
+        }
+        return token;
+    } catch (e) {
+        return `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+    }
+}
+
+const playerSessionToken = getOrCreateSessionToken();
+const socket = io({ auth: { sessionToken: playerSessionToken } });
 window._socket = socket;
+
+socket.on('session_token', token => {
+    if (typeof token !== 'string' || !token) return;
+    socket.auth.sessionToken = token;
+    try { localStorage.setItem(SESSION_TOKEN_KEY, token); } catch (e) {}
+});
 
 // --- AUDIO MANAGER ---
 // The synth engine below covers every sound procedurally. To upgrade any one of
@@ -1940,7 +1964,8 @@ function buildBoardParts(data, ctx) {
         const opp = data.players[id];
         if (!opp) return;
 
-        const displayName = getPlayerName(id);
+        const isAway = opp.connected === false;
+        const displayName = `${getPlayerName(id)}${isAway ? ' · AWAY' : ''}`;
         const stats = calculateWinStats(opp);
 
         let chipClass = "opponent-chip";
@@ -1956,6 +1981,8 @@ function buildBoardParts(data, ctx) {
         // Stacked + compact so all opponents (up to 5) fit the bar without horizontal
         // scroll: name on top, a single icon line below (✋ hand, 🏆 slain, 🎴 classes —
         // denominators dropped to save width; the full breakdown is in the opponent modal).
+        if (isAway) chipClass += " is-away";
+
         oppHtml += `
                 <div class="${chipClass}" ${chipClick} ${chipTitle}>
                     <span class="opponent-chip-name">${displayName}</span>

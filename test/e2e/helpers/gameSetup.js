@@ -26,6 +26,18 @@ const _trackedContexts = [];
 // sockets into the next one. Pass options to override (e.g. mobile viewport/touch).
 async function newTrackedContext(browser, options = { serviceWorkers: 'block' }) {
     const ctx = await browser.newContext(options);
+    const closeContext = ctx.close.bind(ctx);
+    ctx.close = async (...args) => {
+        await Promise.all(ctx.pages().map(page => page.evaluate(() => new Promise(resolve => {
+            if (!window._socket || !window._socket.connected) return resolve();
+            const fallback = setTimeout(resolve, 250);
+            window._socket.emit('leave_game', () => {
+                clearTimeout(fallback);
+                resolve();
+            });
+        })).catch(() => {})));
+        return closeContext(...args);
+    };
     _trackedContexts.push(ctx);
     return ctx;
 }
