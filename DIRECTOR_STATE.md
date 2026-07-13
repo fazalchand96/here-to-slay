@@ -403,6 +403,28 @@ a border line. 131/131 tests independently reverified.
    on the button element itself, or resize precisely to the plaque's
    circular bounds — Codex's call on technique, verify visually).
 
+**DONE — landscape round 3: GATED PASS + SHIPPED 2026-07-13.**
+task-mrjp06ho-5hzhzn, committed `ba7c7e5`, pushed, deploy CONFIRMED LIVE
+(hts-v78). Director independently verified (tests + own Playwright
+screenshot): tighter button stack, AP rail now pre-baked art (glow-overlay
+system fully removed), circle/square button artifact fixed.
+
+**IN PROGRESS — Hero frame refinements round 2, user 2026-07-13.**
+Director viewed hero-bard.png and hero-guardian.png directly and confirmed
+both user complaints against the actual files (not just relaying the
+report): (1) a generic shield emblem is baked into every frame's top-
+center ribbon medallion, separate from the top-left crest badge — user
+wants the shield gone and the crest genuinely engraved into that
+top-center medallion spot instead (not duplicated in both places —
+remove the top-left badge once it moves). Applies to all 6 classes, not
+just bard/guardian (shield is shared base-template art). (2) Bard reads as
+muddy brown, Guardian as murky olive — the luminance-preserving `.tint()`
+technique works well for colors far from the frame's base bronze/brass
+tone (red, blue — user confirmed these look great) but under-delivers for
+colors close to it on the wheel (orange, yellow/gold) — needs a more
+saturated/vivid result specifically for these two, likely a saturation
+boost or stronger tint intensity rather than a hue-only shift.
+
 **Explicitly deferred (user, 2026-07-13):** the 2 streak-breaker softlocks
 (landscape50i game 11 PROMPT_SKILL_ROLL stall, portrait50d game 8
 WAITING_FOR_CHALLENGES stuck-retry) and resuming the 15-game streak runs —

@@ -13,7 +13,7 @@
 // files that do not already exist, so it will never clobber replacement artwork
 // once installed.
 //
-//   node scripts/frames-derive.js [--force]
+//   node scripts/frames-derive.js [--force] [--heroes-only]
 
 const fs = require('fs');
 const path = require('path');
@@ -22,6 +22,7 @@ const sharp = require('sharp');
 const FRAMES = path.join(__dirname, '..', 'public', 'assets', 'skin', 'frames');
 const CRESTS = path.join(__dirname, '..', 'public', 'assets', 'skin', 'icons', 'crest-v2');
 const force = process.argv.includes('--force');
+const heroesOnly = process.argv.includes('--heroes-only');
 
 // Hue-rotation shifts the parchment as much as the metal (green -> pink), so tint
 // instead: it preserves luminance and recolours the whole plate, which reads as a
@@ -33,13 +34,16 @@ const DERIVED = [
 ];
 
 // Class Hero frames use the same luminance-preserving tint as the interim
-// frames above, then bake the matching crest into the already-validated
-// top-left seal position from the card UI (3.5% left, 4% top, 22% wide).
-// hero.png is 364x558, so those values resolve to 13x22 with an 80px crest.
+// frames above. The source template's generic shield is smoothed away under a
+// feathered silhouette mask before the matching crest is seated in its place.
+// Bard and Guardian need extra saturation because their hues are close to the
+// source frame's bronze/brass and otherwise read as brown/olive.
 const HERO_CLASSES = [
   { name: 'fighter', tint: '#e05a4a' },
-  { name: 'bard', tint: '#e89a3a' },
-  { name: 'guardian', tint: '#e8c84a' },
+  { name: 'bard', tint: '#e89a3a', saturation: 1.45 },
+  // CSS accent: #e8c84a. A lighter render tint keeps shaded metal gold
+  // instead of pushing its dark yellow values toward olive.
+  { name: 'guardian', tint: '#ffd84a', saturation: 1.45, brightness: 1.08 },
   { name: 'ranger', tint: '#5ab85a' },
   { name: 'thief', tint: '#4a90d9' },
   { name: 'wizard', tint: '#9a5ad9' },
@@ -47,13 +51,39 @@ const HERO_CLASSES = [
 const HERO_WIDTH = 364;
 const HERO_HEIGHT = 558;
 const CREST_PLACEMENT = {
-  left: Math.round(HERO_WIDTH * 0.035),
-  top: Math.round(HERO_HEIGHT * 0.04),
-  size: Math.round(HERO_WIDTH * 0.22),
+  left: 130,
+  top: 24,
+  size: 104,
 };
+const SHIELD_MASK = Buffer.from(`
+  <svg width="${HERO_WIDTH}" height="${HERO_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
+    <path d="M105 0H259V44L244 55V96L226 113L182 143L138 113L120 96V55L105 44Z" fill="#fff"/>
+  </svg>
+`);
+
+async function eraseShield(tintedFrame) {
+  // A large median filter removes the shield's hard embossed edges while
+  // retaining the local ribbon/metal colour; the blurred mask feathers that
+  // sampled texture back into the untouched frame with no visible seam.
+  const sampledRibbon = await sharp(tintedFrame)
+    .median(61)
+    .blur(8)
+    .png()
+    .toBuffer();
+  const featheredMask = await sharp(SHIELD_MASK)
+    .blur(18)
+    .png()
+    .toBuffer();
+
+  return sharp(sampledRibbon)
+    .ensureAlpha()
+    .composite([{ input: featheredMask, blend: 'dest-in' }])
+    .png()
+    .toBuffer();
+}
 
 async function main() {
-  for (const d of DERIVED) {
+  for (const d of heroesOnly ? [] : DERIVED) {
     const src = path.join(FRAMES, d.from);
     const dst = path.join(FRAMES, d.to);
     if (!fs.existsSync(src)) { console.warn(`skip ${d.to}: missing ${d.from}`); continue; }
@@ -89,22 +119,37 @@ async function main() {
       })
       .png()
       .toBuffer();
-    const tintedFrame = await sharp(hero)
-      .tint(heroClass.tint)
+    const tintPipeline = sharp(hero).tint(heroClass.tint);
+    if (heroClass.saturation || heroClass.brightness) {
+      tintPipeline.modulate({
+        saturation: heroClass.saturation || 1,
+        brightness: heroClass.brightness || 1,
+      });
+    }
+    const tintedFrame = await tintPipeline
       .png()
       .toBuffer();
+    const shieldPatch = await eraseShield(tintedFrame);
 
     await sharp(tintedFrame)
-      .composite([{
-        input: crest,
-        left: CREST_PLACEMENT.left,
-        top: CREST_PLACEMENT.top,
-        blend: 'over',
-      }])
+      .composite([
+        { input: shieldPatch, left: 0, top: 0, blend: 'over' },
+        {
+          input: crest,
+          left: CREST_PLACEMENT.left,
+          top: CREST_PLACEMENT.top,
+          blend: 'over',
+        },
+      ])
       .png()
       .toFile(output + '.tmp');
     fs.renameSync(output + '.tmp', output);
-    console.log(`derived ${outputName} from hero.png (tint ${heroClass.tint}, crest ${CREST_PLACEMENT.size}px at ${CREST_PLACEMENT.left},${CREST_PLACEMENT.top})`);
+    const adjustments = [
+      `tint ${heroClass.tint}`,
+      heroClass.saturation ? `saturation ${heroClass.saturation}` : null,
+      heroClass.brightness ? `brightness ${heroClass.brightness}` : null,
+    ].filter(Boolean).join(', ');
+    console.log(`derived ${outputName} from hero.png (${adjustments}, shield erased, crest ${CREST_PLACEMENT.size}px at ${CREST_PLACEMENT.left},${CREST_PLACEMENT.top})`);
   }
 }
 
