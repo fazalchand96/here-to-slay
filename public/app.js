@@ -439,6 +439,34 @@ window.addEventListener('orientationchange', checkOrientationAndLayout);
 
 checkOrientationAndLayout(); // Call initially
 
+const PREMIUM_BOARD_BACKGROUNDS = Object.freeze({
+    landscape: Object.freeze([
+        'assets/skin/premium-tabletop-landscape.png',
+        'assets/skin/premium-tabletop-landscape-ap1-v80.png',
+        'assets/skin/premium-tabletop-landscape-ap2-v80.png',
+        'assets/skin/premium-tabletop-landscape-ap3-v80.png',
+        'assets/skin/premium-tabletop-landscape-ap4-v80.png'
+    ]),
+    portrait: Object.freeze([
+        'assets/skin/premium-tabletop-portrait.png',
+        'assets/skin/premium-tabletop-portrait-ap1-v80.png',
+        'assets/skin/premium-tabletop-portrait-ap2-v80.png',
+        'assets/skin/premium-tabletop-portrait-ap3-v80.png',
+        'assets/skin/premium-tabletop-portrait-ap4-v80.png'
+    ])
+});
+
+function updatePremiumBoardBackground(actionPoints) {
+    const board = document.getElementById('game-board');
+    if (!board) return;
+
+    const orientation = document.body.classList.contains('portrait') ? 'portrait' : 'landscape';
+    const ap = Math.min(4, Math.max(0, Math.floor(Number(actionPoints) || 0)));
+    const asset = PREMIUM_BOARD_BACKGROUNDS[orientation][ap];
+    board.style.setProperty('background-image', `url('${asset}')`, 'important');
+    board.dataset.apBackground = `${orientation}-${ap}`;
+}
+
 
 
 function setupEventConsoleObserver() {
@@ -3139,20 +3167,10 @@ function renderBoard(data) {
 
     setRegionHtml(myWinTracker, boardParts.winTrackHtml);
 
-    // The four unlit sockets are painted into the board. Overlay the matching
-    // pre-baked rail crop for the current AP; zero AP needs no overlay at all.
-    const apGemsEl = document.getElementById('ap-gems');
-    if (apGemsEl) {
-        const ap = Math.min(4, Math.max(0, Math.floor(Number(me.ap) || 0)));
-        if (ap === 0) {
-            apGemsEl.hidden = true;
-            apGemsEl.removeAttribute('src');
-        } else {
-            const orientation = document.body.classList.contains('portrait') ? 'portrait' : 'landscape';
-            apGemsEl.src = `assets/skin/ap-rail-${orientation}-${ap}.png`;
-            apGemsEl.hidden = false;
-        }
-    }
+    // AP is part of the full premium board artwork. AP 0 uses the native
+    // all-dark baseline; positive values select a full-board AI-edited variant.
+    // Mega Slime can grant 4 AP, and any future higher value is capped visually.
+    updatePremiumBoardBackground(me.ap);
 
     // Reward toast (Phase 7): celebrate when MY slain count grows. Client-side
     // only — reads slainMonsters, fires no socket events. Guarded by a remembered

@@ -6,6 +6,8 @@ Generated with the built-in image generation tool for the Premium Tavern Tableto
 
 - `premium-tabletop-landscape.png` - landscape board surface with carved zones.
 - `premium-tabletop-portrait.png` - portrait board surface with vertical mobile zones.
+- `premium-tabletop-landscape-ap1-v80.png` through `premium-tabletop-landscape-ap4-v80.png` - full landscape board image edits with 1-4 AP gems lit.
+- `premium-tabletop-portrait-ap1-v80.png` through `premium-tabletop-portrait-ap4-v80.png` - full portrait board image edits with 1-4 AP gems lit.
 
 ## Source Sheets
 

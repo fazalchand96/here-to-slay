@@ -425,6 +425,55 @@ colors close to it on the wheel (orange, yellow/gold) — needs a more
 saturated/vivid result specifically for these two, likely a saturation
 boost or stronger tint intensity rather than a hue-only shift.
 
+**DONE — Hero frame refinements round 2: GATED PASS + SHIPPED 2026-07-13.**
+task-mrjpjnm8-5zomf0, committed `65f10a9`, pushed, deploy verifying
+(hts-v79, Director bumped this manually — Codex reasoned no bump was
+needed since no JS/HTML/CSS changed, missing that precached IMAGE assets
+with unchanged filenames but new bytes have the same stale-cache risk
+under this project's cache-first strategy; catch this pattern in future
+image-only dispatches too). Shield emblem removed from all 6 frames'
+top-center medallion, crest moved there cleanly (no seam), top-left
+duplicate removed. Bard/Guardian saturation-boosted to read as genuine
+orange/gold instead of muddy brown/olive; Fighter/Ranger/Thief/Wizard
+untouched. 131/131 tests + direct PNG inspection + live in-game screenshot
+independently verified by Director.
+
+**⚠️ CORRECTION IN PROGRESS — AP indicator, user rejected round 3's
+approach 2026-07-13.** What shipped in `ba7c7e5` (8 small cropped
+AP-rail-strip PNGs, sharp-composited lit-gem sprite, swapped via a small
+positioned DOM image) does NOT match what the user actually wants and
+must be REVERTED/replaced, not iterated on. User's actual ask, repeated
+for clarity after the mismatch: Codex's AI image tool must generate the
+FULL premium board background (not a cropped strip) 4 times per
+orientation — 8 variants total (landscape ×4, portrait ×4) — each showing
+a different count of gems lit (1/2/3/4), via actual image editing (like
+the deck/discard/labels work earlier this session), NOT sharp-compositing
+a pre-made gem sprite onto a crop. The ENTIRE #game-board background-image
+swaps to the matching full variant based on current AP. User was explicit:
+"no putting gems yourself... Codex has to generate the image." This will
+take real AI image-edit time (the deck/discard/labels round took ~15-50
+min including one network-hang retry) — set that expectation, do not
+expect a quick turnaround like the last several CSS-only fixes.
+
+**QUEUED — crest must look genuinely ENGRAVED, not pasted on (user,
+2026-07-13), dispatch after the AP full-board regen above completes.**
+User reviewed 65f10a9 (shield removed, crest moved to medallion) and says
+it still looks "added on top" rather than "actually engraved... just like
+the shield was." Root cause (Director's assessment): the shield was part
+of the original hand-painted/carved-relief frame art; crest-v2 icons are
+flat cartoon-style assets (per CLAUDE.md's card-art style rules: bold
+outlines, flat cel fills) with their own flat colored circle background —
+fundamentally different rendering style from the frame, so even a
+seamless mask still reads as a sticker, not forged metal. A sharp
+bevel/emboss filter could approximate but likely won't convincingly match
+hand-painted relief shading. Recommend the same technique already proven
+this session for genuine visual integration: AI image-EDITING (not
+compositing) to redraw each class's crest AS a carved metal medallion
+emblem in the frame's own painted-relief style (replacing the shield with
+the class's symbol/animal, rendered AS relief metalwork, not stamping the
+existing flat crest-v2 icon on top). This is a real art-generation task,
+budget image-edit time accordingly (see AP-regen timing note above).
+
 **Explicitly deferred (user, 2026-07-13):** the 2 streak-breaker softlocks
 (landscape50i game 11 PROMPT_SKILL_ROLL stall, portrait50d game 8
 WAITING_FOR_CHALLENGES stuck-retry) and resuming the 15-game streak runs —

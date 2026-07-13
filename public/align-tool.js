@@ -31,8 +31,6 @@
     { key: 'deck-area',    label: 'Deck area (box)', sel: '.deck-area',       centered: false,
       css: { landscape: 'body.landscape #board-center .deck-area',
              portrait:  '#game-board.portrait #board-center .deck-area' } },
-    { key: 'ap-gems',      label: 'AP gems',        sel: '#ap-gems',          centered: false,
-      css: { landscape: 'body.landscape #ap-gems', portrait: '#game-board.portrait #ap-gems' } },
     { key: 'leader-slot',  label: 'Party leader',   sel: '#leader-slot',      centered: false,
       css: { landscape: 'body.landscape #leader-slot', portrait: '#game-board.portrait #leader-slot' } },
     { key: 'monsters-area', label: 'Monsters panel', sel: '.monsters-area',   centered: false,

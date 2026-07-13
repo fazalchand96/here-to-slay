@@ -6016,35 +6016,6 @@ body.landscape #game-board > #discard-pile::after,
     display: none !important;
 }
 
-/* Four empty sockets are part of the painted rail. A single pre-baked rail crop
-   replaces it for AP states 1-4; AP 0 leaves the native unlit art untouched. */
-body.landscape #game-board > #ap-gems,
-#game-board.portrait > #ap-gems {
-    position: absolute !important;
-    left: var(--ap-track-x) !important;
-    top: var(--ap-track-y) !important;
-    width: var(--ap-track-width) !important;
-    height: var(--ap-track-height) !important;
-    right: auto !important;
-    bottom: auto !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    display: block !important;
-    transform: translate(-50%, -50%) rotate(var(--ap-track-rotate)) !important;
-    transform-origin: center !important;
-    background: transparent !important;
-    border: 0 !important;
-    box-shadow: none !important;
-    pointer-events: none !important;
-    object-fit: fill !important;
-    z-index: 7 !important;
-}
-
-body.landscape #game-board > #ap-gems[hidden],
-#game-board.portrait > #ap-gems[hidden] {
-    display: none !important;
-}
-
 /* --------------------------------------------------------------------------
    Landscape HUD polish: keep board controls aligned to their native artwork.
    These overrides intentionally leave the portrait shell unchanged. */

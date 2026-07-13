@@ -2,7 +2,7 @@
 // NOTE: bump CACHE_VERSION whenever the app shell (HTML/JS/CSS) changes so old
 // caches are purged on activate. A stale shell can serve outdated JS and break
 // the app (e.g. "io is not defined" when an old index.html/app.js is served).
-const CACHE_VERSION = 'hts-v79';
+const CACHE_VERSION = 'hts-v80';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
@@ -16,14 +16,14 @@ const PRECACHE_ASSETS = [
   '/tavern-bg.jpg',
   '/assets/skin/premium-tabletop-landscape.png',
   '/assets/skin/premium-tabletop-portrait.png',
-  '/assets/skin/ap-rail-landscape-1.png',
-  '/assets/skin/ap-rail-landscape-2.png',
-  '/assets/skin/ap-rail-landscape-3.png',
-  '/assets/skin/ap-rail-landscape-4.png',
-  '/assets/skin/ap-rail-portrait-1.png',
-  '/assets/skin/ap-rail-portrait-2.png',
-  '/assets/skin/ap-rail-portrait-3.png',
-  '/assets/skin/ap-rail-portrait-4.png',
+  '/assets/skin/premium-tabletop-landscape-ap1-v80.png',
+  '/assets/skin/premium-tabletop-landscape-ap2-v80.png',
+  '/assets/skin/premium-tabletop-landscape-ap3-v80.png',
+  '/assets/skin/premium-tabletop-landscape-ap4-v80.png',
+  '/assets/skin/premium-tabletop-portrait-ap1-v80.png',
+  '/assets/skin/premium-tabletop-portrait-ap2-v80.png',
+  '/assets/skin/premium-tabletop-portrait-ap3-v80.png',
+  '/assets/skin/premium-tabletop-portrait-ap4-v80.png',
   '/assets/skin/card-backs-sheet.png',
   '/assets/skin/card-frames-sheet.png',
   '/assets/skin/button-blanks-sheet.png',
