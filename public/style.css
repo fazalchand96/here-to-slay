@@ -4708,8 +4708,8 @@ button.action-btn,
     background-color: transparent !important;
 }
 
-/* Fully baked generated card faces (currently Monster cards) already include
-   frame, name, type and requirement text in the image. Render them as the whole
+/* Fully baked generated card faces already include their visible frame, name,
+   type and any essential board text. Render them as the whole
    card instead of placing them inside the reusable frame window. */
 .card.full-card-art {
     background: transparent !important;
@@ -5738,7 +5738,7 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
     padding-block: 1px;
 }
 
-/* Final safety override for baked generated monster cards. The board-label rules
+/* Final safety override for baked generated cards. The board-label rules
    above are intentionally specific for normal cards, but full-card art must stay
    completely clean because the name/requirements are part of the PNG itself. */
 #player-party > .card.full-card-art > .board-card-name,
@@ -5841,19 +5841,18 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
     overflow-wrap: anywhere !important;
 }
 
-#inspector-modal.full-card-art-inspector #inspector-modal-actions .action-btn {
-    background-image: url('assets/skin/buttons/primary.png') !important;
+#inspector-modal #inspector-modal-actions .action-btn {
+    background-image: url('assets/skin/buttons/inspector-action.png') !important;
 }
 
-#inspector-modal.full-card-art-inspector #inspector-modal-actions .action-btn.primary,
-#inspector-modal.full-card-art-inspector #inspector-modal-actions .action-btn.attack {
-    background-image: url('assets/skin/buttons/danger-red.png') !important;
+#inspector-modal #inspector-modal-actions .action-btn.inspector-close-action {
+    background-image: url('assets/skin/buttons/inspector-close.png') !important;
 }
 
 #inspector-modal.full-card-art-inspector #inspector-modal-actions .action-btn:disabled {
-    background-image: url('assets/skin/buttons/disabled-dark.png') !important;
-    color: rgba(255, 236, 196, 0.72) !important;
-    opacity: 1 !important;
+    background-image: url('assets/skin/buttons/inspector-close.png') !important;
+    color: rgba(235, 232, 255, 0.62) !important;
+    opacity: 0.78 !important;
 }
 
 #inspector-modal.full-card-art-inspector #inspector-close-btn {

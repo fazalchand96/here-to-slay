@@ -129,15 +129,16 @@ function loadCardAssetIds(relativeDir, extension) {
 }
 
 // Card ids that have generated illustration art on disk (art-web/<id>.webp,
-// produced by scripts/compress-art.js). Monster cards can additionally have a
-// fully baked card face (monster-fullgen-v1/<id>.png); those are rendered whole.
-function applyGeneratedCardArt(card, artIds, monsterFullIds) {
+// produced by scripts/compress-art.js). Selected card families additionally have
+// fully baked card faces; those are rendered whole on the board.
+function applyGeneratedCardArt(card, artIds, fullArtSources) {
     if (!card) return;
     if (artIds.has(card.id)) {
         card.illustrationArtUrl = `assets/skin/cards/art-web/${card.id}.webp`;
     }
-    if (card.type === 'Monster Card' && monsterFullIds.has(card.id)) {
-        card.fullCardArtUrl = `assets/skin/cards/monster-fullgen-v1/${card.id}.png`;
+    const fullArtSource = fullArtSources[card.type];
+    if (fullArtSource && fullArtSource.ids.has(card.id)) {
+        card.fullCardArtUrl = `assets/skin/cards/${fullArtSource.directory}/${card.id}.png`;
         card.artUrl = card.fullCardArtUrl;
         return;
     }
@@ -150,13 +151,18 @@ function loadCards() {
     const rawData = fs.readFileSync(path.join(__dirname, 'cards.json'), 'utf-8');
     const cards = JSON.parse(rawData);
     const artIds = loadCardAssetIds('assets/skin/cards/art-web', '.webp');
-    const monsterFullIds = loadCardAssetIds('assets/skin/cards/monster-fullgen-v1', '.png');
+    const fullArtSources = {
+        'Monster Card': { directory: 'monster-fullgen-v1', ids: loadCardAssetIds('assets/skin/cards/monster-fullgen-v1', '.png') },
+        'Item Card': { directory: 'item-fullgen-v1', ids: loadCardAssetIds('assets/skin/cards/item-fullgen-v1', '.png') },
+        'Cursed Item Card': { directory: 'cursed-item-fullgen-v1', ids: loadCardAssetIds('assets/skin/cards/cursed-item-fullgen-v1', '.png') },
+        'Magic Card': { directory: 'magic-fullgen-v1', ids: loadCardAssetIds('assets/skin/cards/magic-fullgen-v1', '.png') }
+    };
 
     // ALL_CARDS is a separate raw require of cards.json used for by-id lookups
     // (skill targets, debug injection, card inspection), so it needs artUrl too —
     // otherwise cards reached through those paths render the old wiki scan.
     ALL_CARDS.forEach(c => {
-        applyGeneratedCardArt(c, artIds, monsterFullIds);
+        applyGeneratedCardArt(c, artIds, fullArtSources);
     });
 
     PARTY_LEADERS = [];
@@ -175,7 +181,7 @@ function loadCards() {
         
         let card = { ...c };
 
-        applyGeneratedCardArt(card, artIds, monsterFullIds);
+        applyGeneratedCardArt(card, artIds, fullArtSources);
 
         if (card.type === 'Party Leader') {
             PARTY_LEADERS.push(card);

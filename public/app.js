@@ -5521,14 +5521,14 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
     // Set fields
 
-    // Baked monster cards already include the visible card face. Keep the board
-    // clean, but the inspector should still show rolls, requirements, and effects.
-    const isFullCardMonster = card.type === 'Monster Card' && !!card.fullCardArtUrl;
-    const inspectArt = isFullCardMonster && card.illustrationArtUrl
+    // Baked cards already include the visible card face. Keep the board clean,
+    // while the inspector continues to show the original illustration and rules.
+    const isFullCardArt = !!card.fullCardArtUrl;
+    const inspectArt = isFullCardArt && card.illustrationArtUrl
         ? card.illustrationArtUrl
         : cardArt(card);
 
-    modal.classList.toggle('full-card-art-inspector', isFullCardMonster);
+    modal.classList.toggle('full-card-art-inspector', isFullCardArt);
 
     if (modalImageContainer) {
         const inspectClass = card.type === 'Hero Card' ? effectiveHeroClass(card) : '';
@@ -6153,11 +6153,9 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
     const closeBtn = document.createElement('button');
 
-    closeBtn.className = 'action-btn primary';
+    closeBtn.className = 'action-btn inspector-close-action';
 
     closeBtn.innerText = 'CLOSE';
-
-    closeBtn.style.background = '#ef4444';
 
     closeBtn.onclick = () => {
 
