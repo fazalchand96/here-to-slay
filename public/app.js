@@ -1137,10 +1137,14 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
 
 
 
+    const isFullCardArt = !!card.fullCardArtUrl;
+
     // Roll badge value: heroes show roll_requirement, monsters show slayRoll; other
     // card types have no roll → empty (CSS hides an empty .card-req badge).
     let badgeVal = '';
-    if (isMonster || card.type === 'Monster Card') {
+    if (isFullCardArt) {
+        badgeVal = '';
+    } else if (isMonster || card.type === 'Monster Card') {
         badgeVal = (card.slayRoll != null) ? card.slayRoll : '';
     } else if (card.type === 'Hero Card' && typeof card.roll_requirement === 'number') {
         badgeVal = card.roll_requirement;
@@ -1149,10 +1153,10 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
     const detailTitle = (isMonster || card.type === 'Monster Card')
         ? `${card.rollType === 'LOW_ROLL' ? `Slay ≤${card.slayRoll} · Fail ${card.penaltyRoll}+` : `Slay ${card.slayRoll}+ · Fail ${card.penaltyRoll}-`} · Needs ${card.requirement || '—'}`
         : (card.requirement || card.name || '');
-    const monsterRequirement = (isMonster || card.type === 'Monster Card')
+    const monsterRequirement = !isFullCardArt && (isMonster || card.type === 'Monster Card')
         ? `<div class="monster-requirement-badge">Req: ${card.requirement || 'None'}</div>`
         : '';
-    const boardCardName = (isMonster || card.type === 'Monster Card' || card.type === 'Hero Card')
+    const boardCardName = !isFullCardArt && (isMonster || card.type === 'Monster Card' || card.type === 'Hero Card')
         ? `<div class="board-card-name" title="${card.name || ''}">${card.name || 'Unknown'}</div>`
         : '';
     // Per-class / per-type accent that tints the frame border + type ribbon (--cc).
@@ -5517,9 +5521,12 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
     // Set fields
 
-    // Generated art is illustration-only, so the modal's own name/type/description
-    // fields below carry the text the old full-card scan used to show.
+    // Baked monster cards already include the visible card face. Inspect them
+    // art-only so legacy modal text does not double up around the generated card.
+    const isFullCardMonster = card.type === 'Monster Card' && !!card.fullCardArtUrl;
     const inspectArt = cardArt(card);
+
+    modal.classList.toggle('full-card-art-inspector', isFullCardMonster);
 
     if (modalImageContainer) {
         const inspectClass = card.type === 'Hero Card' ? effectiveHeroClass(card) : '';

@@ -5738,6 +5738,29 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
     padding-block: 1px;
 }
 
+/* Final safety override for baked generated monster cards. The board-label rules
+   above are intentionally specific for normal cards, but full-card art must stay
+   completely clean because the name/requirements are part of the PNG itself. */
+#player-party > .card.full-card-art > .board-card-name,
+#active-monsters > .card.full-card-art > .board-card-name,
+#active-monsters > .card.full-card-art > .monster-requirement-badge,
+.card.full-card-art > .card-req,
+.card.full-card-art .card-type,
+.card.full-card-art .card-info {
+    display: none !important;
+}
+
+#inspector-modal.full-card-art-inspector #inspector-modal-details {
+    display: none !important;
+}
+
+#inspector-modal.full-card-art-inspector #inspector-modal-image {
+    max-height: min(72vh, 760px) !important;
+    width: auto !important;
+    object-fit: contain !important;
+    background: transparent !important;
+}
+
 body.landscape #board-center .monsters-area,
 body.landscape #party-zone,
 #game-board.portrait #board-center .monsters-area,
