@@ -1317,7 +1317,14 @@ window.openOpponentModal = function(id) {
 
 
 
-    let cardsHtml = opp.leader ? renderCard(opp.leader, false, false, false, false) : '';
+    let cardsHtml = `
+        <section class="opponent-party-section opponent-leader-section">
+            <h3>Party Leader</h3>
+            <div class="opponent-party-row">
+                ${opp.leader ? renderCard(opp.leader, false, false, false, false) : '<span class="opponent-empty-state">No Party Leader</span>'}
+            </div>
+        </section>
+    `;
 
     if (opp.party && opp.party.length > 0) {
 
@@ -1331,12 +1338,21 @@ window.openOpponentModal = function(id) {
 
         });
 
-        cardsHtml += sortedOppParty.map(c => renderCard(c, false, false, false, false)).join('');
+        cardsHtml += `
+            <section class="opponent-party-section opponent-heroes-section">
+                <h3>Heroes (${sortedOppParty.length})</h3>
+                <div class="opponent-party-row">
+                    ${sortedOppParty.map(c => renderCard(c, false, false, false, false)).join('')}
+                </div>
+            </section>
+        `;
 
+    } else {
+        cardsHtml += `<section class="opponent-party-section opponent-heroes-section"><h3>Heroes (0)</h3><div class="opponent-empty-state">No Heroes in this party yet.</div></section>`;
     }
 
     if (opp.slainMonsters && opp.slainMonsters.length > 0) {
-        cardsHtml += `<div class="slain-monsters-container"><h3>Slain (${opp.slainMonsters.length}/3)</h3><div class="slain-monsters-list">${opp.slainMonsters.map(m => `<div class="slain-monster-icon" data-id="${m.id}" onclick="inspectCard('${m.id}')" style="background-image:url('${cardArt(m)}'); cursor:pointer;" title="${m.name}"></div>`).join('')}</div></div>`;
+        cardsHtml += `<section class="opponent-party-section slain-monsters-container"><h3>Slain Monsters (${opp.slainMonsters.length}/3)</h3><div class="slain-monsters-list">${opp.slainMonsters.map(m => `<div class="slain-monster-icon" data-id="${m.id}" onclick="inspectCard('${m.id}')" style="background-image:url('${cardArt(m)}'); cursor:pointer;" title="${m.name}"></div>`).join('')}</div></section>`;
     }
 
 
