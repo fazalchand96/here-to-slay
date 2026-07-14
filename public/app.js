@@ -386,13 +386,8 @@ window.addEventListener('resize', applyMobileStacking);
 
 
 
-// Real-time Orientation & Layout Handler (Phase 5: dual-orientation, no lock)
-//
-// The orientation lock is gone — the game runs in BOTH portrait and landscape.
-// This sets a mode class on <body> and #game-board (.portrait / .landscape) and,
-// only when the orientation CATEGORY actually flips, re-renders the board so
-// ensureBoardShell() can swap to the correct shell. The #rotation-lock-overlay
-// element is kept (markup/e2e stability) but is now never shown.
+// Real-time dual-orientation layout handler. Both portrait and landscape remain
+// available; landscape is the primary polished play surface.
 
 let lastOrientationCategory = null;
 
@@ -400,13 +395,6 @@ function checkOrientationAndLayout() {
 
     const isLandscape = window.innerWidth > window.innerHeight;
     const category = isLandscape ? 'landscape' : 'portrait';
-
-    // The rotation lock is removed — keep the element but never display it.
-    const lockOverlay = document.getElementById('rotation-lock-overlay');
-    if (lockOverlay) {
-        lockOverlay.classList.add('hidden');
-        lockOverlay.style.display = 'none';
-    }
 
     // Mode classes drive the orientation-specific CSS in both shells.
     const board = document.getElementById('game-board');
@@ -500,7 +488,7 @@ setupEventConsoleObserver(); // Also call immediately in case DOM is already loa
 
 function closeAllModals() {
 
-    const modals = ['challenge-modal', 'modifier-modal', 'skill-prompt-modal', 'action-modal', 'dice-overlay', 'opponent-modal'];
+    const modals = ['challenge-modal', 'skill-prompt-modal', 'action-modal', 'dice-overlay', 'opponent-modal'];
 
     modals.forEach(id => {
 
@@ -702,6 +690,28 @@ const turnIndicator = document.getElementById('turn-indicator');
 
 const waitingOverlay = document.getElementById('waiting-overlay');
 
+function updateWaitingOverlay(data) {
+    if (!waitingOverlay || !data) return;
+    const heading = waitingOverlay.querySelector('h2');
+    const detail = document.getElementById('waiting-overlay-detail');
+    const actorId = data.pendingAction?.playerToChoose
+        || data.pendingRoll?.rollerId
+        || data.activePlayerSocketId;
+    const actor = actorId && data.players?.[actorId];
+    if (heading) heading.textContent = actor && actorId !== myId
+        ? `Waiting for ${actor.name || 'opponent'}...`
+        : 'Waiting for opponent...';
+    const stateDetails = {
+        WAITING_FOR_SKILL_TARGET: 'A target is being selected.',
+        WAITING_FOR_HAND_SELECTION: 'A card is being selected.',
+        WAITING_FOR_IMMEDIATE_PLAY: 'An immediate play is being decided.',
+        WAITING_FOR_SACRIFICE: 'A sacrifice is being selected.',
+        WAITING_FOR_DISCARD_PENALTY: 'A discard is being resolved.',
+        WAITING_FOR_GLOBAL_ACTION: 'The shared action is being resolved.'
+    };
+    if (detail) detail.textContent = stateDetails[data.state] || 'The next action is being resolved.';
+}
+
 
 
 const notificationArea = document.getElementById('notification-area');
@@ -717,8 +727,6 @@ const skillPromptYes = document.getElementById('skill-prompt-yes');
 const skillPromptNo = document.getElementById('skill-prompt-no');
 
 
-
-const modifierModal = document.getElementById('modifier-modal');
 
 function ensureDicePhaseLayout() {
     const overlay = document.getElementById('dice-overlay');
@@ -905,14 +913,6 @@ function buildChallengeEquationHTML(data) {
         ${side(data.challengerName, data.challengerRoll1, data.challengerRoll2, data.challengerBreakdown, data.challengerModifierTotal, data.challengerFinalTotal, 'challenger')}
     </span>`;
 }
-
-const modifierTitle = document.getElementById('modifier-title');
-
-const modifierText = document.getElementById('modifier-text');
-
-const modifierCards = document.getElementById('modifier-cards');
-
-const modifierPassBtn = document.getElementById('modifier-pass-btn');
 
 function hideModifierDecisionControls() {
     const passButton = document.getElementById('dice-pass-btn');
@@ -1637,6 +1637,7 @@ socket.on('gameStateUpdate', (data) => {
 
 
     latestGameState = data;
+    updateWaitingOverlay(data);
 
     // Mirror the live state onto window so other code paths (and e2e tests) can
     // read it — `let` bindings don't become window properties on their own.
@@ -2017,8 +2018,6 @@ socket.on('game_reset_complete', () => {
 
     // Clean up modals and modifiers
 
-    modifierModal?.classList.add('hidden');
-
     challengeModal?.classList.add('hidden');
 
     skillPromptModal?.classList.add('hidden');
@@ -2280,22 +2279,6 @@ function renderBoard(data) {
 
 
 
-    // IMPORTANT: Explicitly hide the modifier modal if we are no longer in modifier phase!
-
-    if (data.state !== 'WAITING_FOR_MODIFIERS') {
-
-        const modModal = document.getElementById('modifier-modal');
-
-        if (modModal) {
-
-            modModal.classList.add('hidden');
-
-            modModal.style.display = 'none';
-
-        }
-
-    }
-
 
 
     // IMPORTANT: Explicitly hide the skill prompt modal if we are no longer in skill prompt phase!
@@ -2515,8 +2498,6 @@ function renderBoard(data) {
         // The skill roll that triggered this hand-selection (e.g. Hook) left the
         // dice/modifier overlay up. Hide it so it doesn't sit behind the prompt.
         document.getElementById('dice-overlay')?.classList.add('hidden');
-        document.getElementById('modifier-modal')?.classList.add('hidden');
-
     } else if (data.state === 'PLAYING' && data.pendingAction?.type === 'LOOK_AND_PULL') {
 
         document.body?.classList.add('target-mode-active');
@@ -3079,8 +3060,6 @@ function renderBoard(data) {
 
         challengeModal?.classList.add('hidden');
 
-        modifierModal?.classList.add('hidden');
-
         const diceOverlay = document.getElementById('dice-overlay');
 
         if (diceOverlay) diceOverlay?.classList.add('hidden');
@@ -3351,176 +3330,7 @@ socket.on('dice_roll_pending', (data) => {
 
 
 
-        const modifierModalElement = document.getElementById('modifier-modal');
-
-        if (modifierModalElement) {
-
-            if (data.type === 'CHALLENGE' || data.isChallenge) {
-
-                modifierModalElement.classList.remove('hidden');
-
-                modifierModalElement.style.display = '';
-
-            } else {
-
-                modifierModalElement.classList.add('hidden');
-
-                modifierModalElement.style.display = 'none';
-
-            }
-
-        }
-
-
-
-        if (data.type === 'CHALLENGE' || data.isChallenge) {
-
-            modifierTitle.innerText = `Challenge Pending!`;
-
-            modifierText.innerText = `Modifiers can be played on either player's roll ${data.reason}.`;
-
-            
-
-            const aBase = data.activeRollBase ?? data.activeTotal ?? 0;
-
-            const aMod = data.activeModifierTotal ?? 0;
-
-            const aFinal = data.activeFinalTotal ?? aBase;
-
-
-
-            const cBase = data.challengerRollBase ?? data.challengerTotal ?? 0;
-
-            const cMod = data.challengerModifierTotal ?? 0;
-
-            const cFinal = data.challengerFinalTotal ?? cBase;
-
-
-
-            let breakdownHTML = `
-
-                <div style="display:flex; justify-content: space-around; width:100%; gap: 10px;">
-
-                    <div style="text-align:center; flex: 1; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px;">
-
-                        <h4 style="margin:0 0 5px 0;">${data.activeName}</h4>
-
-                        <div style="font-size: 0.9rem;">Base Roll: <strong>${aBase}</strong></div>
-
-                        <div style="font-size: 0.9rem;">Modifiers: <strong style="color:var(--accent)">${aMod > 0 ? '+' : ''}${aMod}</strong></div>
-
-                        <div class="roll-total" style="font-size: 1.2rem; margin-top: 5px;">Total: ${aFinal}</div>
-
-                    </div>
-
-                    <div style="text-align:center; flex: 1; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid var(--danger);">
-
-                        <h4 style="margin:0 0 5px 0; color: var(--danger);">${data.challengerName}</h4>
-
-                        <div style="font-size: 0.9rem;">Base Roll: <strong>${cBase}</strong></div>
-
-                        <div style="font-size: 0.9rem;">Modifiers: <strong style="color:var(--danger)">${cMod > 0 ? '+' : ''}${cMod}</strong></div>
-
-                        <div class="roll-total" style="font-size: 1.2rem; margin-top: 5px;">Total: ${cFinal}</div>
-
-                    </div>
-
-                </div>
-
-            `;
-
-            const breakdownContainer = document.getElementById('dice-breakdown-container');
-
-            if (breakdownContainer) breakdownContainer.innerHTML = breakdownHTML;
-
-
-
-        } else {
-
-            modifierTitle.innerText = `Dice Roll Pending...`;
-
-            modifierText.innerText = `${data.rollerName} is rolling ${data.reason}`;
-
-            
-
-            let breakdownHTML = '<ul class="roll-breakdown">';
-
-            if (data.breakdown) {
-
-                data.breakdown.forEach(item => {
-
-                    const sign = item.value >= 0 ? '+' : '';
-
-                    breakdownHTML += `<li>${item.source}: <strong>${sign}${item.value}</strong></li>`;
-
-                });
-
-            }
-
-            if (data.modifierTotal !== 0) {
-
-                const sign = data.modifierTotal > 0 ? '+' : '';
-
-                breakdownHTML += `<li>Modifiers Played: <strong style="color:var(--accent)">${sign}${data.modifierTotal}</strong></li>`;
-
-            }
-
-            breakdownHTML += `</ul><div class="roll-total">Total: ${data.finalTotal}</div>`;
-
-            
-
-            const breakdownContainer = document.getElementById('dice-breakdown-container');
-
-            if (breakdownContainer) breakdownContainer.innerHTML = breakdownHTML;
-
-        }        
-
-        
-
         const passed = latestGameState && latestGameState.passedModifiers?.includes(myId);
-
-        
-
-        if (passed) {
-
-            modifierPassBtn.disabled = true;
-
-            modifierPassBtn.innerText = "WAITING FOR OTHERS...";
-
-        } else {
-
-            modifierPassBtn.disabled = false;
-
-            modifierPassBtn.innerText = "PASS";
-
-        }
-
-
-
-        // Hide redundant title
-        const modTitle = document.getElementById('modifier-title');
-        if (modTitle) modTitle.style.display = 'none';
-
-        if (latestGameState && latestGameState.players[myId]) {
-            const targetContainer = (data.type === 'CHALLENGE' || data.isChallenge) 
-                ? document.getElementById('modifier-cards') 
-                : document.getElementById('dice-hand-modifiers');
-                
-            if (targetContainer) {
-                if (passed) {
-                    targetContainer.innerHTML = '';
-                } else {
-                    targetContainer.innerHTML = `<div style="color: var(--accent); font-size: 1.1rem; margin: 15px 0; text-align: center;">Play a Modifier from your hand,<br>or click Pass.</div>`;
-                }
-            }
-        }
-
-
-
-        if (data.type === 'CHALLENGE' || data.isChallenge) {
-            // WE NOW USE THE NORMAL DICE OVERLAY FOR CHALLENGES
-            // Do not hide the overlay!
-        }
 
 
 
@@ -3735,8 +3545,6 @@ socket.on('dice_roll_pending', (data) => {
             }
         }
 
-        modifierModal?.classList.remove('hidden');
-
     } catch (error) {
 
         
@@ -3846,8 +3654,6 @@ socket.on('rollResult', (data) => {
     try {
 
         showNotification(data.message);
-
-        modifierModal?.classList.add('hidden');
 
         const diceOverlay = document.getElementById('dice-overlay');
 
@@ -5330,18 +5136,6 @@ function playChallenge(id) {
     playSound('challenge');
     socket.emit('play_challenge', id);
 }
-
-
-
-modifierPassBtn.addEventListener('click', () => {
-
-    socket.emit('submit_modifier_action', { action: 'PASS' });
-
-    modifierPassBtn.disabled = true;
-
-    modifierPassBtn.innerText = "WAITING FOR OTHERS...";
-
-});
 
 
 

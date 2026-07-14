@@ -129,16 +129,11 @@ body {
 /* Modals */
 .modal, 
 #challenge-modal, 
-#modifier-modal, 
 #skill-prompt-modal, 
 #action-modal,
 #dice-overlay {
     position: fixed;
     z-index: 9999 !important; /* Massive Z-Index to prevent glass ceiling */
-}
-
-#modifier-modal {
-    background-color: #1a1a24 !important;
 }
 
 /* ── Modal shell (Phase 3) ──
@@ -1837,25 +1832,6 @@ body.landscape #opponents-bar .opponent-stat-value {
     }
 }
 
-/* Rotation lock overlay custom styling */
-#rotation-lock-overlay {
-    background: rgba(8, 10, 24, 0.95) !important;
-    backdrop-filter: blur(15px) !important;
-}
-#rotation-lock-overlay .glass-panel {
-    border: 1px solid rgba(99, 102, 241, 0.2);
-    box-shadow: 0 0 40px rgba(99, 102, 241, 0.15);
-    background: rgba(15, 23, 42, 0.8) !important;
-}
-
-/* Rotate animation for device rotation overlay */
-@keyframes rotateDevice {
-    0% { transform: rotate(0deg); }
-    30% { transform: rotate(-90deg); }
-    70% { transform: rotate(-90deg); }
-    100% { transform: rotate(0deg); }
-}
-
 /* Touch scrolling configurations for interactive scroll zones */
 #player-hand, #player-party, #center-board, .opponent-status-bar, .opponent-cards-container {
     touch-action: pan-x !important;
@@ -2459,7 +2435,6 @@ body.landscape #event-console #challenge-modal .challenge-buttons-container .act
    gold ring give the mockup's framed-modal structure. */
 #event-console .overlay,
 #event-console #challenge-modal,
-#event-console #modifier-modal,
 #event-console #skill-prompt-modal,
 #event-console #dice-overlay {
     position: fixed !important;
@@ -2910,11 +2885,6 @@ body.landscape #event-console #challenge-modal .challenge-buttons-container .act
     margin-bottom: 15px !important;
     display: flex !important;
     justify-content: center !important;
-}
-
-/* Hide Redundant Overlaps */
-#event-console #modifier-modal {
-    display: none !important; 
 }
 
 /* Fix Vertical Clipping */
@@ -4878,7 +4848,6 @@ button.action-btn,
 }
 
 #dice-overlay .glass-panel,
-#modifier-modal .glass-panel,
 #challenge-modal .glass-panel {
     background:
         linear-gradient(180deg, rgba(42, 29, 55, 0.98), rgba(19, 13, 25, 0.98)) padding-box,
@@ -7014,4 +6983,108 @@ body.landscape #party-zone > .area-label,
     #event-console #dice-overlay.mod-compact #dice-monster-preview .card {
         height: 105px !important;
     }
+}
+
+/* Final celebration screen. The existing finale sprite remains behind this
+   readable crown-and-fireworks panel. */
+#victory-modal {
+    background: rgba(2, 5, 18, .84) !important;
+    backdrop-filter: blur(7px);
+}
+
+#victory-modal > .glass-panel {
+    box-sizing: border-box !important;
+    width: min(94vw, 760px) !important;
+    max-width: 760px !important;
+    max-height: 90dvh !important;
+    overflow: hidden !important;
+    padding: clamp(82px, 12vw, 124px) clamp(58px, 8vw, 86px) clamp(54px, 7vw, 76px) !important;
+    border: 0 !important;
+    border-radius: 18px !important;
+    background: linear-gradient(rgba(3,13,39,.03), rgba(3,8,30,.12)), url('assets/skin/modals/victory.webp') center / 100% 100% no-repeat !important;
+    box-shadow: 0 28px 80px rgba(0,0,0,.8), 0 0 38px rgba(255,197,62,.28) !important;
+    color: #fff9df !important;
+}
+
+#victory-winner-name {
+    margin: 0 0 8px !important;
+    color: #fff0a8 !important;
+    font-size: clamp(1.65rem, 7vw, 3.6rem) !important;
+    line-height: 1.02 !important;
+    text-shadow: 0 3px 3px rgba(15,3,30,.96), 0 0 18px rgba(255,202,73,.58) !important;
+}
+
+#victory-reason {
+    margin: 0 0 18px !important;
+    color: #f8eaff !important;
+    font-size: clamp(.9rem, 3vw, 1.25rem) !important;
+    line-height: 1.3 !important;
+    text-shadow: 0 2px 3px rgba(12,2,28,.95) !important;
+}
+
+#victory-modal .action-btn {
+    min-height: 46px !important;
+    padding: 9px 20px !important;
+    font-size: clamp(.76rem, 2.4vw, 1rem) !important;
+}
+
+/* Waiting status is a small calm banner rather than an opaque full-screen box. */
+#waiting-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 9000 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    border-radius: 0 !important;
+    background: rgba(3, 8, 18, .56) !important;
+    backdrop-filter: blur(3px);
+}
+
+#waiting-overlay.hidden { display: none !important; }
+
+#waiting-overlay::before {
+    content: '';
+    position: absolute;
+    width: min(90vw, 660px);
+    aspect-ratio: 3 / 1;
+    background: url('assets/skin/modals/waiting.webp') center / 100% 100% no-repeat;
+    filter: drop-shadow(0 18px 28px rgba(0,0,0,.62));
+}
+
+#waiting-overlay h2,
+#waiting-overlay p {
+    position: relative;
+    z-index: 1;
+    width: min(62vw, 430px) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    text-align: center !important;
+}
+
+#waiting-overlay h2 {
+    color: #f8e8b5 !important;
+    font-size: clamp(.95rem, 3.5vw, 1.35rem) !important;
+    text-shadow: 0 2px 3px rgba(0,5,14,.96) !important;
+}
+
+#waiting-overlay p {
+    margin-top: 5px !important;
+    color: #bcdde4 !important;
+    font-size: clamp(.68rem, 2.2vw, .86rem) !important;
+    line-height: 1.2 !important;
+    text-shadow: 0 1px 2px rgba(0,5,14,.96) !important;
+}
+
+@media (max-height: 520px) {
+    #victory-modal > .glass-panel {
+        padding-top: 64px !important;
+        padding-bottom: 42px !important;
+    }
+    #waiting-overlay::before { width: min(78vw, 560px); }
 }

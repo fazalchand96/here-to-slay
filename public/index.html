@@ -22,15 +22,6 @@
     <link rel="stylesheet" href="deck-stage.generated.css">
 </head>
 <body>
-    <!-- Rotation Lock Overlay -->
-    <div id="rotation-lock-overlay" class="overlay hidden" style="z-index: 10000; flex-direction: column;">
-        <div class="glass-panel" style="max-width: 400px; padding: 30px;">
-            <div style="font-size: 4.5rem; margin-bottom: 20px; animation: rotateDevice 2.5s infinite ease-in-out; display: inline-block;">🔄</div>
-            <h1 style="font-size: 2.2rem; margin-bottom: 10px;">Landscape Only</h1>
-            <p style="color: var(--text-muted); margin-bottom: 0;">Please rotate your device to Landscape orientation to play.</p>
-        </div>
-    </div>
-
     <!-- Lobby Screen -->
     <div id="lobby-modal" class="overlay">
         <div class="glass-panel lobby-panel">
@@ -194,6 +185,7 @@
         <div class="action-bar" id="player-controls">
             <div id="waiting-overlay" class="hidden">
                 <h2>Waiting for Opponent...</h2>
+                <p id="waiting-overlay-detail">The next action is being resolved.</p>
             </div>
             <div id="turn-indicator" class="hidden">YOUR TURN</div>
             <div class="player-profile-box" style="display: none;">
@@ -278,30 +270,6 @@
                         <button id="skill-prompt-no" class="action-btn" style="background: #ef4444;">NO / PASS</button>
 
                     </div>
-
-                </div>
-
-
-
-                <!-- Modifier Panel -->
-
-                <div id="modifier-modal" class="hidden phase-modal modifier-phase-modal" style="width: 100%; text-align: center; max-height: 100%;">
-
-                    <h1 id="modifier-title">Dice Roll Pending...</h1>
-
-                    <p id="modifier-text" style="font-size: 1.2rem; color: var(--success); font-weight: bold; margin-bottom: 10px;">Player rolled 0</p>
-
-                    <div id="dice-breakdown-container"></div>
-
-                    <div class="area-label" style="position: relative; margin-bottom: 10px; display: inline-block;">Play a Modifier or Pass</div>
-
-                    <div id="modifier-cards" class="card-container" style="min-height: 150px; margin-bottom: 20px; flex-wrap: wrap;">
-
-                        <!-- Modifier cards populated here -->
-
-                    </div>
-
-                    <button id="modifier-pass-btn" class="action-btn" style="background: #ef4444; width: 200px;">PASS</button>
 
                 </div>
 
