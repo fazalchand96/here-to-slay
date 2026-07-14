@@ -5762,7 +5762,7 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
     max-width: min(94vw, 780px) !important;
     width: auto !important;
     max-height: 92vh !important;
-    overflow: visible !important;
+    overflow: hidden !important;
     display: grid !important;
     grid-template-columns: minmax(150px, 0.42fr) minmax(210px, 0.58fr) !important;
     grid-template-areas:
@@ -5809,20 +5809,21 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
 #inspector-modal.full-card-art-inspector #inspector-modal-actions {
     grid-area: actions !important;
     margin-top: 0 !important;
-    gap: 8px !important;
+    gap: 10px !important;
     flex-direction: row !important;
-    flex-wrap: wrap !important;
+    flex-wrap: nowrap !important;
     justify-content: center !important;
     align-items: center !important;
 }
 
 #inspector-modal.full-card-art-inspector #inspector-modal-actions .action-btn {
+    --inspector-action-width: min(160px, calc((100vw - 64px) / 2));
     box-sizing: border-box !important;
-    width: 190px !important;
-    height: calc(190px * 190 / 385) !important;
+    width: var(--inspector-action-width) !important;
+    height: calc(var(--inspector-action-width) * 190 / 385) !important;
     aspect-ratio: auto !important;
     min-height: 0 !important;
-    padding: 0 16px !important;
+    padding: 0 12px !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -5831,9 +5832,28 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
     background-size: 100% 100% !important;
     background-position: center !important;
     background-repeat: no-repeat !important;
+    background-color: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+    filter: none !important;
     font-size: clamp(0.72rem, 1.75vh, 0.9rem) !important;
     white-space: normal !important;
     overflow-wrap: anywhere !important;
+}
+
+#inspector-modal.full-card-art-inspector #inspector-modal-actions .action-btn {
+    background-image: url('assets/skin/buttons/primary.png') !important;
+}
+
+#inspector-modal.full-card-art-inspector #inspector-modal-actions .action-btn.primary,
+#inspector-modal.full-card-art-inspector #inspector-modal-actions .action-btn.attack {
+    background-image: url('assets/skin/buttons/danger-red.png') !important;
+}
+
+#inspector-modal.full-card-art-inspector #inspector-modal-actions .action-btn:disabled {
+    background-image: url('assets/skin/buttons/disabled-dark.png') !important;
+    color: rgba(255, 236, 196, 0.72) !important;
+    opacity: 1 !important;
 }
 
 #inspector-modal.full-card-art-inspector #inspector-close-btn {
@@ -5855,13 +5875,8 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
         max-height: min(34vh, 320px) !important;
     }
 
-    #inspector-modal.full-card-art-inspector #inspector-modal-actions {
-        flex-direction: column !important;
-    }
-
     #inspector-modal.full-card-art-inspector #inspector-modal-actions .action-btn {
-        width: 190px !important;
-        max-width: 100% !important;
+        --inspector-action-width: min(150px, calc((100vw - 56px) / 2));
     }
 }
 
