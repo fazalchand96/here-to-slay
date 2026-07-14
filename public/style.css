@@ -6027,6 +6027,147 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
     }
 }
 
+/* Skill confirmation uses a compact dedicated frame with every action visible. */
+#event-console #skill-prompt-modal {
+    width: min(92vw, 540px) !important;
+    max-width: 540px !important;
+    max-height: 82dvh !important;
+    overflow: hidden !important;
+    padding: clamp(44px, 7vw, 64px) clamp(48px, 8vw, 72px) !important;
+    gap: 12px !important;
+    border: 0 !important;
+    border-radius: 18px !important;
+    background:
+        linear-gradient(rgba(1, 35, 26, 0.06), rgba(1, 22, 18, 0.14)),
+        url('assets/skin/modals/skill-prompt.webp') center / 100% 100% no-repeat !important;
+    box-shadow: var(--shadow-panel), 0 0 0 100vmax rgba(4, 10, 8, 0.68) !important;
+    color: #fff7dc !important;
+}
+
+#event-console #skill-prompt-modal h1 {
+    color: #ffe59a !important;
+    font-size: clamp(1.15rem, 4vw, 1.65rem) !important;
+    text-shadow: 0 2px 3px rgba(0, 20, 13, 0.95) !important;
+}
+
+#event-console #skill-prompt-modal #skill-prompt-text {
+    color: #f4ffe9 !important;
+    font-size: clamp(0.86rem, 2.5vw, 1.05rem) !important;
+    text-shadow: 0 2px 3px rgba(0, 18, 12, 0.95) !important;
+}
+
+#event-console #skill-prompt-modal > div {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+    margin-top: 8px !important;
+}
+
+#event-console #skill-prompt-modal .action-btn {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 44px !important;
+    padding: 8px 10px !important;
+}
+
+/* Shared framed family for browsing, selecting, retrieving and discarding
+   cards. The header and actions never scroll; only an oversized card gallery
+   can move inside the center of the frame. */
+#discard-search-modal > .glass-panel,
+#discard-viewer-modal > .glass-panel,
+#deck-peek-modal > .glass-panel,
+#mandatory-discard-modal > .glass-panel,
+#global-resolution-modal > .glass-panel,
+#global-discard-pool > .glass-panel {
+    box-sizing: border-box !important;
+    width: min(94vw, 780px) !important;
+    max-width: 780px !important;
+    height: min(88dvh, 570px) !important;
+    max-height: 88dvh !important;
+    overflow: hidden !important;
+    padding: clamp(42px, 6vw, 62px) clamp(46px, 7vw, 68px) clamp(38px, 5vw, 54px) !important;
+    border: 0 !important;
+    border-radius: 18px !important;
+    background:
+        linear-gradient(rgba(41, 20, 6, 0.05), rgba(24, 10, 2, 0.14)),
+        url('assets/skin/modals/card-picker.webp') center / 100% 100% no-repeat !important;
+    box-shadow: var(--shadow-panel), 0 0 0 1px rgba(255, 191, 80, 0.26) !important;
+    color: #fff2d2 !important;
+}
+
+#discard-search-modal h2,
+#discard-viewer-modal h1,
+#deck-peek-modal h2,
+#mandatory-discard-modal h2,
+#global-resolution-modal h2,
+#global-discard-pool h3 {
+    flex: 0 0 auto !important;
+    margin: 0 0 6px !important;
+    color: #ffe29a !important;
+    font-size: clamp(1rem, 3.5vw, 1.45rem) !important;
+    text-align: center !important;
+    text-shadow: 0 2px 3px rgba(20, 8, 1, 0.95) !important;
+}
+
+#discard-search-modal p,
+#discard-viewer-modal p,
+#deck-peek-modal p,
+#mandatory-discard-modal p,
+#global-resolution-modal p,
+#global-discard-pool p {
+    flex: 0 0 auto !important;
+    margin: 0 0 8px !important;
+    color: #f9e8c6 !important;
+    font-size: 0.9rem !important;
+    text-shadow: 0 1px 2px rgba(20, 8, 1, 0.9) !important;
+}
+
+#discard-search-cards,
+#discard-viewer-content,
+#deck-peek-cards,
+#mandatory-discard-cards,
+#global-resolution-cards,
+#pool-cards {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    margin: 4px 0 8px !important;
+    padding: 8px !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    align-content: flex-start !important;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(242, 185, 78, 0.88) rgba(32, 14, 4, 0.45);
+    border-radius: 12px !important;
+    background: rgba(22, 9, 2, 0.26) !important;
+    box-shadow: inset 0 0 18px rgba(10, 3, 0, 0.34) !important;
+}
+
+#discard-search-modal > .glass-panel > .action-btn,
+#discard-viewer-modal > .glass-panel > .action-btn {
+    flex: 0 0 auto !important;
+    margin: 6px auto 0 !important;
+}
+
+@media (max-height: 560px) {
+    #discard-search-modal > .glass-panel,
+    #discard-viewer-modal > .glass-panel,
+    #deck-peek-modal > .glass-panel,
+    #mandatory-discard-modal > .glass-panel,
+    #global-resolution-modal > .glass-panel,
+    #global-discard-pool > .glass-panel {
+        height: 94dvh !important;
+        max-height: 94dvh !important;
+        padding-top: 34px !important;
+        padding-bottom: 30px !important;
+    }
+    #event-console #skill-prompt-modal {
+        padding-top: 34px !important;
+        padding-bottom: 30px !important;
+    }
+}
+
 @media (orientation: portrait) {
     #inspector-modal.full-card-art-inspector .glass-panel {
         max-width: min(92vw, 480px) !important;
@@ -6121,6 +6262,26 @@ body.landscape #party-zone .area-label,
     transform: translate(4px, 7px) scale(0.96) !important;
     filter: brightness(0) blur(3px) !important;
     opacity: 0.36 !important;
+}
+
+/* The generated roll sprite is larger than the settled dice. Lift and scale it
+   inside the modal so short Android landscape viewports cannot clip its feet. */
+#dice-container .sprite-anim-root {
+    transform: translate(-50%, -64%) scale(0.78) !important;
+}
+
+@media (max-height: 600px) and (max-width: 960px) {
+    #event-console #dice-overlay {
+        padding-top: 12px !important;
+        padding-bottom: 16px !important;
+    }
+    #event-console #dice-overlay #dice-container {
+        margin-top: -4px !important;
+        margin-bottom: 2px !important;
+    }
+    #dice-container .sprite-anim-root {
+        transform: translate(-50%, -70%) scale(0.68) !important;
+    }
 }
 #player-party .card.sprite-anim-active {
     overflow: visible !important;

@@ -864,6 +864,16 @@ const modifierCards = document.getElementById('modifier-cards');
 
 const modifierPassBtn = document.getElementById('modifier-pass-btn');
 
+function hideModifierDecisionControls() {
+    const passButton = document.getElementById('dice-pass-btn');
+    if (passButton) {
+        passButton.style.display = 'none';
+        passButton.disabled = false;
+    }
+    const instruction = document.getElementById('modifier-instruction-text');
+    if (instruction) instruction.style.display = 'none';
+}
+
 
 
 const challengeModal = document.getElementById('challenge-modal');
@@ -2520,6 +2530,8 @@ function renderBoard(data) {
 
         if (overlay) overlay?.classList.remove('hidden');
 
+        hideModifierDecisionControls();
+
 
 
         document.getElementById('math-breakdown-banner').style.display = 'none';
@@ -2662,6 +2674,8 @@ function renderBoard(data) {
         const overlay = document.getElementById('dice-overlay');
 
         if (overlay) overlay?.classList.remove('hidden');
+
+        hideModifierDecisionControls();
 
         
 
