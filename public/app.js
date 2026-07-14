@@ -1021,6 +1021,9 @@ function cardArt(card) {
 function artClass(card) {
     return card && card.artUrl ? ' has-art' : '';
 }
+function fullCardArtClass(card) {
+    return card && card.fullCardArtUrl ? ' full-card-art' : '';
+}
 
 function renderCard(card, isMine = false, inHand = false, isMonster = false, isMyTurn = false, inlineStyle = "") {
 
@@ -1209,7 +1212,7 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
     // names are intact: data-id on root, .card-img/.card-info/.card-name/.card-type/
     // .card-class/.card-req/.equipped-item-thumb, and every targeting glow class.
     return `
-        <div class="card${variantClass} type-${typeSlug}${classSlug ? ` class-${classSlug}` : ''}${artClass(card)} ${glowClass}" id="${card.id}" data-id="${card.id}" title="${detailTitle}" style="--cc:${cardTint}; ${card.artUrl ? '' : artCropStyle(card.id)} ${inlineStyle}">
+        <div class="card${variantClass} type-${typeSlug}${classSlug ? ` class-${classSlug}` : ''}${artClass(card)}${fullCardArtClass(card)} ${glowClass}" id="${card.id}" data-id="${card.id}" title="${detailTitle}" style="--cc:${cardTint}; ${card.artUrl ? '' : artCropStyle(card.id)} ${inlineStyle}">
             <div class="card-req">${badgeVal}</div>
             ${monsterRequirement}
             ${boardCardName}

@@ -115,33 +115,45 @@ function registerCardPlayed(card) {
     }
 }
 
-// Card ids that have generated illustration art on disk (art-web/<id>.webp,
-// produced by scripts/compress-art.js). Cards with art get `artUrl` and the
-// client renders it edge-to-edge in the frame window; cards without it fall back
-// to the old `imageUrl` card scan, which has to be zoom-cropped instead.
-function loadGeneratedArtIds() {
-    const dir = path.join(__dirname, 'public', 'assets', 'skin', 'cards', 'art-web');
+function loadCardAssetIds(relativeDir, extension) {
+    const dir = path.join(__dirname, 'public', ...relativeDir.split('/'));
     try {
         return new Set(
             fs.readdirSync(dir)
-                .filter(f => f.endsWith('.webp'))
-                .map(f => f.slice(0, -'.webp'.length))
+                .filter(f => f.endsWith(extension))
+                .map(f => f.slice(0, -extension.length))
         );
     } catch {
-        return new Set();   // art not generated yet
+        return new Set();   // assets not generated yet
+    }
+}
+
+// Card ids that have generated illustration art on disk (art-web/<id>.webp,
+// produced by scripts/compress-art.js). Monster cards can additionally have a
+// fully baked card face (monster-fullgen-v1/<id>.png); those are rendered whole.
+function applyGeneratedCardArt(card, artIds, monsterFullIds) {
+    if (!card) return;
+    if (card.type === 'Monster Card' && monsterFullIds.has(card.id)) {
+        card.fullCardArtUrl = `assets/skin/cards/monster-fullgen-v1/${card.id}.png`;
+        card.artUrl = card.fullCardArtUrl;
+        return;
+    }
+    if (artIds.has(card.id)) {
+        card.artUrl = `assets/skin/cards/art-web/${card.id}.webp`;
     }
 }
 
 function loadCards() {
     const rawData = fs.readFileSync(path.join(__dirname, 'cards.json'), 'utf-8');
     const cards = JSON.parse(rawData);
-    const artIds = loadGeneratedArtIds();
+    const artIds = loadCardAssetIds('assets/skin/cards/art-web', '.webp');
+    const monsterFullIds = loadCardAssetIds('assets/skin/cards/monster-fullgen-v1', '.png');
 
     // ALL_CARDS is a separate raw require of cards.json used for by-id lookups
     // (skill targets, debug injection, card inspection), so it needs artUrl too —
     // otherwise cards reached through those paths render the old wiki scan.
     ALL_CARDS.forEach(c => {
-        if (artIds.has(c.id)) c.artUrl = `assets/skin/cards/art-web/${c.id}.webp`;
+        applyGeneratedCardArt(c, artIds, monsterFullIds);
     });
 
     PARTY_LEADERS = [];
@@ -160,9 +172,7 @@ function loadCards() {
         
         let card = { ...c };
 
-        if (artIds.has(card.id)) {
-            card.artUrl = `assets/skin/cards/art-web/${card.id}.webp`;
-        }
+        applyGeneratedCardArt(card, artIds, monsterFullIds);
 
         if (card.type === 'Party Leader') {
             PARTY_LEADERS.push(card);

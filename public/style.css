@@ -4708,6 +4708,46 @@ button.action-btn,
     background-color: transparent !important;
 }
 
+/* Fully baked generated card faces (currently Monster cards) already include
+   frame, name, type and requirement text in the image. Render them as the whole
+   card instead of placing them inside the reusable frame window. */
+.card.full-card-art {
+    background: transparent !important;
+    padding: 0 !important;
+}
+.card.full-card-art .card-face {
+    position: absolute !important;
+    inset: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: inherit !important;
+    background: transparent !important;
+    overflow: hidden !important;
+}
+.card.full-card-art .card-img,
+#player-party .card.full-card-art .card-img.has-art,
+#player-hand .card.full-card-art .card-img.has-art,
+#active-monsters .card.full-card-art .card-img.has-art,
+#leader-slot .card.full-card-art .card-img.has-art,
+#opponent-modal .card.full-card-art .card-img.has-art,
+#discard-pile .card.full-card-art .card-img.has-art,
+#discard-viewer-content .card.full-card-art .card-img.has-art,
+#challenge-card-display .card.full-card-art .card-img.has-art,
+#dice-monster-preview .card.full-card-art .card-img.has-art {
+    inset: 0 !important;
+    background-size: 100% 100% !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    background-color: transparent !important;
+}
+.card.full-card-art .card-type,
+.card.full-card-art .card-info,
+.card.full-card-art .card-req,
+.card.full-card-art .board-card-name,
+.card.full-card-art .monster-requirement-badge {
+    display: none !important;
+}
+
 /* The inspector's <img> shows the full illustration (the modal renders the card's
    name/type/rules text itself), so contain it rather than crop it. */
 #inspector-modal-image.has-art {
