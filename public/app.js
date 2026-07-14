@@ -2021,14 +2021,18 @@ function buildBoardParts(data, ctx) {
         }
 
         // Stacked + compact so all opponents (up to 5) fit the bar without horizontal
-        // scroll: name on top, a single icon line below (✋ hand, 🏆 slain, 🎴 classes —
-        // denominators dropped to save width; the full breakdown is in the opponent modal).
+        // scroll: name on top, a single status line below. Denominators are dropped
+        // to save width; the full breakdown is in the opponent modal.
         if (isAway) chipClass += " is-away";
 
         oppHtml += `
                 <div class="${chipClass}" ${chipClick} ${chipTitle}>
                     <span class="opponent-chip-name">${displayName}</span>
-                    <span class="opponent-chip-stats">✋${opp.hand.length} 🏆<span class="win-stat-highlight">${stats.monsters}</span> 🎴<span class="win-stat-highlight">${stats.uniqueClasses}</span></span>
+                    <span class="opponent-chip-stats">
+                        <span class="opponent-stat" title="Cards in hand"><span class="opponent-stat-label">HAND</span><span class="opponent-stat-value">${opp.hand.length}</span></span>
+                        <span class="opponent-stat" title="Slain monsters"><span class="opponent-stat-label">SLAY</span><span class="opponent-stat-value win-stat-highlight">${stats.monsters}</span></span>
+                        <span class="opponent-stat" title="Unique classes"><span class="opponent-stat-label">CLASS</span><span class="opponent-stat-value win-stat-highlight">${stats.uniqueClasses}</span></span>
+                    </span>
                 </div>
             `;
     });

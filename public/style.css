@@ -528,7 +528,7 @@ body.portrait #target-banner {
 
 /* Fit up to 5 opponents in the bar without relying on horizontal scroll: chips
    flex-shrink to share the available width and their long name truncates. The
-   compact ✋/🏆/🎴 stats stay fixed-size so they never get clipped. Higher
+   compact text counters stay fixed-size so they never get clipped. Higher
    specificity (id + class) than the base .opponent-chip rule, so this wins. */
 #opponents-bar .opponent-chip {
     flex: 1 1 0 !important;
@@ -552,7 +552,35 @@ body.portrait #target-banner {
     border-left: none !important;
     padding-left: 0 !important;
     white-space: nowrap !important;
-    font-size: 0.68rem !important;
+    font-size: 0.62rem !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 3px !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+}
+#opponents-bar .opponent-stat {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 2px !important;
+    min-width: 0 !important;
+    padding: 1px 3px !important;
+    border: 1px solid rgba(215, 168, 75, 0.35) !important;
+    border-radius: 4px !important;
+    background: rgba(20, 13, 8, 0.42) !important;
+    color: rgba(255, 236, 196, 0.82) !important;
+    line-height: 1 !important;
+}
+#opponents-bar .opponent-stat-label {
+    font-size: 0.47rem !important;
+    font-weight: 800 !important;
+    letter-spacing: 0 !important;
+    color: rgba(215, 168, 75, 0.82) !important;
+}
+#opponents-bar .opponent-stat-value {
+    font-size: 0.62rem !important;
+    font-weight: 900 !important;
+    color: #fff1bf !important;
 }
 
 /* Landscape: stack name over stats (column) so the name gets the chip's FULL
@@ -568,6 +596,18 @@ body.landscape #opponents-bar .opponent-chip {
     padding: 2px 6px !important;
     max-width: 170px !important;
     line-height: 1.15 !important;
+}
+body.landscape #opponents-bar .opponent-chip-stats {
+    gap: 2px !important;
+}
+body.landscape #opponents-bar .opponent-stat {
+    padding: 1px 2px !important;
+}
+body.landscape #opponents-bar .opponent-stat-label {
+    font-size: 0.42rem !important;
+}
+body.landscape #opponents-bar .opponent-stat-value {
+    font-size: 0.58rem !important;
 }
 
 #center-board {
