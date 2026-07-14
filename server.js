@@ -138,7 +138,7 @@ function applyGeneratedCardArt(card, artIds, fullArtSources) {
     }
     const fullArtSource = fullArtSources[card.type];
     if (fullArtSource && fullArtSource.ids.has(card.id)) {
-        card.fullCardArtUrl = `assets/skin/cards/${fullArtSource.directory}/${card.id}.png`;
+        card.fullCardArtUrl = `assets/skin/cards/${fullArtSource.directory}/${card.id}.${fullArtSource.extension}`;
         card.artUrl = card.fullCardArtUrl;
         return;
     }
@@ -152,10 +152,11 @@ function loadCards() {
     const cards = JSON.parse(rawData);
     const artIds = loadCardAssetIds('assets/skin/cards/art-web', '.webp');
     const fullArtSources = {
-        'Monster Card': { directory: 'monster-fullgen-v1', ids: loadCardAssetIds('assets/skin/cards/monster-fullgen-v1', '.png') },
-        'Item Card': { directory: 'item-fullgen-v1', ids: loadCardAssetIds('assets/skin/cards/item-fullgen-v1', '.png') },
-        'Cursed Item Card': { directory: 'cursed-item-fullgen-v1', ids: loadCardAssetIds('assets/skin/cards/cursed-item-fullgen-v1', '.png') },
-        'Magic Card': { directory: 'magic-fullgen-v1', ids: loadCardAssetIds('assets/skin/cards/magic-fullgen-v1', '.png') }
+        'Monster Card': { directory: 'monster-fullgen-v1', extension: 'png', ids: loadCardAssetIds('assets/skin/cards/monster-fullgen-v1', '.png') },
+        'Party Leader': { directory: 'leader-fullgen-v1', extension: 'webp', ids: loadCardAssetIds('assets/skin/cards/leader-fullgen-v1', '.webp') },
+        'Item Card': { directory: 'item-fullgen-v1', extension: 'webp', ids: loadCardAssetIds('assets/skin/cards/item-fullgen-v1', '.webp') },
+        'Cursed Item Card': { directory: 'cursed-item-fullgen-v1', extension: 'webp', ids: loadCardAssetIds('assets/skin/cards/cursed-item-fullgen-v1', '.webp') },
+        'Magic Card': { directory: 'magic-fullgen-v1', extension: 'webp', ids: loadCardAssetIds('assets/skin/cards/magic-fullgen-v1', '.webp') }
     };
 
     // ALL_CARDS is a separate raw require of cards.json used for by-id lookups

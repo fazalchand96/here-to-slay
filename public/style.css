@@ -4707,6 +4707,36 @@ button.action-btn,
     background-position: center !important;
     background-color: transparent !important;
 }
+.lobby-leader-effect {
+    box-sizing: border-box;
+    width: min(100%, 310px);
+    padding: 9px 12px;
+    border: 1px solid rgba(250, 204, 21, 0.48);
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(45, 27, 10, 0.94), rgba(78, 45, 14, 0.9));
+    color: #fff3d6;
+    font-size: clamp(0.76rem, 2.2vw, 0.9rem);
+    font-weight: 650;
+    line-height: 1.28;
+    text-align: center;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    box-shadow: inset 0 1px 0 rgba(255, 232, 176, 0.16), 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.lobby-leader-effect-label {
+    display: block;
+    margin-bottom: 3px;
+    color: #facc15;
+    font-family: var(--font-display);
+    font-size: 0.78em;
+    letter-spacing: 0.1em;
+}
+.lobby-leader-option-effect {
+    margin: 5px 8px 8px;
+    color: #fff3d6;
+    font-size: 0.78rem;
+    line-height: 1.25;
+    text-align: center;
+}
 
 /* Fully baked generated card faces already include their visible frame, name,
    type and any essential board text. Render them as the whole

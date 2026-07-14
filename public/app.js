@@ -1444,11 +1444,13 @@ socket.on('lobby_data_update', (data) => {
 
         container.innerHTML = (data.leaders || []).map(l => `
 
-            <div class="card" onclick="socket.emit('select_leader', '${l.id}')">
+            <div class="card${fullCardArtClass(l)}" onclick="socket.emit('select_leader', '${l.id}')">
 
                 <img src="${cardArt(l)}" alt="${l.name}">
 
                 <p>${l.name}</p>
+
+                ${l.effect ? `<p class="lobby-leader-option-effect">${l.effect}</p>` : ''}
 
             </div>
 
@@ -1642,7 +1644,7 @@ socket.on('gameStateUpdate', (data) => {
 
                             <h3 class="lobby-leader-label">Your Party Leader:</h3>
 
-                            <div class="card card-leader lobby-leader-card${leader.class ? ` class-${leader.class.toLowerCase().replace(/[^a-z0-9]+/g, '-')}` : ''}${artClass(leader)}" style="--cc: var(--leader-pink);">
+                            <div class="card card-leader lobby-leader-card${leader.class ? ` class-${leader.class.toLowerCase().replace(/[^a-z0-9]+/g, '-')}` : ''}${artClass(leader)}${fullCardArtClass(leader)}" style="--cc: var(--leader-pink);">
 
                                 <div class="card-face">
 
@@ -1658,6 +1660,11 @@ socket.on('gameStateUpdate', (data) => {
 
                                 </div>
 
+                            </div>
+
+                            <div class="lobby-leader-effect" role="note">
+                                <span class="lobby-leader-effect-label">LEADER EFFECT</span>
+                                <span>${leader.effect || 'No passive effect.'}</span>
                             </div>
 
                             <p class="lobby-leader-intro">&ldquo;${leaderIntroLine(leader)}&rdquo;</p>
