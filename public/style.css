@@ -2821,13 +2821,10 @@ body.landscape #event-console #challenge-modal .challenge-buttons-container .act
 #event-console .die {
     width: 65px !important;
     height: 65px !important;
-    background: radial-gradient(circle at 30% 30%, #fcfaf2 0%, #e8dfc7 100%) !important;
-    border: 2px solid #bda880 !important;
-    border-radius: 12px !important;
-    box-shadow: 
-        inset -3px -3px 7px rgba(0, 0, 0, 0.2), 
-        inset 3px 3px 7px rgba(255, 255, 255, 0.8), 
-        0 10px 20px rgba(0, 0, 0, 0.4) !important;
+    background: url('assets/skin/anim/die-blue-gold-face.png') center / contain no-repeat !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.42) !important;
     display: grid !important;
     grid-template-areas: 
         "a b c" 
@@ -2848,7 +2845,8 @@ body.landscape #event-console #challenge-modal .challenge-buttons-container .act
     grid-area: e !important;
     font-size: 2.2rem !important;
     font-weight: bold !important;
-    color: #5d4037 !important;
+    color: #fff6c7 !important;
+    text-shadow: 0 2px 2px rgba(0, 18, 48, 0.95) !important;
     line-height: 1 !important;
     display: flex !important;
     justify-content: center !important;
@@ -2856,11 +2854,29 @@ body.landscape #event-console #challenge-modal .challenge-buttons-container .act
 }
 
 #event-console .die .pip {
-    width: 10px !important;
-    height: 10px !important;
+    width: 9px !important;
+    height: 9px !important;
     border-radius: 50% !important;
-    background: radial-gradient(circle at 3px 3px, #e05e00, #3e1200) !important; /* Glowing warm amber inset */
-    box-shadow: inset 1px 1px 2px rgba(0,0,0,0.8), 1px 1px 1px rgba(255,255,255,0.4) !important;
+    background: radial-gradient(circle at 3px 3px, #fffdf0, #f4d06f 65%, #9a5a08) !important;
+    border: 1px solid rgba(119, 65, 5, 0.9) !important;
+    box-shadow: 0 1px 2px rgba(0, 8, 30, 0.92), inset 0 1px 1px rgba(255,255,255,0.75) !important;
+}
+
+/* Each settled result has its own baked face image. This keeps the eyes crisp
+   on small phones and prevents decorative layers from obscuring the outcome. */
+#event-console .die[data-roll="1"] { background-image: url('assets/skin/anim/die-blue-gold-1.png') !important; }
+#event-console .die[data-roll="2"] { background-image: url('assets/skin/anim/die-blue-gold-2.png') !important; }
+#event-console .die[data-roll="3"] { background-image: url('assets/skin/anim/die-blue-gold-3.png') !important; }
+#event-console .die[data-roll="4"] { background-image: url('assets/skin/anim/die-blue-gold-4.png') !important; }
+#event-console .die[data-roll="5"] { background-image: url('assets/skin/anim/die-blue-gold-5.png') !important; }
+#event-console .die[data-roll="6"] { background-image: url('assets/skin/anim/die-blue-gold-6.png') !important; }
+#event-console .die[data-roll="1"] .pip,
+#event-console .die[data-roll="2"] .pip,
+#event-console .die[data-roll="3"] .pip,
+#event-console .die[data-roll="4"] .pip,
+#event-console .die[data-roll="5"] .pip,
+#event-console .die[data-roll="6"] .pip {
+    visibility: hidden !important;
 }
 
 #event-console .die[data-roll="1"] .pip:nth-child(1) { grid-area: e !important; }
@@ -5895,6 +5911,120 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
 
 #inspector-modal.full-card-art-inspector #inspector-close-btn {
     display: none !important;
+}
+
+/* Challenge and modifier phases are fixed compositions: every decision stays
+   visible at once, with no nested modal scrolling. */
+#event-console #challenge-modal,
+#event-console #dice-overlay.mod-compact {
+    overflow: hidden !important;
+    border: 0 !important;
+    border-radius: 18px !important;
+    background-color: #160b0b !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    background-size: 100% 100% !important;
+}
+
+#event-console #challenge-modal {
+    width: min(94vw, 620px) !important;
+    max-width: 620px !important;
+    max-height: 88dvh !important;
+    padding: clamp(38px, 6vw, 58px) clamp(42px, 7vw, 66px) !important;
+    background-image:
+        linear-gradient(rgba(32, 3, 3, 0.08), rgba(20, 2, 2, 0.16)),
+        url('assets/skin/modals/challenge-panel.webp') !important;
+}
+
+#event-console #challenge-modal #challenge-text {
+    margin: 0 0 8px !important;
+    color: #fff2d2 !important;
+    font-size: clamp(0.9rem, 2.4vw, 1.1rem) !important;
+    text-shadow: 0 2px 3px rgba(0, 0, 0, 0.95) !important;
+}
+
+#event-console #challenge-card-display {
+    margin: 0 0 8px !important;
+    min-height: 0 !important;
+}
+
+#event-console #challenge-card-display .card {
+    width: auto !important;
+    height: clamp(138px, 34dvh, 190px) !important;
+    min-height: 0 !important;
+    max-height: 190px !important;
+    flex: 0 0 auto !important;
+}
+
+#event-console #challenge-modal .challenge-buttons-container {
+    width: 100% !important;
+    max-width: 460px !important;
+    margin: 8px auto 0 !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+}
+
+#event-console #challenge-modal .challenge-buttons-container .action-btn {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 44px !important;
+    padding: 8px 12px !important;
+    font-size: clamp(0.76rem, 2vw, 0.95rem) !important;
+}
+
+#event-console #dice-overlay.mod-compact {
+    top: 6px !important;
+    width: min(94vw, 620px) !important;
+    max-width: 620px !important;
+    height: min(55dvh, 330px) !important;
+    max-height: min(55dvh, 330px) !important;
+    padding: clamp(34px, 5dvh, 46px) clamp(42px, 7vw, 64px) 34px !important;
+    justify-content: center !important;
+    background-image:
+        linear-gradient(rgba(1, 20, 37, 0.08), rgba(1, 10, 25, 0.14)),
+        url('assets/skin/modals/modifier-panel.webp') !important;
+}
+
+#event-console #dice-overlay.mod-compact #dice-hand-modifiers {
+    display: none !important;
+}
+
+#event-console #dice-overlay.mod-compact #modifier-staging-area {
+    width: 100% !important;
+    max-height: 48px !important;
+    overflow: hidden !important;
+    flex-wrap: nowrap !important;
+    justify-content: center !important;
+}
+
+#event-console #dice-overlay.mod-compact #modifier-staging-area .card {
+    height: 44px !important;
+    min-height: 44px !important;
+    width: 31px !important;
+    min-width: 31px !important;
+    margin-left: -5px !important;
+}
+
+#event-console #dice-overlay.mod-compact #dice-pass-btn {
+    min-height: 40px !important;
+    padding: 7px 16px !important;
+}
+
+@media (max-height: 520px) {
+    #event-console #challenge-modal {
+        padding-top: 30px !important;
+        padding-bottom: 28px !important;
+    }
+    #event-console #challenge-card-display .card {
+        height: 132px !important;
+    }
+    #event-console #dice-overlay.mod-compact {
+        height: 58dvh !important;
+        max-height: 58dvh !important;
+        padding-top: 28px !important;
+        padding-bottom: 24px !important;
+    }
 }
 
 @media (orientation: portrait) {

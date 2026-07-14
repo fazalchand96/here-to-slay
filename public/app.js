@@ -720,7 +720,7 @@ function startDiceSprite() {
     const container = document.getElementById('dice-container');
     activeDiceSprite?.stop();
     activeDiceSprite = window.playSpriteAnim?.(container, {
-        sheetUrl: 'assets/skin/anim/dice-roll.png',
+        sheetUrl: 'assets/skin/anim/dice-roll-blue-gold.png',
         frames: 8,
         fps: 12,
         width: 128,
@@ -2671,11 +2671,13 @@ function renderBoard(data) {
 
         document.getElementById('dice-final-result').style.opacity = '0';
 
-        document.getElementById('dice-reason').innerText = 'Rolling for Challenge!';
+        const pRoll = data.pendingRoll;
+        const challengedName = getPlayerName(data, pRoll.activeId);
+        const challengerName = getPlayerName(data, pRoll.challengerId);
+
+        document.getElementById('dice-reason').innerText = `${challengerName} challenges ${challengedName}!`;
 
         renderDiceAttackTarget(data); // clears any stale roll-target preview (challenge roll)
-
-        const pRoll = data.pendingRoll;
 
         const isMyTurnToRoll = (myId === pRoll.activeId && !pRoll.activeRolled) || (myId === pRoll.challengerId && !pRoll.challengerRolled);
 
@@ -2695,7 +2697,10 @@ function renderBoard(data) {
 
             document.getElementById('waiting-roll-text').style.display = 'block';
 
-            document.getElementById('waiting-roll-text').innerText = 'Waiting for players to roll...';
+            const waitingNames = [];
+            if (!pRoll.activeRolled) waitingNames.push(challengedName);
+            if (!pRoll.challengerRolled) waitingNames.push(challengerName);
+            document.getElementById('waiting-roll-text').innerText = `Waiting for ${waitingNames.join(' and ')} to roll...`;
 
         }
 

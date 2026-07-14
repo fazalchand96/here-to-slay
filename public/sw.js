@@ -2,7 +2,7 @@
 // NOTE: bump CACHE_VERSION whenever the app shell (HTML/JS/CSS) changes so old
 // caches are purged on activate. A stale shell can serve outdated JS and break
 // the app (e.g. "io is not defined" when an old index.html/app.js is served).
-const CACHE_VERSION = 'hts-v97';
+const CACHE_VERSION = 'hts-v100';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
@@ -33,7 +33,14 @@ const PRECACHE_ASSETS = [
   '/assets/skin/ui-icons-sheet.png',
   '/assets/skin/cards/back-main.png',
   '/assets/skin/cards/back-hidden.png',
-  '/assets/skin/anim/dice-roll.png',
+  '/assets/skin/anim/dice-roll-blue-gold.png',
+  '/assets/skin/anim/die-blue-gold-face.png',
+  '/assets/skin/anim/die-blue-gold-1.png',
+  '/assets/skin/anim/die-blue-gold-2.png',
+  '/assets/skin/anim/die-blue-gold-3.png',
+  '/assets/skin/anim/die-blue-gold-4.png',
+  '/assets/skin/anim/die-blue-gold-5.png',
+  '/assets/skin/anim/die-blue-gold-6.png',
   '/assets/skin/anim/cast-fighter.png',
   '/assets/skin/anim/cast-bard.png',
   '/assets/skin/anim/cast-guardian.png',
