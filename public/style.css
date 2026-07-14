@@ -6822,3 +6822,196 @@ body.landscape #party-zone > .area-label,
     }
     #immediate-play-card .card { height: 122px !important; }
 }
+
+/* Two-column modifier phase: target card and decision on the left, dice and a
+   fully labelled numeric equation on the right. Outside modifier state the
+   wrapper is transparent to layout, preserving the manual-roll screens. */
+#dice-phase-layout { display: contents; }
+
+#event-console #dice-overlay.mod-compact {
+    width: min(96vw, 720px) !important;
+    max-width: 720px !important;
+    height: min(58dvh, 360px) !important;
+    max-height: min(58dvh, 360px) !important;
+    padding: 38px 54px 32px !important;
+}
+
+#event-console #dice-overlay.mod-compact #dice-phase-layout {
+    width: 100% !important;
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-columns: minmax(150px, .8fr) minmax(250px, 1.45fr) !important;
+    gap: clamp(14px, 3vw, 28px) !important;
+    align-items: center !important;
+}
+
+#event-console #dice-overlay.mod-compact #dice-context-column,
+#event-console #dice-overlay.mod-compact #dice-result-column {
+    min-width: 0 !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+#event-console #dice-overlay.mod-compact #dice-context-column {
+    align-self: stretch !important;
+    padding-right: 14px !important;
+    border-right: 1px solid rgba(111, 211, 255, .22) !important;
+}
+
+#event-console #dice-overlay.mod-compact #dice-monster-preview {
+    min-height: 0 !important;
+    margin: 0 0 4px !important;
+    gap: 3px !important;
+}
+
+#event-console #dice-overlay.mod-compact #dice-monster-preview .card {
+    width: auto !important;
+    height: clamp(105px, 27dvh, 150px) !important;
+    min-height: 0 !important;
+    max-height: 150px !important;
+}
+
+#event-console #dice-overlay.mod-compact .dice-monster-req {
+    margin-top: 2px !important;
+    font-size: .72rem !important;
+}
+
+#event-console #dice-overlay.mod-compact #modifier-instruction-text {
+    margin: 4px 0 !important;
+    color: #dff7ff !important;
+    font-size: .78rem !important;
+    line-height: 1.2 !important;
+}
+
+#event-console #dice-overlay.mod-compact #dice-pass-btn {
+    width: min(100%, 210px) !important;
+    min-height: 38px !important;
+    margin: 4px 0 0 !important;
+    padding: 6px 10px !important;
+    font-size: .76rem !important;
+}
+
+#event-console #dice-overlay.mod-compact #dice-result-column #dice-container {
+    margin: 0 0 4px !important;
+}
+
+#event-console #dice-overlay.mod-compact #math-breakdown-banner {
+    width: 100% !important;
+    margin: 4px 0 0 !important;
+    display: flex !important;
+    align-items: stretch !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    text-shadow: none !important;
+}
+
+.roll-equation-terms {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
+}
+
+.roll-equation-term,
+.roll-equation-total {
+    position: relative;
+    min-width: 48px;
+    padding: 5px 6px 4px;
+    border: 1px solid rgba(111, 211, 255, .28);
+    border-radius: 8px;
+    background: rgba(2, 22, 44, .72);
+    color: #f6fbff;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+}
+
+.roll-equation-term strong,
+.roll-equation-total strong {
+    display: block;
+    font-size: clamp(1rem, 3dvh, 1.35rem);
+    line-height: 1;
+}
+
+.roll-equation-term small,
+.roll-equation-total small {
+    display: block;
+    margin-top: 3px;
+    color: #bfe9ff;
+    font-size: .55rem;
+    line-height: 1.05;
+    overflow-wrap: anywhere;
+}
+
+.roll-equation-sign {
+    position: absolute;
+    left: -7px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #ffe18a;
+    font-size: .82rem;
+    font-weight: 900;
+}
+
+.roll-equation-total {
+    min-width: 62px;
+    border-color: rgba(255, 215, 92, .7);
+    background: linear-gradient(180deg, rgba(91,59,5,.88), rgba(40,25,2,.92));
+    color: #fff4b5;
+}
+
+.roll-equation-total strong { font-size: clamp(1.25rem, 4dvh, 1.7rem); }
+
+.challenge-equation {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 7px;
+    align-items: stretch;
+}
+
+.challenge-roll-side {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    border: 1px solid rgba(111,211,255,.3);
+    border-radius: 9px;
+    background: rgba(2,22,44,.72);
+}
+
+.challenge-roll-side.active { border-color: rgba(255,130,110,.45); }
+.challenge-roll-side.challenger { border-color: rgba(111,211,255,.45); }
+.challenge-roll-side > small { color: #dceeff; font-size: .62rem; line-height: 1.1; }
+.challenge-roll-side > strong { color: #fff2a6; font-size: 1.35rem; line-height: 1.05; }
+.challenge-dice-total { margin-top: 3px; color: #fff; font-size: .85rem; font-weight: 800; }
+.challenge-bonus-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; margin: 3px 0; }
+.challenge-bonus-term { color: #ffe18a; font-size: .62rem; font-weight: 800; }
+.challenge-bonus-term small { color: #bfe9ff; font-size: .52rem; }
+.challenge-vs { align-self: center; color: #ffe18a; font-size: .72rem; font-weight: 900; }
+
+@media (max-width: 580px) {
+    #event-console #dice-overlay.mod-compact {
+        padding-left: 34px !important;
+        padding-right: 34px !important;
+    }
+    #event-console #dice-overlay.mod-compact #dice-phase-layout {
+        grid-template-columns: minmax(118px, .75fr) minmax(190px, 1.25fr) !important;
+        gap: 10px !important;
+    }
+    .roll-equation-term { min-width: 42px; padding-inline: 4px; }
+}
+
+@media (max-height: 500px) {
+    #event-console #dice-overlay.mod-compact {
+        height: 64dvh !important;
+        max-height: 64dvh !important;
+        padding-top: 28px !important;
+        padding-bottom: 24px !important;
+    }
+    #event-console #dice-overlay.mod-compact #dice-monster-preview .card {
+        height: 105px !important;
+    }
+}

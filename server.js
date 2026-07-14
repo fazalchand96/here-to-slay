@@ -1677,17 +1677,35 @@ io.on('connection', (socket) => {
             let rolled = false;
             
             if (socket.id === pRoll.activeId && !pRoll.activeRolled) {
-                pRoll.activeBase = Math.floor(Math.random() * 6) + 1 + Math.floor(Math.random() * 6) + 1;
+                pRoll.activeRoll1 = Math.floor(Math.random() * 6) + 1;
+                pRoll.activeRoll2 = Math.floor(Math.random() * 6) + 1;
+                pRoll.activeBase = pRoll.activeRoll1 + pRoll.activeRoll2;
+                pRoll.activeBreakdown = [{ source: 'Base Dice', value: pRoll.activeBase }];
                 const p = gameState.players[pRoll.activeId];
-                if (p && p.leader && p.leader.effect_id === 'LEADER_FIGHTER') pRoll.activeBase += 2;
-                if (p && p.slainMonsters && p.slainMonsters.some(m => m.effect_id === 'MONSTER_TITAN_WYVERN')) pRoll.activeBase += 1;
+                if (p && p.leader && p.leader.effect_id === 'LEADER_FIGHTER') {
+                    pRoll.activeBase += 2;
+                    pRoll.activeBreakdown.push({ source: p.leader.name, value: 2 });
+                }
+                if (p && p.slainMonsters && p.slainMonsters.some(m => m.effect_id === 'MONSTER_TITAN_WYVERN')) {
+                    pRoll.activeBase += 1;
+                    pRoll.activeBreakdown.push({ source: 'Titan Wyvern', value: 1 });
+                }
                 pRoll.activeRolled = true;
                 rolled = true;
             } else if (socket.id === pRoll.challengerId && !pRoll.challengerRolled) {
-                pRoll.challengerBase = Math.floor(Math.random() * 6) + 1 + Math.floor(Math.random() * 6) + 1;
+                pRoll.challengerRoll1 = Math.floor(Math.random() * 6) + 1;
+                pRoll.challengerRoll2 = Math.floor(Math.random() * 6) + 1;
+                pRoll.challengerBase = pRoll.challengerRoll1 + pRoll.challengerRoll2;
+                pRoll.challengerBreakdown = [{ source: 'Base Dice', value: pRoll.challengerBase }];
                 const p = gameState.players[pRoll.challengerId];
-                if (p && p.leader && p.leader.effect_id === 'LEADER_FIGHTER') pRoll.challengerBase += 2;
-                if (p && p.slainMonsters && p.slainMonsters.some(m => m.effect_id === 'MONSTER_TITAN_WYVERN')) pRoll.challengerBase += 1;
+                if (p && p.leader && p.leader.effect_id === 'LEADER_FIGHTER') {
+                    pRoll.challengerBase += 2;
+                    pRoll.challengerBreakdown.push({ source: p.leader.name, value: 2 });
+                }
+                if (p && p.slainMonsters && p.slainMonsters.some(m => m.effect_id === 'MONSTER_TITAN_WYVERN')) {
+                    pRoll.challengerBase += 1;
+                    pRoll.challengerBreakdown.push({ source: 'Titan Wyvern', value: 1 });
+                }
                 pRoll.challengerRolled = true;
                 rolled = true;
             }
@@ -1698,8 +1716,10 @@ io.on('connection', (socket) => {
                 io.emit('dice_roll_pending', {
                     isChallenge: true, type: 'CHALLENGE',
                     activeId: pRoll.activeId, activeName: getPlayerName(gameState, pRoll.activeId),
+                    activeRoll1: pRoll.activeRoll1, activeRoll2: pRoll.activeRoll2, activeBreakdown: pRoll.activeBreakdown,
                     activeTotal: pRoll.activeBase, activeModifierTotal: 0, activeFinalTotal: pRoll.activeBase,
                     challengerId: pRoll.challengerId, challengerName: getPlayerName(gameState, pRoll.challengerId),
+                    challengerRoll1: pRoll.challengerRoll1, challengerRoll2: pRoll.challengerRoll2, challengerBreakdown: pRoll.challengerBreakdown,
                     challengerTotal: pRoll.challengerBase, challengerModifierTotal: 0, challengerFinalTotal: pRoll.challengerBase,
                     reason: 'for a CHALLENGE!'
                 });
@@ -1767,8 +1787,10 @@ io.on('connection', (socket) => {
                     io.emit('dice_roll_pending', {
                         isChallenge: true, type: 'CHALLENGE',
                         activeId: gameState.pendingRoll.activeId, activeName: getPlayerName(gameState, gameState.pendingRoll.activeId),
+                        activeRoll1: gameState.pendingRoll.activeRoll1, activeRoll2: gameState.pendingRoll.activeRoll2, activeBreakdown: gameState.pendingRoll.activeBreakdown,
                         activeTotal: gameState.pendingRoll.activeBase, activeModifierTotal: gameState.pendingRoll.activeModifiers, activeFinalTotal: aFinal,
                         challengerId: gameState.pendingRoll.challengerId, challengerName: getPlayerName(gameState, gameState.pendingRoll.challengerId),
+                        challengerRoll1: gameState.pendingRoll.challengerRoll1, challengerRoll2: gameState.pendingRoll.challengerRoll2, challengerBreakdown: gameState.pendingRoll.challengerBreakdown,
                         challengerTotal: gameState.pendingRoll.challengerBase, challengerModifierTotal: gameState.pendingRoll.challengerModifiers, challengerFinalTotal: cFinal,
                         reason: 'for a CHALLENGE!'
                     });

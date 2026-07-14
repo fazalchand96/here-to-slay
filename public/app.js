@@ -282,13 +282,18 @@ function renderDiceAttackTarget(data) {
     const hero = (pr && pr.type === 'HERO_SKILL' && roller)
         ? (roller.party || []).find(h => h.id === pr.targetHeroId)
         : null;
-    if (!mon && !hero) { preview.innerHTML = ''; preview.style.display = 'none'; return; }
+    const disputedCard = (pr && pr.type === 'CHALLENGE') ? pr.cardInDispute : null;
+    if (!mon && !hero && !disputedCard) { preview.innerHTML = ''; preview.style.display = 'none'; return; }
     const rollerName = getPlayerName(pr.rollerId);
     const reasonEl = document.getElementById('dice-reason');
     if (reasonEl) reasonEl.innerText = mon
         ? `${rollerName} is attacking:`
-        : `${rollerName} is rolling for ${hero.name}:`;
+        : (hero ? `${rollerName} is rolling for ${hero.name}:` : 'Card being challenged:');
     preview.style.display = 'flex';
+    if (disputedCard) {
+        preview.innerHTML = renderCard(disputedCard, false, false, false, false);
+        return;
+    }
     if (hero) {
         const skillReq = (typeof hero.roll_requirement === 'number')
             ? `<div class="dice-monster-req">Skill ${hero.roll_requirement}+</div>`
@@ -715,6 +720,26 @@ const skillPromptNo = document.getElementById('skill-prompt-no');
 
 const modifierModal = document.getElementById('modifier-modal');
 
+function ensureDicePhaseLayout() {
+    const overlay = document.getElementById('dice-overlay');
+    const reason = document.getElementById('dice-reason');
+    if (!overlay || !reason || document.getElementById('dice-phase-layout')) return;
+    const layout = document.createElement('div');
+    layout.id = 'dice-phase-layout';
+    const contextColumn = document.createElement('div');
+    contextColumn.id = 'dice-context-column';
+    const resultColumn = document.createElement('div');
+    resultColumn.id = 'dice-result-column';
+    ['dice-monster-preview', 'modifier-staging-area', 'dice-hand-modifiers', 'dice-pass-btn']
+        .forEach(id => contextColumn.appendChild(document.getElementById(id)));
+    ['dice-passives-container', 'dice-container', 'dice-action-area', 'math-breakdown-banner', 'dice-final-result']
+        .forEach(id => resultColumn.appendChild(document.getElementById(id)));
+    layout.append(contextColumn, resultColumn);
+    reason.insertAdjacentElement('afterend', layout);
+}
+
+ensureDicePhaseLayout();
+
 let activeDiceSprite = null;
 function startDiceSprite() {
     const container = document.getElementById('dice-container');
@@ -836,24 +861,49 @@ function playGameoverFinale() {
 function buildRollEquationHTML(data) {
     const r1 = data.roll1 || 1;
     const r2 = data.roll2 || 1;
-    const parts = [`🎲 ${r1}+${r2}`];
+    const parts = [
+        { label: 'Die 1', value: r1 },
+        { label: 'Die 2', value: r2 }
+    ];
     const addPart = (label, value) => {
         if (!value) return;
-        const sign = value >= 0 ? '+' : '−';
-        parts.push(`${label} ${sign}${Math.abs(value)}`);
+        parts.push({ label, value });
     };
     if (Array.isArray(data.breakdown)) {
         data.breakdown.forEach(item => {
             if (item.source === 'Base Dice') return; // already shown as the dice
             addPart(item.source, item.value);
         });
+    } else {
+        addPart('Passive bonus', data.passiveBonus);
     }
     addPart('Modifiers', data.modifierTotal);
     const total = (data.finalTotal != null) ? data.finalTotal
                 : (data.total != null ? data.total : '?');
-    const sep = '<span style="color:#777; margin:0 8px;">·</span>';
-    return `<span style="font-size:1.05rem; line-height:1.7;">${parts.join(sep)}</span>`
-         + `<span style="color:white; font-weight:bold; font-size:2rem; margin-left:12px;">= ${total}</span>`;
+    const terms = parts.map((part, index) => {
+        const sign = index === 0 ? '' : (part.value >= 0 ? '+' : '−');
+        return `<span class="roll-equation-term"><span class="roll-equation-sign">${sign}</span><strong>${Math.abs(part.value)}</strong><small>${part.label}</small></span>`;
+    }).join('');
+    return `<span class="roll-equation-terms">${terms}</span><span class="roll-equation-total"><small>Total</small><strong>${total}</strong></span>`;
+}
+
+function buildChallengeEquationHTML(data) {
+    const side = (name, roll1, roll2, breakdown, modifier, total, tone) => {
+        const bonusTerms = (Array.isArray(breakdown) ? breakdown : [])
+            .filter(item => item.source !== 'Base Dice' && item.value)
+            .map(item => `<span class="challenge-bonus-term">${item.value > 0 ? '+' : '−'}${Math.abs(item.value)} <small>${item.source}</small></span>`)
+            .join('');
+        const modifierTerm = modifier
+            ? `<span class="challenge-bonus-term">${modifier > 0 ? '+' : '−'}${Math.abs(modifier)} <small>Modifiers</small></span>`
+            : '';
+        const diceText = roll1 != null && roll2 != null ? `${roll1} + ${roll2}` : 'Roll';
+        return `<span class="challenge-roll-side ${tone}"><small>${name}</small><span class="challenge-dice-total">${diceText}</span><span class="challenge-bonus-list">${bonusTerms}${modifierTerm}</span><strong>${total}</strong></span>`;
+    };
+    return `<span class="challenge-equation">
+        ${side(data.activeName, data.activeRoll1, data.activeRoll2, data.activeBreakdown, data.activeModifierTotal, data.activeFinalTotal, 'active')}
+        <span class="challenge-vs">VS</span>
+        ${side(data.challengerName, data.challengerRoll1, data.challengerRoll2, data.challengerBreakdown, data.challengerModifierTotal, data.challengerFinalTotal, 'challenger')}
+    </span>`;
 }
 
 const modifierTitle = document.getElementById('modifier-title');
@@ -3591,22 +3641,7 @@ socket.on('dice_roll_pending', (data) => {
                         die2.innerHTML = renderDicePips('?');
                     }
                     
-                    const activeModText = data.activeModifierTotal ? ` ${data.activeModifierTotal > 0 ? '+' : ''}${data.activeModifierTotal}` : '';
-                    const challModText = data.challengerModifierTotal ? ` ${data.challengerModifierTotal > 0 ? '+' : ''}${data.challengerModifierTotal}` : '';
-                    
-                    banner.innerHTML = `<div style="display:flex; justify-content:center; gap: 20px; font-size:1.5rem;">
-                        <div style="color:var(--danger);">
-                            ${data.activeName}<br>
-                            <span style="color:white; font-size:2.2rem;">${data.activeFinalTotal}</span>
-                            <div style="font-size:1rem; color:#aaa;">[🎲 ${data.activeTotal}]${activeModText}</div>
-                        </div>
-                        <div style="color:white; align-self:center; font-size: 2rem;">VS</div>
-                        <div style="color:var(--info);">
-                            ${data.challengerName}<br>
-                            <span style="color:white; font-size:2.2rem;">${data.challengerFinalTotal}</span>
-                            <div style="font-size:1rem; color:#aaa;">[🎲 ${data.challengerTotal}]${challModText}</div>
-                        </div>
-                    </div>`;
+                    banner.innerHTML = buildChallengeEquationHTML(data);
                     
                     resultDisplay.innerText = `Active: ${data.activeFinalTotal} | Challenger: ${data.challengerFinalTotal}`;
                     playResolutionBurst(banner, 'damage');
@@ -3631,22 +3666,7 @@ socket.on('dice_roll_pending', (data) => {
 
         } else {
             if (data.isChallenge) {
-                const activeModText = data.activeModifierTotal ? ` ${data.activeModifierTotal > 0 ? '+' : ''}${data.activeModifierTotal}` : '';
-                const challModText = data.challengerModifierTotal ? ` ${data.challengerModifierTotal > 0 ? '+' : ''}${data.challengerModifierTotal}` : '';
-                
-                banner.innerHTML = `<div style="display:flex; justify-content:center; gap: 20px; font-size:1.5rem;">
-                    <div style="color:var(--danger);">
-                        ${data.activeName}<br>
-                        <span style="color:white; font-size:2.2rem;">${data.activeFinalTotal}</span>
-                        <div style="font-size:1rem; color:#aaa;">[🎲 ${data.activeTotal}]${activeModText}</div>
-                    </div>
-                    <div style="color:white; align-self:center; font-size: 2rem;">VS</div>
-                    <div style="color:var(--info);">
-                        ${data.challengerName}<br>
-                        <span style="color:white; font-size:2.2rem;">${data.challengerFinalTotal}</span>
-                        <div style="font-size:1rem; color:#aaa;">[🎲 ${data.challengerTotal}]${challModText}</div>
-                    </div>
-                </div>`;
+                banner.innerHTML = buildChallengeEquationHTML(data);
                 
                 resultDisplay.innerText = `Active: ${data.activeFinalTotal} | Challenger: ${data.challengerFinalTotal}`;
             } else {
