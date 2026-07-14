@@ -5110,7 +5110,7 @@ body.landscape #party-zone,
    tuned against the bg art. Landscape only.
    ============================================================================ */
 body.landscape #game-board {
-    background: url('assets/skin/premium-tabletop-landscape-deck-baked.png') center / 100% 100% no-repeat !important;
+    background: url('assets/skin/premium-tabletop-landscape.png') center / 100% 100% no-repeat !important;
     display: block !important;
     position: relative !important;
     width: 100vw !important;
@@ -6037,8 +6037,9 @@ body.landscape #player-win-tracker {
 /* Sound stays top-right; the event-log toggle gets its own top-left corner. */
 body.landscape #mute-btn,
 body.landscape #game-menu-btn {
-    width: 40px !important;
-    height: 40px !important;
+    width: 2.392344% !important;
+    height: 4.250797% !important;
+    top: 0.850159% !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -6046,24 +6047,24 @@ body.landscape #game-menu-btn {
     border: 0 !important;
     border-radius: 50% !important;
     overflow: hidden !important;
-    background: transparent url('assets/skin/buttons/icon-round.png') center / 100% 100% no-repeat !important;
+    background: transparent !important;
+    box-shadow: none !important;
 }
 body.landscape #mute-btn {
     left: auto !important;
-    right: 10px !important;
+    right: 0.598086% !important;
 }
 body.landscape #game-menu-btn {
-    left: 10px !important;
+    left: 0.598086% !important;
     right: auto !important;
 }
 
-/* The glyph artwork is 250x313, not square.  Preserve that native portrait
-   ratio and let it occupy most of the 40px round plaque. */
+/* Landscape control art is baked into the generated board background; these are
+   click targets only. Portrait still uses the normal pseudo-element icons. */
 body.landscape #mute-btn::after,
 body.landscape #game-menu-btn::after {
-    width: 25px !important;
-    height: 31.3px !important;
-    flex: 0 0 31.3px !important;
+    content: none !important;
+    display: none !important;
 }
 
 /* DRAW / RELOAD / END form one vertical right-rail stack. Their boxes use the
