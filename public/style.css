@@ -6057,28 +6057,45 @@ body.landscape #game-menu-btn {
     right: auto !important;
 }
 
+/* The glyph artwork is 250x313, not square.  Preserve that native portrait
+   ratio and let it occupy most of the 40px round plaque. */
+body.landscape #mute-btn::after,
+body.landscape #game-menu-btn::after {
+    width: 25px !important;
+    height: 31.3px !important;
+    flex: 0 0 31.3px !important;
+}
+
 /* DRAW / RELOAD / END form one vertical right-rail stack. Their boxes use the
    corresponding plaque ratios so the artwork no longer has to stretch. */
 body.landscape #draw-card-btn,
 body.landscape #discard-draw-btn,
 body.landscape #end-turn-btn {
-    width: 11.5% !important;
-    height: auto !important;
+    box-sizing: border-box !important;
     background-size: auto, contain !important;
     background-position: center, center !important;
     background-repeat: no-repeat !important;
 }
 body.landscape #draw-card-btn {
     top: 64% !important;
+    width: 86.210526px !important;
+    height: 42px !important;
     aspect-ratio: 390 / 190 !important;
 }
 body.landscape #discard-draw-btn {
     top: 74% !important;
+    width: 80.242105px !important;
+    height: 42px !important;
     aspect-ratio: 363 / 190 !important;
 }
 body.landscape #end-turn-btn {
     top: 84% !important;
-    aspect-ratio: 385 / 190 !important;
+    width: 43.853659px !important;
+    height: 58px !important;
+    aspect-ratio: 155 / 205 !important;
+    background-image:
+        linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.18)),
+        url('assets/skin/buttons/end-seal.png') !important;
 }
 
 /* MONSTERS and YOUR PARTY are engraved in both native backgrounds. */

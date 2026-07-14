@@ -465,8 +465,41 @@ correctly shows the 3-lit variant). 131/131 tests reverified. Old
 strip-compositing approach (ap-rail-*.png, bake-ap-rails.js) fully
 reverted/removed as instructed.
 
-**IN PROGRESS — crest must look genuinely ENGRAVED, not pasted on (user,
-2026-07-13):**
+**DONE — crest engraving rework: GATED PASS + SHIPPED 2026-07-13.**
+task-mrjr4hut-dj2r0d, committed `acace6a`, pushed, deploy verifying
+(hts-v81). Real AI image-edit per class (bear/squirrel/unicorn/fox/
+cat/rabbit relief medallions), Director independently viewed
+hero-fighter.png and hero-guardian.png directly — genuinely reads as
+carved metal now, matches the frame's own embossed style, no sticker look.
+131/131 tests reverified.
+
+**IN PROGRESS — button sizing/aspect-ratio fix (3rd round on these
+buttons, user 2026-07-13), this time with exact pixel data instead of
+guessing:** Director ran sharp metadata on the actual assets before
+dispatch:
+- `buttons/icon-round.png` (sound/menu plaque): 250x250, square — correct
+  already.
+- `icons/sound.png` / `icons/menu.png` (the actual icon glyphs): **250x313,
+  ratio 0.799 — NOT square.** Being forced into a 22x22 SQUARE box via
+  `background:center/contain` shrinks them further (letterboxing on the
+  sides to preserve their taller aspect ratio) — this is the "small inner
+  image with a bigger circle around it" the user is seeing. Fix: resize
+  the icon box to match the 0.799 ratio (e.g. ~26x32px) AND enlarge it
+  toward the button's full size per the user's explicit ask to "enlarge
+  that inner circle and only show that one."
+- `buttons/draw-blue.png`: 390x190, ratio 2.053.
+- `buttons/reload-amber.png`: 363x190, ratio 1.911 — close to draw but
+  NOT identical; sharing one box will skew one or both.
+- `buttons/end-seal.png`: 155x205, ratio 0.756 — **portrait**, a
+  completely different shape from draw/reload (likely a round wax-seal
+  medallion, not a wide plaque). If END currently shares a box shape with
+  DRAW/RELOAD, it will look badly skewed — this is almost certainly the
+  main cause of the "not all the same size, skewed" complaint.
+Dispatch instructions: set each of these 5 boxes (icon-round-based icons,
+draw, reload, end) to its own CSS aspect-ratio matching its real asset
+exactly, verified against the numbers above (or re-measured if the
+dispatch has reason to distrust them — but these came from a real sharp
+metadata read, not a guess).
 User reviewed 65f10a9 (shield removed, crest moved to medallion) and says
 it still looks "added on top" rather than "actually engraved... just like
 the shield was." Root cause (Director's assessment): the shield was part
