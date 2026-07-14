@@ -5818,10 +5818,10 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
 
 #inspector-modal.full-card-art-inspector #inspector-modal-actions .action-btn {
     box-sizing: border-box !important;
-    width: clamp(152px, 23vw, 190px) !important;
-    aspect-ratio: 385 / 193 !important;
+    width: 190px !important;
+    height: calc(190px * 190 / 385) !important;
+    aspect-ratio: auto !important;
     min-height: 0 !important;
-    height: auto !important;
     padding: 0 16px !important;
     display: inline-flex !important;
     align-items: center !important;
@@ -5837,23 +5837,7 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
 }
 
 #inspector-modal.full-card-art-inspector #inspector-close-btn {
-    top: 10px !important;
-    right: 10px !important;
-    width: 42px !important;
-    height: 42px !important;
-    padding: 0 !important;
-    display: grid !important;
-    place-items: center !important;
-    border-radius: 50% !important;
-    z-index: 4 !important;
-}
-
-#inspector-modal.full-card-art-inspector #inspector-close-btn::after {
-    width: 24px !important;
-    height: 30px !important;
-    margin: 0 !important;
-    background-size: contain !important;
-    background-position: center !important;
+    display: none !important;
 }
 
 @media (orientation: portrait) {
@@ -5876,7 +5860,8 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
     }
 
     #inspector-modal.full-card-art-inspector #inspector-modal-actions .action-btn {
-        width: min(100%, 190px) !important;
+        width: 190px !important;
+        max-width: 100% !important;
     }
 }
 

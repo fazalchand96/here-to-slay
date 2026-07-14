@@ -5866,7 +5866,7 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
             const btn = document.createElement('button');
 
-            btn.className = 'action-btn';
+            btn.className = 'action-btn attack';
 
             btn.style.background = '#ef4444';
 
