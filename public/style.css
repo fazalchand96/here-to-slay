@@ -5110,7 +5110,7 @@ body.landscape #party-zone,
    tuned against the bg art. Landscape only.
    ============================================================================ */
 body.landscape #game-board {
-    background: url('assets/skin/premium-tabletop-landscape.png') center / 100% 100% no-repeat !important;
+    background: url('assets/skin/premium-tabletop-landscape-deck-baked.png') center / 100% 100% no-repeat !important;
     display: block !important;
     position: relative !important;
     width: 100vw !important;
@@ -6072,30 +6072,30 @@ body.landscape #draw-card-btn,
 body.landscape #discard-draw-btn,
 body.landscape #end-turn-btn {
     box-sizing: border-box !important;
-    background-size: auto, contain !important;
-    background-position: center, center !important;
-    background-repeat: no-repeat !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
 }
 body.landscape #draw-card-btn {
-    top: 64% !important;
-    width: 86.210526px !important;
-    height: 42px !important;
+    right: 0.8% !important;
+    top: 60% !important;
+    width: 13.99575% !important;
+    height: 12.114772% !important;
     aspect-ratio: 390 / 190 !important;
 }
 body.landscape #discard-draw-btn {
-    top: 74% !important;
-    width: 80.242105px !important;
-    height: 42px !important;
+    right: 0.8% !important;
+    top: 71.5% !important;
+    width: 13.027745% !important;
+    height: 12.114772% !important;
     aspect-ratio: 363 / 190 !important;
 }
 body.landscape #end-turn-btn {
-    top: 84% !important;
-    width: 43.853659px !important;
-    height: 58px !important;
+    right: 2.8% !important;
+    top: 82.5% !important;
+    width: 6.783134% !important;
+    height: 15.940489% !important;
     aspect-ratio: 155 / 205 !important;
-    background-image:
-        linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.18)),
-        url('assets/skin/buttons/end-seal.png') !important;
 }
 
 /* MONSTERS and YOUR PARTY are engraved in both native backgrounds. */
