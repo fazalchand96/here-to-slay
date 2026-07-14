@@ -5750,12 +5750,8 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
     display: none !important;
 }
 
-#inspector-modal.full-card-art-inspector #inspector-modal-details {
-    display: none !important;
-}
-
 #inspector-modal.full-card-art-inspector #inspector-modal-image {
-    max-height: min(72vh, 760px) !important;
+    max-height: min(54vh, 620px) !important;
     width: auto !important;
     object-fit: contain !important;
     background: transparent !important;
