@@ -5873,15 +5873,23 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
 
 #inspector-modal #inspector-modal-actions .action-btn {
     background-image: url('assets/skin/buttons/inspector-action.png') !important;
+    color: #f7fbff !important;
+    text-shadow:
+        0 2px 2px rgba(0, 18, 48, 0.95),
+        0 0 5px rgba(0, 10, 32, 0.85) !important;
 }
 
 #inspector-modal #inspector-modal-actions .action-btn.inspector-close-action {
     background-image: url('assets/skin/buttons/inspector-close.png') !important;
+    color: #fff8ff !important;
+    text-shadow:
+        0 2px 2px rgba(12, 5, 28, 0.98),
+        0 0 5px rgba(8, 2, 24, 0.9) !important;
 }
 
 #inspector-modal.full-card-art-inspector #inspector-modal-actions .action-btn:disabled {
     background-image: url('assets/skin/buttons/inspector-close.png') !important;
-    color: rgba(235, 232, 255, 0.62) !important;
+    color: rgba(245, 242, 255, 0.78) !important;
     opacity: 0.78 !important;
 }
 
