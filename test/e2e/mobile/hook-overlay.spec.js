@@ -14,12 +14,14 @@ const {
 } = require('../helpers/gameSetup');
 
 const HOOK = 'card_041';
+const CURSED_ITEM = 'card_075';
 
 test('Hook: dice overlay is hidden under the play-an-item prompt', async ({ browser }) => {
     const errors = [];
     const { host, p2, ctx1, ctx2 } = await startMobileGame(browser);
     host.on('pageerror', e => errors.push(e.message));
 
+    await injectCard(host, CURSED_ITEM);
     await injectCard(host, HOOK);
     await playCardFromHand(host, HOOK);
     await passChallenge(p2);

@@ -902,6 +902,11 @@ function resolvePendingRoll() {
     broadcastState();
 }
 
+function isValidItemEquipTarget(state, targetPlayerId, targetHeroId) {
+    const targetPlayer = state.players && state.players[targetPlayerId];
+    return Boolean(targetPlayer && (targetPlayer.party || []).some(hero => hero.id === targetHeroId));
+}
+
 // Apply the pre-reconnect disconnect fallback. Mid-match this deliberately
 // keeps the remaining sockets in the lobby, but clears every per-match field and
 // every board/pending-action field so a fresh match cannot inherit stale cards.
@@ -1205,6 +1210,10 @@ io.on('connection', (socket) => {
 
         const card = player.hand[cardIndex];
         if (card.type !== 'Item Card' && card.type !== 'Cursed Item Card') return;
+        if (!isValidItemEquipTarget(gameState, targetPlayerId, targetHeroId)) {
+            io.to(socket.id).emit('message', 'Select a valid Hero to equip this Item.');
+            return;
+        }
 
         if (!isFree) player.ap -= 1;
         player.hand.splice(cardIndex, 1);
@@ -2540,5 +2549,6 @@ module.exports = {
     spawnMonsters,
     gameState,
     removePlayerAndResetMatch,
+    isValidItemEquipTarget,
     RECONNECT_GRACE_MS,
 };

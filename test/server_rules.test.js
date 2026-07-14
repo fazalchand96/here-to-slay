@@ -10,7 +10,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { calculateRollDetails, meetsMonsterRequirements, checkWinCondition, gameState } = require('../server');
+const {
+    calculateRollDetails,
+    meetsMonsterRequirements,
+    checkWinCondition,
+    isValidItemEquipTarget,
+    gameState
+} = require('../server');
 
 // ---------------------------------------------------------------------------
 // Tiny factories
@@ -20,6 +26,20 @@ const monster = (effect_id, name = effect_id) => ({ effect_id, name, type: 'Mons
 const heroOf = (cls, extra = {}) => ({ type: 'Hero Card', class: cls, name: cls, ...extra });
 const item = (effect_id, name = effect_id) => ({ effect_id, name, type: 'Item Card' });
 const pl = (extra = {}) => ({ leader: null, party: [], slainMonsters: [], ...extra });
+
+test('Items and Cursed Items may target Heroes belonging to either player', () => {
+    const state = {
+        players: {
+            alice: pl({ party: [heroOf('Fighter', { id: 'alice-hero' })] }),
+            bob: pl({ party: [heroOf('Wizard', { id: 'bob-hero' })] })
+        }
+    };
+
+    assert.equal(isValidItemEquipTarget(state, 'alice', 'alice-hero'), true);
+    assert.equal(isValidItemEquipTarget(state, 'bob', 'bob-hero'), true);
+    assert.equal(isValidItemEquipTarget(state, 'bob', 'missing-hero'), false);
+    assert.equal(isValidItemEquipTarget(state, 'missing-player', 'alice-hero'), false);
+});
 
 // ===========================================================================
 // calculateRollDetails — passive roll bonuses

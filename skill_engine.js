@@ -403,9 +403,9 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
             actionMessage = `${getPlayerName(gameState, player.id)} drew a card and may play a Hero!`;
             break;
         case 'SKILL_HOOK':
-            if (player.hand.some(c => c.type === 'Item Card')) {
+            if (player.hand.some(c => ['Item Card', 'Cursed Item Card'].includes(c.type))) {
                 gameState.state = 'WAITING_FOR_HAND_SELECTION';
-                gameState.pendingAction = { type: 'PLAY_FROM_HAND', allowedTypes: ['Item Card'], playerToChoose: rollerId, originalActor: rollerId, thenDraw: 1 };
+                gameState.pendingAction = { type: 'PLAY_FROM_HAND', allowedTypes: ['Item Card', 'Cursed Item Card'], playerToChoose: rollerId, originalActor: rollerId, thenDraw: 1 };
                 actionMessage = `${getPlayerName(gameState, player.id)} must play an Item from hand, then draw a card!`;
             } else {
                 drawCards(1, player);

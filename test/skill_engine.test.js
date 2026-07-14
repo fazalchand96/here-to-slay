@@ -622,9 +622,19 @@ test('SKILL_HOOK opens item play-from-hand before drawing', () => {
     const gs = makeState([p], { mainDeck: [card('d', 'Hero Card')] });
     executeSkill(gs, makeIo(), 'SKILL_HOOK', 'alice', 'hk', null);
     assert.equal(p.hand.length, 1);
-    assert.deepEqual(gs.pendingAction.allowedTypes, ['Item Card']);
+    assert.deepEqual(gs.pendingAction.allowedTypes, ['Item Card', 'Cursed Item Card']);
     assert.equal(gs.pendingAction.thenDraw, 1);
     assert.equal(gs.pendingAction.optional, undefined);
+});
+
+test('SKILL_HOOK allows a Cursed Item to be played from hand', () => {
+    const cursedItem = card('Sealing Key', 'Cursed Item Card');
+    const p = player('alice', { party: [hero('Hook', { id: 'hk' })], hand: [cursedItem] });
+    const gs = makeState([p], { mainDeck: [card('d', 'Hero Card')] });
+    executeSkill(gs, makeIo(), 'SKILL_HOOK', 'alice', 'hk', null);
+    assert.equal(gs.state, 'WAITING_FOR_HAND_SELECTION');
+    assert.deepEqual(gs.pendingAction.allowedTypes, ['Item Card', 'Cursed Item Card']);
+    assert.equal(gs.pendingAction.thenDraw, 1);
 });
 
 test('SKILL_QUICK_DRAW opens an optional item play-from-hand when a DRAWN card is an Item', () => {
