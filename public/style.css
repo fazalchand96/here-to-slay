@@ -5810,11 +5810,50 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
     grid-area: actions !important;
     margin-top: 0 !important;
     gap: 8px !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    align-items: center !important;
 }
 
 #inspector-modal.full-card-art-inspector #inspector-modal-actions .action-btn {
+    box-sizing: border-box !important;
+    width: clamp(152px, 23vw, 190px) !important;
+    aspect-ratio: 385 / 193 !important;
     min-height: 0 !important;
-    padding-block: 8px !important;
+    height: auto !important;
+    padding: 0 16px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 1.05 !important;
+    text-align: center !important;
+    background-size: 100% 100% !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    font-size: clamp(0.72rem, 1.75vh, 0.9rem) !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+}
+
+#inspector-modal.full-card-art-inspector #inspector-close-btn {
+    top: 10px !important;
+    right: 10px !important;
+    width: 42px !important;
+    height: 42px !important;
+    padding: 0 !important;
+    display: grid !important;
+    place-items: center !important;
+    border-radius: 50% !important;
+    z-index: 4 !important;
+}
+
+#inspector-modal.full-card-art-inspector #inspector-close-btn::after {
+    width: 24px !important;
+    height: 30px !important;
+    margin: 0 !important;
+    background-size: contain !important;
+    background-position: center !important;
 }
 
 @media (orientation: portrait) {
@@ -5830,6 +5869,14 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
 
     #inspector-modal.full-card-art-inspector #inspector-modal-image {
         max-height: min(34vh, 320px) !important;
+    }
+
+    #inspector-modal.full-card-art-inspector #inspector-modal-actions {
+        flex-direction: column !important;
+    }
+
+    #inspector-modal.full-card-art-inspector #inspector-modal-actions .action-btn {
+        width: min(100%, 190px) !important;
     }
 }
 
