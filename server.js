@@ -133,13 +133,16 @@ function loadCardAssetIds(relativeDir, extension) {
 // fully baked card face (monster-fullgen-v1/<id>.png); those are rendered whole.
 function applyGeneratedCardArt(card, artIds, monsterFullIds) {
     if (!card) return;
+    if (artIds.has(card.id)) {
+        card.illustrationArtUrl = `assets/skin/cards/art-web/${card.id}.webp`;
+    }
     if (card.type === 'Monster Card' && monsterFullIds.has(card.id)) {
         card.fullCardArtUrl = `assets/skin/cards/monster-fullgen-v1/${card.id}.png`;
         card.artUrl = card.fullCardArtUrl;
         return;
     }
-    if (artIds.has(card.id)) {
-        card.artUrl = `assets/skin/cards/art-web/${card.id}.webp`;
+    if (card.illustrationArtUrl) {
+        card.artUrl = card.illustrationArtUrl;
     }
 }
 

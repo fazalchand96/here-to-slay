@@ -5524,7 +5524,9 @@ window.inspectCard = function(cardId, scopedContext = null) {
     // Baked monster cards already include the visible card face. Keep the board
     // clean, but the inspector should still show rolls, requirements, and effects.
     const isFullCardMonster = card.type === 'Monster Card' && !!card.fullCardArtUrl;
-    const inspectArt = cardArt(card);
+    const inspectArt = isFullCardMonster && card.illustrationArtUrl
+        ? card.illustrationArtUrl
+        : cardArt(card);
 
     modal.classList.toggle('full-card-art-inspector', isFullCardMonster);
 
