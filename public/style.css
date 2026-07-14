@@ -4159,11 +4159,7 @@ body.landscape:not(.chat-open) #event-console-empty { display: none !important; 
 
 /* Turn indicator / waiting overlay (children of the flattened controls). */
 body.landscape #turn-indicator {
-    position: fixed !important;
-    top: 38px !important;       /* directly below the win-track */
-    right: 52px !important;
-    z-index: 9600 !important;
-    margin: 0 !important;
+    display: none !important;
 }
 body.landscape #waiting-overlay {
     position: fixed !important;
@@ -6037,9 +6033,9 @@ body.landscape #player-win-tracker {
 /* Sound stays top-right; the event-log toggle gets its own top-left corner. */
 body.landscape #mute-btn,
 body.landscape #game-menu-btn {
-    width: 2.392344% !important;
-    height: 4.250797% !important;
-    top: 0.850159% !important;
+    width: 4.306220% !important;
+    height: 7.651435% !important;
+    top: 7.332625% !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -6052,10 +6048,10 @@ body.landscape #game-menu-btn {
 }
 body.landscape #mute-btn {
     left: auto !important;
-    right: 0.598086% !important;
+    right: 11.782297% !important;
 }
 body.landscape #game-menu-btn {
-    left: 0.598086% !important;
+    left: 11.303828% !important;
     right: auto !important;
 }
 
@@ -6076,26 +6072,38 @@ body.landscape #end-turn-btn {
     background: transparent !important;
     border: 0 !important;
     box-shadow: none !important;
+    color: transparent !important;
+    text-shadow: none !important;
+    filter: none !important;
+    opacity: 1 !important;
+}
+body.landscape #draw-card-btn .action-icon,
+body.landscape #discard-draw-btn .action-icon,
+body.landscape #end-turn-btn .action-icon {
+    display: none !important;
 }
 body.landscape #draw-card-btn {
-    right: 0.8% !important;
-    top: 60% !important;
-    width: 13.99575% !important;
-    height: 12.114772% !important;
+    left: 85.944976% !important;
+    right: auto !important;
+    top: 73.538789% !important;
+    width: 11.124402% !important;
+    height: 6.269926% !important;
     aspect-ratio: 390 / 190 !important;
 }
 body.landscape #discard-draw-btn {
-    right: 0.8% !important;
-    top: 71.5% !important;
-    width: 13.027745% !important;
-    height: 12.114772% !important;
+    left: 85.944976% !important;
+    right: auto !important;
+    top: 81.190223% !important;
+    width: 11.184211% !important;
+    height: 6.376196% !important;
     aspect-ratio: 363 / 190 !important;
 }
 body.landscape #end-turn-btn {
-    right: 2.8% !important;
-    top: 82.5% !important;
-    width: 6.783134% !important;
-    height: 15.940489% !important;
+    left: 87.918660% !important;
+    right: auto !important;
+    top: 89.691817% !important;
+    width: 7.177033% !important;
+    height: 10.308183% !important;
     aspect-ratio: 155 / 205 !important;
 }
 
