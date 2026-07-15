@@ -278,7 +278,9 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
             let teddyTargets = [];
             Object.keys(gameState.players).forEach(pId => {
                 const p = gameState.players[pId];
-                if (pId !== rollerId && p.party.some(c => c.class === 'Fighter') && p.hand.length > 0) {
+                const hasFighter = p.leader?.class === 'Fighter'
+                    || p.party.some(c => c.class === 'Fighter');
+                if (pId !== rollerId && hasFighter && p.hand.length > 0) {
                     teddyTargets.push(pId);
                 }
             });

@@ -791,6 +791,22 @@ test('SKILL_TOUGH_TEDDY targets only opponents who have a Fighter and cards', ()
     assert.deepEqual(gs.pendingAction.targets, ['bob']);
 });
 
+test('SKILL_TOUGH_TEDDY counts a Fighter Party Leader as a Fighter', () => {
+    const fighterLeader = card('The Fist of Reason', 'Party Leader', { class: 'Fighter' });
+    const bob = player('bob', {
+        leader: fighterLeader,
+        party: [hero('BobWiz', { id: 'bw', class: 'Wizard' })],
+        hand: [card('h', 'Item Card')]
+    });
+    const alice = player('alice', { party: [hero('Tough Teddy', { id: 'tt' })] });
+    const gs = makeState([alice, bob]);
+
+    executeSkill(gs, makeIo(), 'SKILL_TOUGH_TEDDY', 'alice', 'tt', null);
+
+    assert.equal(gs.state, 'WAITING_FOR_MULTIPLE_DISCARDS');
+    assert.deepEqual(gs.pendingAction.targets, ['bob']);
+});
+
 test('SKILL_TOUGH_TEDDY does nothing when no opponent has a Fighter with cards', () => {
     const bob = player('bob', { party: [hero('BobWiz', { id: 'bw', class: 'Wizard' })], hand: [card('h', 'Item Card')] });
     const alice = player('alice', { party: [hero('Tough Teddy', { id: 'tt' })] });

@@ -924,6 +924,35 @@ function hideModifierDecisionControls() {
     if (instruction) instruction.style.display = 'none';
 }
 
+function hasPassedModifierPhase(state = latestGameState) {
+    return Boolean(state && (state.passedModifiers || []).includes(myId));
+}
+
+function syncModifierDecisionControls(state = latestGameState) {
+    const passButton = document.getElementById('dice-pass-btn');
+    const instruction = document.getElementById('modifier-instruction-text');
+    if (!passButton) return;
+
+    if (!state || state.state !== 'WAITING_FOR_MODIFIERS') {
+        hideModifierDecisionControls();
+        return;
+    }
+
+    const passed = hasPassedModifierPhase(state);
+    passButton.style.display = 'block';
+    passButton.disabled = passed;
+    passButton.innerText = passed ? 'WAITING FOR OTHERS...' : 'NO MODIFIERS TO PLAY';
+
+    if (instruction) {
+        const hand = state.players?.[myId]?.hand || [];
+        const modifierCount = hand.filter(card => card.type === 'Modifier Card').length;
+        instruction.style.display = passed ? 'none' : 'block';
+        instruction.innerHTML = modifierCount > 0
+            ? '<div>Tap a Modifier card in your hand to play it.</div>'
+            : '<div>No Modifier cards in hand.</div>';
+    }
+}
+
 
 
 const challengeModal = document.getElementById('challenge-modal');
@@ -1251,7 +1280,7 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
     // overlays overlap into "PLA`PLA`PLAY" mush. The dice overlay already lists a
     // dedicated PLAY button per modifier.
     if (window.latestGameState && window.latestGameState.state === 'WAITING_FOR_MODIFIERS' && inHand && isMine && card.type === 'Modifier Card') {
-        const hasPassed = window.latestGameState.pendingRoll && window.latestGameState.pendingRoll.passedPlayers.includes(window.myId);
+        const hasPassed = (window.latestGameState.passedModifiers || []).includes(window.myId);
         if (!hasPassed) {
             glowClass += ' active-skill-glow';
         }
@@ -1644,6 +1673,8 @@ socket.on('gameStateUpdate', (data) => {
     window.latestGameState = data;
     if (data.me) window.myId = data.me;
 
+    syncModifierDecisionControls(data);
+
     // View Routing
 
     lobbyScreen?.classList.add('hidden');
@@ -1713,7 +1744,7 @@ socket.on('gameStateUpdate', (data) => {
 
                 if (leader) {
                     const canReroll = !data.players[activeMe].hasRerolledLeader;
-                    const rerollBtnHtml = canReroll ? `<button onclick="socket.emit('reroll_leader')" class="action-btn" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: black; margin-top: 15px; width: 100%; max-width: 250px; font-size: 1.1rem; font-weight: 800; padding: 12px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">🎲 REROLL (1 LEFT)</button>` : `<div style="margin-top: 15px; color: var(--text-muted); font-size: 0.95rem; font-style: italic;">No rerolls remaining</div>`;
+                    const rerollBtnHtml = canReroll ? `<button onclick="socket.emit('reroll_leader')" class="action-btn lobby-reroll-btn">REROLL LEADER <span>1 LEFT</span></button>` : `<div class="lobby-reroll-spent">No rerolls remaining</div>`;
 
                     leaderSelection.innerHTML = `
 
@@ -1778,7 +1809,7 @@ socket.on('gameStateUpdate', (data) => {
 
                         <button id="roll-leader-btn" onclick="socket.emit('roll_leader')">
 
-                            🎲 ROLL FOR LEADER
+                            ROLL FOR LEADER
 
                         </button>
 
@@ -3393,7 +3424,7 @@ socket.on('dice_roll_pending', (data) => {
 
                     passBtn.disabled = false;
 
-                    passBtn.innerText = "NO MODIFIERS (PASS)";
+                    passBtn.innerText = "NO MODIFIERS TO PLAY";
 
                 }
 
@@ -3526,7 +3557,7 @@ socket.on('dice_roll_pending', (data) => {
                 passBtn.parentNode.insertBefore(instructionEl, passBtn);
             }
 
-            const hasPassed = latestGameState && latestGameState.pendingRoll && latestGameState.pendingRoll.passedPlayers.includes(myId);
+            const hasPassed = hasPassedModifierPhase();
 
             if (hasPassed) {
                 passBtn.disabled = true;
@@ -3534,7 +3565,7 @@ socket.on('dice_roll_pending', (data) => {
                 instructionEl.innerHTML = '';
             } else {
                 passBtn.disabled = false;
-                passBtn.innerText = "NO MODIFIERS (PASS)";
+                passBtn.innerText = "NO MODIFIERS TO PLAY";
 
                 const hand = latestGameState && latestGameState.players[myId] ? latestGameState.players[myId].hand : [];
                 const modCount = hand.filter(c => c.type === 'Modifier Card').length;
@@ -5459,8 +5490,7 @@ window.inspectCard = function(cardId, scopedContext = null) {
     if (context.owner === myId && context.location === 'hand') {
 
         // Modifier phase: you can play a Modifier unless you've already passed.
-        const modPassed = isModifierPhase && latestGameState.pendingRoll
-            && (latestGameState.pendingRoll.passedPlayers || []).includes(myId);
+        const modPassed = isModifierPhase && hasPassedModifierPhase();
 
         // Challenge phase: you can play a Challenge card against an opponent's card
         // (not your own) unless you've already passed.

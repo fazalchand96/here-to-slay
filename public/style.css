@@ -6884,6 +6884,187 @@ body.landscape #party-zone > .area-label,
     gap: 5px;
 }
 
+/* Compact premium lobby: the complete party setup remains visible on one
+   viewport, including short landscape phones and portrait devices. */
+#lobby-modal {
+    box-sizing: border-box !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    overflow: hidden !important;
+    padding: clamp(8px, 2dvh, 18px) !important;
+}
+
+#lobby-modal .lobby-panel {
+    box-sizing: border-box !important;
+    width: min(96vw, 1040px) !important;
+    height: min(94dvh, 720px) !important;
+    max-width: 1040px !important;
+    max-height: 94dvh !important;
+    overflow: hidden !important;
+    gap: clamp(12px, 2vw, 28px) !important;
+    padding: clamp(12px, 2.4dvh, 24px) clamp(14px, 2.6vw, 30px) !important;
+    border: 2px solid rgba(214, 169, 84, .55) !important;
+    border-radius: 22px !important;
+    background:
+        linear-gradient(135deg, rgba(38, 25, 17, .94), rgba(13, 19, 26, .95)),
+        url('assets/skin/modals/opponent-details.webp') center/cover !important;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .72), inset 0 0 40px rgba(231, 179, 89, .08) !important;
+}
+
+#lobby-modal .lobby-col {
+    min-height: 0 !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+}
+
+#lobby-modal .lobby-col-left { flex: .9 1 0 !important; }
+#lobby-modal .lobby-col-right { flex: 1.1 1 0 !important; }
+
+#lobby-modal .tavern-title {
+    font-size: clamp(1.75rem, 4.5dvh, 3rem) !important;
+    letter-spacing: .025em !important;
+}
+
+#lobby-modal .tavern-subtitle {
+    font-size: clamp(.72rem, 1.8dvh, .95rem) !important;
+    margin: 0 0 clamp(5px, 1dvh, 10px) !important;
+}
+
+#lobby-modal .tavern-board {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: clamp(4px, .8dvh, 8px) !important;
+    margin: 0 0 clamp(5px, 1dvh, 10px) !important;
+    min-height: 0 !important;
+}
+
+#lobby-modal .roster-entry,
+#lobby-modal .roster-entry.is-ready {
+    display: grid !important;
+    grid-template-columns: clamp(30px, 5.5dvh, 46px) minmax(0, 1fr) !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: clamp(5px, .9dvh, 9px) !important;
+    border-radius: 10px !important;
+}
+
+#lobby-modal .roster-avatar {
+    width: clamp(30px, 5.5dvh, 46px) !important;
+    height: clamp(30px, 5.5dvh, 46px) !important;
+    margin: 0 !important;
+}
+
+#lobby-modal .roster-name {
+    min-width: 0 !important;
+    overflow: hidden !important;
+    font-size: clamp(.72rem, 1.8dvh, .98rem) !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+
+#lobby-modal .roster-status,
+#lobby-modal .roster-class { font-size: clamp(.62rem, 1.45dvh, .78rem) !important; }
+
+#lobby-modal .tavern-input {
+    min-height: 40px !important;
+    margin: 4px 0 !important;
+    padding: 8px 14px !important;
+    font-size: clamp(.85rem, 2dvh, 1rem) !important;
+}
+
+#lobby-modal .tavern-leader-grid {
+    width: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+#lobby-modal .lobby-leader-display { gap: clamp(3px, .8dvh, 8px) !important; }
+#lobby-modal .lobby-leader-label { font-size: clamp(.8rem, 2dvh, 1.08rem) !important; }
+#lobby-modal .lobby-leader-card {
+    height: clamp(115px, 30dvh, 220px) !important;
+    max-width: 170px !important;
+    margin-top: 3px !important;
+}
+#lobby-modal .lobby-leader-effect {
+    max-width: 420px !important;
+    max-height: clamp(52px, 10dvh, 84px) !important;
+    overflow: hidden !important;
+    padding: clamp(6px, 1dvh, 10px) !important;
+    font-size: clamp(.68rem, 1.65dvh, .86rem) !important;
+    line-height: 1.2 !important;
+}
+#lobby-modal .lobby-leader-intro {
+    font-size: clamp(.65rem, 1.55dvh, .82rem) !important;
+    line-height: 1.15 !important;
+}
+
+#roll-leader-btn,
+#lobby-modal .lobby-reroll-btn,
+#lobby-modal .start-btn {
+    box-sizing: border-box !important;
+    width: min(100%, 290px) !important;
+    min-height: 42px !important;
+    margin: clamp(4px, 1dvh, 9px) auto 0 !important;
+    padding: 9px 18px !important;
+    border: 0 !important;
+    border-radius: 10px !important;
+    background: url('assets/skin/buttons/primary.png') center/100% 100% no-repeat !important;
+    color: #24160b !important;
+    font-family: var(--font-display) !important;
+    font-size: clamp(.78rem, 2dvh, 1.02rem) !important;
+    font-weight: 900 !important;
+    letter-spacing: .04em !important;
+    text-shadow: 0 1px rgba(255, 240, 190, .55) !important;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, .45) !important;
+    animation: none !important;
+}
+#lobby-modal .start-btn {
+    background-image: url('assets/skin/buttons/confirm-green.png') !important;
+    color: #f8efcc !important;
+    text-shadow: 0 2px 2px rgba(0, 0, 0, .85) !important;
+}
+#lobby-modal .lobby-reroll-btn { background-image: url('assets/skin/buttons/reload-amber.png') !important; }
+#lobby-modal .lobby-reroll-btn span { opacity: .7; font-size: .72em; margin-left: 5px; }
+#lobby-modal .lobby-reroll-spent { margin-top: 5px; color: var(--text-muted); font-size: .75rem; font-style: italic; }
+#lobby-modal .roll-leader-container { margin: 0 !important; padding: clamp(10px, 2dvh, 18px) !important; }
+#lobby-modal .roll-leader-hint { margin: 8px 0 0 !important; font-size: clamp(.68rem, 1.6dvh, .82rem) !important; }
+#lobby-modal #lobby-waiting-msg { margin-top: clamp(4px, 1dvh, 10px) !important; font-size: clamp(.72rem, 1.8dvh, .95rem) !important; }
+
+.modifier-pass-btn {
+    display: none;
+    background: url('assets/skin/buttons/secondary-parchment.png') center/100% 100% no-repeat !important;
+    color: #24160b !important;
+    text-shadow: 0 1px rgba(255, 245, 205, .65) !important;
+}
+
+@media (orientation: portrait) {
+    #lobby-modal .lobby-panel {
+        grid-template-rows: auto minmax(0, 1fr) !important;
+        flex-direction: column !important;
+        gap: 7px !important;
+        padding: 10px 14px !important;
+    }
+    #lobby-modal .lobby-col-left { flex: 0 0 auto !important; }
+    #lobby-modal .lobby-col-right {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        padding: 7px 0 0 !important;
+    }
+    #lobby-modal .tavern-title { font-size: clamp(1.45rem, 3.5dvh, 2.2rem) !important; }
+    #lobby-modal .tavern-subtitle { display: none !important; }
+    #lobby-modal .lobby-leader-card { height: clamp(105px, 23dvh, 170px) !important; }
+    #lobby-modal .lobby-leader-intro { display: none !important; }
+}
+
+@media (max-height: 480px) and (orientation: landscape) {
+    #lobby-modal .lobby-leader-card { height: clamp(100px, 31dvh, 135px) !important; }
+    #lobby-modal .lobby-leader-intro { display: none !important; }
+    #lobby-modal .lobby-leader-effect { max-height: 58px !important; }
+}
+
 .roll-equation-term,
 .roll-equation-total {
     position: relative;
