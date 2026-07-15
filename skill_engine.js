@@ -279,7 +279,7 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
             Object.keys(gameState.players).forEach(pId => {
                 const p = gameState.players[pId];
                 const hasFighter = p.leader?.class === 'Fighter'
-                    || p.party.some(c => c.class === 'Fighter');
+                    || p.party.some(c => effectiveHeroClass(c) === 'Fighter');
                 if (pId !== rollerId && hasFighter && p.hand.length > 0) {
                     teddyTargets.push(pId);
                 }
@@ -400,9 +400,13 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
             break;
         case 'SKILL_FUZZY_CHEEKS':
             drawCards(1, player);
-            gameState.state = 'WAITING_FOR_HAND_SELECTION';
-            gameState.pendingAction = { type: 'PLAY_FROM_HAND', allowedTypes: ['Hero Card'], playerToChoose: rollerId, originalActor: rollerId, optional: true };
-            actionMessage = `${getPlayerName(gameState, player.id)} drew a card and may play a Hero!`;
+            if (player.hand.some(card => card.type === 'Hero Card')) {
+                gameState.state = 'WAITING_FOR_HAND_SELECTION';
+                gameState.pendingAction = { type: 'PLAY_FROM_HAND', allowedTypes: ['Hero Card'], playerToChoose: rollerId, originalActor: rollerId };
+                actionMessage = `${getPlayerName(gameState, player.id)} drew a card and must play a Hero!`;
+            } else {
+                actionMessage = `${getPlayerName(gameState, player.id)} drew a card, but has no Hero to play.`;
+            }
             break;
         case 'SKILL_HOOK':
             if (player.hand.some(c => ['Item Card', 'Cursed Item Card'].includes(c.type))) {
@@ -419,9 +423,17 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
             // play one of them immediately." The play option is conditional on one of
             // the TWO DRAWN cards being an Item — not on Items already in hand.
             const qdDrawn = drawCards(2, player);
-            if (qdDrawn.some(c => c.type === 'Item Card')) {
+            const drawnItems = qdDrawn.filter(c => ['Item Card', 'Cursed Item Card'].includes(c.type));
+            if (drawnItems.length > 0) {
                 gameState.state = 'WAITING_FOR_HAND_SELECTION';
-                gameState.pendingAction = { type: 'PLAY_FROM_HAND', allowedTypes: ['Item Card'], playerToChoose: rollerId, originalActor: rollerId, optional: true };
+                gameState.pendingAction = {
+                    type: 'PLAY_FROM_HAND',
+                    allowedTypes: ['Item Card', 'Cursed Item Card'],
+                    allowedCardIds: drawnItems.map(card => card.id),
+                    playerToChoose: rollerId,
+                    originalActor: rollerId,
+                    optional: true
+                };
                 actionMessage = `${getPlayerName(gameState, player.id)} drew 2 cards and may play an Item immediately!`;
             } else {
                 actionMessage = `${getPlayerName(gameState, player.id)} drew 2 cards with Quick Draw — no Item drawn, so nothing more happens.`;
@@ -682,7 +694,7 @@ case 'DRAW_CARD':
             break;
         case 'SKILL_SLY_PICKINGS':
             gameState.state = 'PLAYING';
-            gameState.pendingAction = { type: 'CONDITIONAL_PULL', conditionType: 'Item Card', actionOnSuccess: 'PLAY_IMMEDIATELY', playerToChoose: rollerId, originalActor: rollerId };
+            gameState.pendingAction = { type: 'CONDITIONAL_PULL', conditionTypes: ['Item Card', 'Cursed Item Card'], actionOnSuccess: 'PLAY_IMMEDIATELY', playerToChoose: rollerId, originalActor: rollerId };
             actionMessage = `${getPlayerName(gameState, player.id)} is choosing a player to pull a card from!`;
             break;
         case 'SKILL_BUTTONS':
@@ -863,7 +875,7 @@ case 'DESTROY_HERO':
         case 'SKILL_HOLY_CURSELIFTER':
             if (targetData && targetData.targetHeroId) {
                 const h = player.party.find(x => x.id === targetData.targetHeroId);
-                if (h && h.equippedItem) {
+                if (h && h.equippedItem?.type === 'Cursed Item Card') {
                     const item = h.equippedItem;
                     h.equippedItem = null;
                     player.hand.push(item);
@@ -880,9 +892,20 @@ case 'DESTROY_HERO':
             if (targetData && targetData.targetCardId) {
                 const cardIndex = gameState.discardPile.findIndex(c => c.id === targetData.targetCardId);
                 if (cardIndex !== -1) {
-                    const card = gameState.discardPile.splice(cardIndex, 1)[0];
-                    player.hand.push(card);
-                    actionMessage = `${getPlayerName(gameState, player.id)} retrieved ${card.name} from the discard pile!`;
+                    const card = gameState.discardPile[cardIndex];
+                    const validTypes = {
+                        SKILL_GUIDING_LIGHT: ['Hero Card'],
+                        SKILL_RADIANT_HORN: ['Modifier Card'],
+                        SKILL_LOOKIE_ROOKIE: ['Item Card', 'Cursed Item Card'],
+                        SKILL_BUN_BUN: ['Magic Card']
+                    }[skillId];
+                    if (validTypes.includes(card.type)) {
+                        gameState.discardPile.splice(cardIndex, 1);
+                        player.hand.push(card);
+                        actionMessage = `${getPlayerName(gameState, player.id)} retrieved ${card.name} from the discard pile!`;
+                    } else {
+                        actionMessage = `${card.name} is not a valid card for ${heroName} to retrieve.`;
+                    }
                 }
             }
             break;
@@ -891,8 +914,18 @@ case 'DESTROY_HERO':
         case 'SKILL_BULLSEYE':
             if (gameState.mainDeck.length > 0) {
                 const peekCards = gameState.mainDeck.slice(-3).reverse(); // top 3 cards
+                gameState.pendingPeek = {
+                    rollerId,
+                    skillId: 'SKILL_BULLSEYE',
+                    stage: 'CHOOSE_CARD',
+                    allowedCardIds: peekCards.map(card => card.id)
+                };
                 // Emit only to the roller
-                io.to(rollerId).emit('peek_cards', { cards: peekCards, skillId: 'SKILL_BULLSEYE' });
+                io.to(rollerId).emit('peek_cards', {
+                    cards: peekCards,
+                    skillId: 'SKILL_BULLSEYE',
+                    keepOpenAfterSelect: peekCards.length > 2
+                });
                 actionMessage = `${getPlayerName(gameState, player.id)} is looking at the top 3 cards...`;
             } else {
                 actionMessage = `The deck is empty!`;

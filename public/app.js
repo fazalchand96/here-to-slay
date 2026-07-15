@@ -488,7 +488,7 @@ setupEventConsoleObserver(); // Also call immediately in case DOM is already loa
 
 function closeAllModals() {
 
-    const modals = ['challenge-modal', 'skill-prompt-modal', 'action-modal', 'dice-overlay', 'opponent-modal'];
+    const modals = ['challenge-modal', 'skill-prompt-modal', 'dice-overlay', 'opponent-modal'];
 
     modals.forEach(id => {
 
@@ -1171,7 +1171,7 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
 
             glowClass += ' valid-target valid-target-steal';
 
-        } else if (isSelfItemTargeting && isMine && !inHand && card.type === 'Hero Card' && card.equippedItem) {
+        } else if (isSelfItemTargeting && isMine && !inHand && card.type === 'Hero Card' && card.equippedItem?.type === 'Cursed Item Card') {
 
             glowClass += ' valid-target valid-target-equip';
 
@@ -1940,21 +1940,15 @@ socket.on('gameStateUpdate', (data) => {
 
             renderBoard(data);
 
-            if (completedHeroCast) {
-                requestAnimationFrame(() => playHeroSkillCast(completedHeroCast));
-            }
             if (completedMonsterAttack && !completedMonsterAttack.slain) {
                 requestAnimationFrame(() => {
                     const monsterEl = document.querySelector(`#active-monsters .card[data-id="${completedMonsterAttack.monsterId}"]`);
                     playMonsterAttackAnim(monsterEl, completedMonsterAttack.monsterId);
                 });
             }
-            if (completedMagicCard) {
-                requestAnimationFrame(() => playMagicResolution(completedMagicCard));
-            }
-            if (completedModifierBurst) {
-                requestAnimationFrame(() => playResolutionBurst(document.getElementById('math-breakdown-banner'), completedModifierBurst));
-            }
+            // Resolved cards stay still on the board. The former cast and
+            // resolution sprites looked like an unrelated flame effect and made
+            // it harder to see where the card ultimately landed.
 
         }
 
@@ -3884,7 +3878,7 @@ skillPromptYes.addEventListener('click', () => {
 
                 if (latestGameState && latestGameState.players[myId]) {
 
-                    hasSelfCursed = latestGameState.players[myId].party.some(h => h.equippedItem);
+                    hasSelfCursed = latestGameState.players[myId].party.some(h => h.equippedItem?.type === 'Cursed Item Card');
 
                 }
 
@@ -3998,6 +3992,8 @@ socket.on('message', (msg) => {
 
 socket.on('peek_cards', (data) => {
 
+    window.keepPeekModalOpenAfterSelect = data.keepOpenAfterSelect === true;
+
     const modal = document.getElementById('deck-peek-modal');
 
     const container = document.getElementById('deck-peek-cards');
@@ -4081,7 +4077,7 @@ socket.on('peek_cards', (data) => {
 
         const closeBtn = document.createElement('button');
 
-        closeBtn.className = 'action-btn';
+        closeBtn.className = 'action-btn picker-close-action';
 
         closeBtn.id = 'deck-peek-close-btn';
 
@@ -4095,6 +4091,13 @@ socket.on('peek_cards', (data) => {
 
     modal?.classList.remove('hidden');
 
+    // Bullseye's first click and the server's second-step event can cross in the
+    // same browser task. Re-assert visibility on the next task so the generic
+    // first-step click cleanup cannot hide the ordering choice.
+    if (data.skillId === 'SKILL_BULLSEYE' && data.actionLabel === 'Put On Top') {
+        setTimeout(() => modal?.classList.remove('hidden'), 0);
+    }
+
 });
 
 
@@ -4103,7 +4106,9 @@ window.selectPeekCard = function(cardId, skillId) {
 
     socket.emit('select_peek_card', { cardId, skillId });
 
-    document.getElementById('deck-peek-modal').classList.add('hidden');
+    if (!window.keepPeekModalOpenAfterSelect) {
+        document.getElementById('deck-peek-modal').classList.add('hidden');
+    }
 
 };
 
@@ -4691,7 +4696,7 @@ function useSkillLater(id) {
 
         if (latestGameState && latestGameState.players[myId]) {
 
-            hasSelfCursed = latestGameState.players[myId].party.some(h => h.equippedItem); // simplistic check for now
+            hasSelfCursed = latestGameState.players[myId].party.some(h => h.equippedItem?.type === 'Cursed Item Card');
 
         }
 
@@ -6178,7 +6183,7 @@ function handleTargetingClick(cardEl, cardId) {
 
         const context = findCardContext(cardId);
 
-        if (context && context.location === 'party' && context.owner === myId && context.card.equippedItem) {
+        if (context && context.location === 'party' && context.owner === myId && context.card.equippedItem?.type === 'Cursed Item Card') {
 
             if (latestGameState && latestGameState.state === 'WAITING_FOR_SKILL_TARGET') {
 

@@ -83,19 +83,18 @@
             <div id="discard-search-cards" class="card-container" style="flex-wrap: wrap; overflow-y: auto; justify-content: center; margin: 20px 0; padding: 10px;">
                 <!-- Cards injected here -->
             </div>
-            <button class="action-btn" onclick="cancelDiscardSearch()">Cancel</button>
+            <button class="action-btn picker-close-action" onclick="cancelDiscardSearch()">Cancel</button>
         </div>
     </div>
 
     <!-- Read-only viewer for the full discard pile (tap the discard pile to open) -->
     <div id="discard-viewer-modal" class="overlay hidden" style="z-index: 10500;">
         <div class="glass-panel large" style="position: relative; max-width: 800px; width: 90%; max-height: 85vh; display: flex; flex-direction: column;">
-            <button class="close-btn" onclick="closeDiscardViewer()">&times;</button>
             <h1 id="discard-viewer-title" style="margin-bottom: 20px;">Discard Pile</h1>
             <div id="discard-viewer-content" class="card-container" style="flex: 1; overflow-y: auto; display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; padding: 10px;">
                 <!-- Discard cards injected here (most recent first) -->
             </div>
-            <button class="action-btn" onclick="closeDiscardViewer()" style="background: #ef4444; margin-top: 15px; width: 200px; align-self: center;">Close</button>
+            <button class="action-btn picker-close-action" onclick="closeDiscardViewer()">Close</button>
         </div>
     </div>
 
@@ -116,17 +115,6 @@
             <h2 id="mandatory-discard-title" style="color: #ef4444;">Mandatory Discard</h2>
             <p id="mandatory-discard-message" style="text-align: center; margin-bottom: 15px;">You must discard a card from your hand.</p>
             <div id="mandatory-discard-cards" class="card-container" style="flex-wrap: wrap; overflow-y: auto; justify-content: center; margin-bottom: 20px; padding: 10px;">
-                <!-- Cards injected here -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Global Resolution Modal -->
-    <div id="global-resolution-modal" class="overlay hidden" style="z-index: 2100;">
-        <div class="glass-panel" style="max-width: 800px; width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
-            <h2 id="global-resolution-title" style="color: #10b981;">Choose a Discarded Card</h2>
-            <p style="text-align: center; margin-bottom: 15px;">Select one of the discarded cards to add to your hand.</p>
-            <div id="global-resolution-cards" class="card-container" style="flex-wrap: wrap; overflow-y: auto; justify-content: center; margin-bottom: 20px; padding: 10px;">
                 <!-- Cards injected here -->
             </div>
         </div>
@@ -166,10 +154,7 @@
         <!-- TOP ROW: Opponents Bar -->
         <div id="opponents-bar"></div>
 
-        <!-- ON-BOARD center: monsters + deck/discard, always visible (Phase 6).
-             Moved out of #board-modal so the board no longer depends on the BOARD
-             button for visibility. The nodes keep their ids/classes (cached refs
-             + e2e selectors intact); positioned per orientation via CSS. -->
+        <!-- ON-BOARD center: monsters + deck/discard, always visible (Phase 6). -->
         <div id="board-center">
             <div class="deck-area">
             </div>
@@ -193,7 +178,6 @@
             </div>
 
             <div class="btn-group">
-                <button id="view-board-btn" class="action-btn" onclick="document.getElementById('board-modal').classList.remove('hidden')" style="background: var(--accent);"><div class="action-icon">BOARD<br><span>(Monsters)</span></div></button>
                 <button id="draw-card-btn" class="action-btn" disabled title="Draw Card (1 AP)"><div class="action-icon">DRAW<br><span>-1 AP</span></div></button>
                 <button id="discard-draw-btn" class="action-btn" disabled title="Discard Hand & Draw 5 (3 AP)"><div class="action-icon">RELOAD<br><span>-3 AP</span></div></button>
                 <button id="end-turn-btn" class="action-btn primary" disabled title="End Turn"><div class="action-icon">END<br><span> </span></div></button>
@@ -416,21 +400,9 @@
         </div>
     </div>
 
-    <!-- Board Modal -->
-    <div id="board-modal" class="overlay hidden" style="z-index: 9000;">
-        <div class="glass-panel large" style="position:relative; width:95%; max-height:90vh; overflow-y:auto;">
-            <button class="close-btn" onclick="document.getElementById('board-modal').classList.add('hidden')">&times;</button>
-            <h2 style="margin-bottom:15px;">The Board</h2>
-            <div id="board-modal-content" style="display:flex; flex-direction:column; gap:20px;">
-                <p style="opacity:0.75; text-align:center; margin:0;">Monsters, the deck and the discard pile are now shown directly on the board.</p>
-            </div>
-        </div>
-    </div>
-
     <!-- Global discard pool (Beary Wise etc.): the MULTI_DISCARD_AND_CHOOSE
          initiator picks one submitted card. Own overlay — it used to live inside
-         #board-modal, which nothing opens since the on-board overhaul, so the
-         choose-UI was unreachable and the game soft-locked. -->
+         the old board popup, so the choose-UI remains independently reachable. -->
     <div id="global-discard-pool" class="overlay hidden" style="z-index: 10550;">
         <div class="glass-panel large" style="position:relative; max-width:800px; width:90%; max-height:85vh; overflow-y:auto;">
             <h3 style="margin-bottom:12px;">Discard Pool — pick one card</h3>

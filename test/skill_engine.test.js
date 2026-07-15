@@ -606,14 +606,24 @@ test('SKILL_MIGHTY_BLADE sets cannotBeDestroyed on the caster', () => {
 });
 
 // --- Draw + optional play-from-hand ---
-test('SKILL_FUZZY_CHEEKS draws 1 and opens an OPTIONAL hero play-from-hand', () => {
+test('SKILL_FUZZY_CHEEKS draws 1 and requires a Hero play when one is available', () => {
+    const p = player('alice', {
+        party: [hero('Fuzzy Cheeks', { id: 'fc' })],
+        hand: [card('ready-hero', 'Hero Card')]
+    });
+    const gs = makeState([p], { mainDeck: [card('d', 'Item Card')] });
+    executeSkill(gs, makeIo(), 'SKILL_FUZZY_CHEEKS', 'alice', 'fc', null);
+    assert.equal(p.hand.length, 2);
+    assert.equal(gs.state, 'WAITING_FOR_HAND_SELECTION');
+    assert.deepEqual(gs.pendingAction.allowedTypes, ['Hero Card']);
+    assert.equal(gs.pendingAction.optional, undefined);
+});
+
+test('SKILL_FUZZY_CHEEKS does not open an impossible selection without a Hero', () => {
     const p = player('alice', { party: [hero('Fuzzy Cheeks', { id: 'fc' })] });
     const gs = makeState([p], { mainDeck: [card('d', 'Item Card')] });
     executeSkill(gs, makeIo(), 'SKILL_FUZZY_CHEEKS', 'alice', 'fc', null);
-    assert.equal(p.hand.length, 1);
-    assert.equal(gs.state, 'WAITING_FOR_HAND_SELECTION');
-    assert.deepEqual(gs.pendingAction.allowedTypes, ['Hero Card']);
-    assert.equal(gs.pendingAction.optional, true);
+    assert.equal(gs.pendingAction, null);
 });
 
 test('SKILL_HOOK opens item play-from-hand before drawing', () => {
@@ -642,8 +652,18 @@ test('SKILL_QUICK_DRAW opens an optional item play-from-hand when a DRAWN card i
     const gs = makeState([p], { mainDeck: [card('a', 'Hero Card'), card('sword', 'Item Card')] });
     executeSkill(gs, makeIo(), 'SKILL_QUICK_DRAW', 'alice', 'qd', null);
     assert.equal(p.hand.length, 2);
-    assert.deepEqual(gs.pendingAction.allowedTypes, ['Item Card']);
+    assert.deepEqual(gs.pendingAction.allowedTypes, ['Item Card', 'Cursed Item Card']);
+    assert.deepEqual(gs.pendingAction.allowedCardIds, [p.hand.find(card => card.name === 'sword').id]);
     assert.equal(gs.pendingAction.optional, true);
+});
+
+test('SKILL_QUICK_DRAW may immediately play a drawn Cursed Item but not an older Item', () => {
+    const oldItem = card('old-item', 'Item Card');
+    const curse = card('drawn-curse', 'Cursed Item Card');
+    const p = player('alice', { party: [hero('Quick Draw', { id: 'qd' })], hand: [oldItem] });
+    const gs = makeState([p], { mainDeck: [card('a', 'Hero Card'), curse] });
+    executeSkill(gs, makeIo(), 'SKILL_QUICK_DRAW', 'alice', 'qd', null);
+    assert.deepEqual(gs.pendingAction.allowedCardIds, [p.hand.find(card => card.name === 'drawn-curse').id]);
 });
 
 test('SKILL_QUICK_DRAW just draws 2 (no play option) when neither drawn card is an Item', () => {
@@ -761,8 +781,21 @@ test('SKILL_SLY_PICKINGS queues a CONDITIONAL_PULL Item with play-immediately', 
     const p = player('alice', { party: [hero('Sly Pickings', { id: 'sp' })] });
     const gs = makeState([p]);
     executeSkill(gs, makeIo(), 'SKILL_SLY_PICKINGS', 'alice', 'sp', null);
-    assert.equal(gs.pendingAction.conditionType, 'Item Card');
+    assert.deepEqual(gs.pendingAction.conditionTypes, ['Item Card', 'Cursed Item Card']);
     assert.equal(gs.pendingAction.actionOnSuccess, 'PLAY_IMMEDIATELY');
+});
+
+test('SKILL_TOUGH_TEDDY counts a Hero wearing a Fighter Mask', () => {
+    const maskedHero = hero('Masked Wizard', {
+        id: 'masked',
+        class: 'Wizard',
+        equippedItem: card('Fighter Mask', 'Item Card', { effect_id: 'ITEM_MASK', class: 'Fighter' })
+    });
+    const bob = player('bob', { party: [maskedHero], hand: [card('h', 'Item Card')] });
+    const alice = player('alice', { party: [hero('Tough Teddy', { id: 'tt' })] });
+    const gs = makeState([alice, bob]);
+    executeSkill(gs, makeIo(), 'SKILL_TOUGH_TEDDY', 'alice', 'tt', null);
+    assert.deepEqual(gs.pendingAction.targets, ['bob']);
 });
 
 test('SKILL_BUTTONS queues a LOOK_AND_PULL', () => {
@@ -1168,10 +1201,24 @@ test('SKILL_HOLY_CURSELIFTER returns an equipped item from one of your heroes to
     assert.ok(alice.hand.includes(item));
 });
 
+test('SKILL_HOLY_CURSELIFTER cannot return a regular Item', () => {
+    const item = card('Regular Item', 'Item Card');
+    const myHero = hero('MyHero', { id: 'mh', equippedItem: item });
+    const alice = player('alice', { party: [myHero] });
+    const gs = makeState([alice]);
+    executeSkill(gs, makeIo(), 'SKILL_HOLY_CURSELIFTER', 'alice', 'mh', { targetHeroId: 'mh' });
+    assert.equal(myHero.equippedItem, item);
+    assert.equal(alice.hand.length, 0);
+});
+
 // --- Discard-pile search variants ---
-for (const skillId of ['SKILL_RADIANT_HORN', 'SKILL_LOOKIE_ROOKIE', 'SKILL_BUN_BUN']) {
+for (const [skillId, cardType] of [
+    ['SKILL_RADIANT_HORN', 'Modifier Card'],
+    ['SKILL_LOOKIE_ROOKIE', 'Item Card'],
+    ['SKILL_BUN_BUN', 'Magic Card']
+]) {
     test(`${skillId} retrieves the chosen card from the discard pile`, () => {
-        const buried = card('Buried', 'Modifier Card', { id: 'buried' });
+        const buried = card('Buried', cardType, { id: 'buried' });
         const p = player('alice', { party: [hero('Searcher', { id: 'se' })] });
         const gs = makeState([p], { discardPile: [card('other', 'Item Card'), buried] });
         executeSkill(gs, makeIo(), skillId, 'alice', 'se', { targetCardId: 'buried' });
@@ -1179,6 +1226,16 @@ for (const skillId of ['SKILL_RADIANT_HORN', 'SKILL_LOOKIE_ROOKIE', 'SKILL_BUN_B
         assert.equal(gs.discardPile.length, 1);
     });
 }
+
+test('discard-search Hero skills reject a card of the wrong type', () => {
+    const wrongCard = card('Wrong Card', 'Magic Card');
+    const searcher = hero('Guiding Light', { id: 'searcher' });
+    const alice = player('alice', { party: [searcher] });
+    const gs = makeState([alice], { discardPile: [wrongCard] });
+    executeSkill(gs, makeIo(), 'SKILL_GUIDING_LIGHT', 'alice', 'searcher', { targetCardId: wrongCard.id });
+    assert.deepEqual(gs.discardPile, [wrongCard]);
+    assert.equal(alice.hand.length, 0);
+});
 
 // --- Deck peek ---
 test('SKILL_BULLSEYE emits the top 3 cards privately to the roller', () => {
@@ -1191,6 +1248,8 @@ test('SKILL_BULLSEYE emits the top 3 cards privately to the roller', () => {
     assert.ok(peek);
     assert.equal(peek.to, 'alice');
     assert.equal(peek.payload.cards.length, 3);
+    assert.equal(gs.pendingPeek.stage, 'CHOOSE_CARD');
+    assert.deepEqual(gs.pendingPeek.allowedCardIds, peek.payload.cards.map(card => card.id));
 });
 
 test('SKILL_BULLSEYE reports an empty deck gracefully', () => {

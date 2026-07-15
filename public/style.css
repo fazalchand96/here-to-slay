@@ -3920,7 +3920,6 @@ body.landscape #player-party .card.card-leader { transform-origin: bottom left; 
 /* The BOARD button opened #board-modal to view monsters/deck/discard — all of
    which are permanently on the board now (Phase 6), so it is redundant in both
    orientations. Hidden (element kept so #board-modal wiring stays intact). */
-#view-board-btn { display: none !important; }
 
 body.landscape #game-board {
     display: grid !important;
@@ -6047,7 +6046,6 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
 #discard-viewer-modal > .glass-panel,
 #deck-peek-modal > .glass-panel,
 #mandatory-discard-modal > .glass-panel,
-#global-resolution-modal > .glass-panel,
 #global-discard-pool > .glass-panel {
     box-sizing: border-box !important;
     width: min(94vw, 780px) !important;
@@ -6069,7 +6067,6 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
 #discard-viewer-modal h1,
 #deck-peek-modal h2,
 #mandatory-discard-modal h2,
-#global-resolution-modal h2,
 #global-discard-pool h3 {
     flex: 0 0 auto !important;
     margin: 0 0 6px !important;
@@ -6083,7 +6080,6 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
 #discard-viewer-modal p,
 #deck-peek-modal p,
 #mandatory-discard-modal p,
-#global-resolution-modal p,
 #global-discard-pool p {
     flex: 0 0 auto !important;
     margin: 0 0 8px !important;
@@ -6096,7 +6092,6 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
 #discard-viewer-content,
 #deck-peek-cards,
 #mandatory-discard-cards,
-#global-resolution-cards,
 #pool-cards {
     flex: 1 1 auto !important;
     min-height: 0 !important;
@@ -6124,7 +6119,6 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
     #discard-viewer-modal > .glass-panel,
     #deck-peek-modal > .glass-panel,
     #mandatory-discard-modal > .glass-panel,
-    #global-resolution-modal > .glass-panel,
     #global-discard-pool > .glass-panel {
         height: 94dvh !important;
         max-height: 94dvh !important;
@@ -6135,6 +6129,58 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
         padding-top: 34px !important;
         padding-bottom: 30px !important;
     }
+}
+
+/* The remaining card-choice family uses the same illustrated action pair as
+   the inspector instead of the old generic gold/red rectangles. */
+#discard-search-modal .peek-select-btn,
+#discard-viewer-modal .peek-select-btn,
+#deck-peek-modal .peek-select-btn,
+#mandatory-discard-modal .peek-select-btn,
+#global-discard-pool .peek-select-btn,
+#global-discard-pool .action-btn {
+    box-sizing: border-box !important;
+    width: min(150px, 100%) !important;
+    height: auto !important;
+    aspect-ratio: 385 / 190 !important;
+    min-height: 0 !important;
+    padding: 0 14px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: url('assets/skin/buttons/inspector-action.png') center / 100% 100% no-repeat !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    color: #f7fbff !important;
+    font-size: clamp(.68rem, 1.8vh, .86rem) !important;
+    line-height: 1.05 !important;
+    text-align: center !important;
+    text-shadow: 0 2px 2px rgba(0, 18, 48, .95), 0 0 5px rgba(0, 10, 32, .85) !important;
+}
+
+#discard-search-modal .picker-close-action,
+#discard-viewer-modal .picker-close-action,
+#deck-peek-modal .picker-close-action {
+    box-sizing: border-box !important;
+    width: min(150px, 48vw) !important;
+    height: auto !important;
+    aspect-ratio: 385 / 190 !important;
+    min-height: 0 !important;
+    padding: 0 14px !important;
+    background: url('assets/skin/buttons/inspector-close.png') center / 100% 100% no-repeat !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    color: #fff8ff !important;
+    font-size: clamp(.7rem, 1.9vh, .9rem) !important;
+    text-shadow: 0 2px 2px rgba(12, 5, 28, .98), 0 0 5px rgba(8, 2, 24, .9) !important;
+}
+
+#discard-search-modal .peek-card-wrap,
+#discard-viewer-modal .peek-card-wrap,
+#deck-peek-modal .peek-card-wrap,
+#mandatory-discard-modal .peek-card-wrap,
+#global-discard-pool .peek-card-wrap {
+    align-items: center !important;
 }
 
 @media (orientation: portrait) {
@@ -7273,4 +7319,27 @@ body.landscape #party-zone > .area-label,
         padding-bottom: 42px !important;
     }
     #waiting-overlay::before { width: min(78vw, 560px); }
+}
+/* Final local-player HUD placement: the chat follows its left-side toggle and
+   victory progress sits in the tray gap between leader and hand. */
+body.landscape.chat-open #event-console-empty {
+    left: 10px !important;
+    right: auto !important;
+}
+
+body.landscape #player-win-tracker {
+    position: absolute !important;
+    left: 11.5% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: 4.5% !important;
+    width: 9% !important;
+    min-width: 0 !important;
+    transform: none !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 3px !important;
+    padding: 5px 4px !important;
+    text-align: center !important;
+    font-size: clamp(0.48rem, 1.25vw, 0.7rem) !important;
 }

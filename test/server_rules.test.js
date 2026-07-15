@@ -15,6 +15,7 @@ const {
     meetsMonsterRequirements,
     checkWinCondition,
     isValidItemEquipTarget,
+    clearUntilNextTurnProtections,
     gameState
 } = require('../server');
 
@@ -26,6 +27,13 @@ const monster = (effect_id, name = effect_id) => ({ effect_id, name, type: 'Mons
 const heroOf = (cls, extra = {}) => ({ type: 'Hero Card', class: cls, name: cls, ...extra });
 const item = (effect_id, name = effect_id) => ({ effect_id, name, type: 'Item Card' });
 const pl = (extra = {}) => ({ leader: null, party: [], slainMonsters: [], ...extra });
+
+test('Calming Voice and Mighty Blade protections expire at the start of the owner next turn', () => {
+    const player = pl({ cannotBeStolen: true, cannotBeDestroyed: true });
+    clearUntilNextTurnProtections(player);
+    assert.equal(player.cannotBeStolen, false);
+    assert.equal(player.cannotBeDestroyed, false);
+});
 
 test('Items and Cursed Items may target Heroes belonging to either player', () => {
     const state = {

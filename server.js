@@ -79,6 +79,12 @@ function hasStealOrDestroyTarget(actorId, type) {
     return false;
 }
 
+function clearUntilNextTurnProtections(player) {
+    if (!player) return;
+    player.cannotBeStolen = false;
+    player.cannotBeDestroyed = false;
+}
+
 function pendingActionForTargetingPlan(plan, rollerId, skillId, heroId) {
     if (!plan) return null;
     if (plan.type === 'EXECUTE_SKILL_IMMEDIATE') {
@@ -1166,7 +1172,14 @@ io.on('connection', (socket) => {
     // e2e tests control a "draw the top card" effect like Snowball deterministically.
     socket.on('debug_stack_deck', ({ cardId }) => {
         const card = ALL_CARDS.find(c => c.id === cardId);
-        if (card) { gameState.mainDeck.push({ ...card }); broadcastState(); }
+        if (card) {
+            // Preserve the real-deck invariant that every card id occurs once.
+            // Otherwise a stacked duplicate makes id-based chooser validation
+            // ambiguous and can cause Bullseye to show more than three cards.
+            gameState.mainDeck = gameState.mainDeck.filter(deckCard => deckCard.id !== cardId);
+            gameState.mainDeck.push({ ...card });
+            broadcastState();
+        }
     });
 
     // Test-only: place a hero directly into the caller's party regardless of whose
@@ -1474,13 +1487,56 @@ io.on('connection', (socket) => {
 
         // Verify the user was peeking from BULLSEYE (top 3 cards)
         if (skillId === 'SKILL_BULLSEYE') {
-            const cardIndex = gameState.mainDeck.findIndex(c => c.id === cardId);
-            if (cardIndex !== -1) {
-                // Technically Bullseye says: Look at top 3, add 1, return other 2 to top in any order.
-                // In our implementation, we'll just extract the chosen one from the top 3 and leave the other 2.
+            const peek = gameState.pendingPeek;
+            if (!peek || peek.skillId !== 'SKILL_BULLSEYE' || peek.rollerId !== socket.id) return;
+            if (!peek.allowedCardIds?.includes(cardId)) return;
+
+            if (peek.stage === 'CHOOSE_CARD') {
+                const cardIndex = gameState.mainDeck.findIndex(c => c.id === cardId);
+                if (cardIndex === -1) return;
                 const chosenCard = gameState.mainDeck.splice(cardIndex, 1)[0];
                 player.hand.push(chosenCard);
-                io.emit('message', `${getPlayerName(gameState, player.id)} selected a card from the deck using Bullseye's skill.`);
+                const remainingCards = gameState.mainDeck
+                    .filter(card => peek.allowedCardIds.includes(card.id));
+
+                if (remainingCards.length > 1) {
+                    gameState.pendingPeek = {
+                        rollerId: socket.id,
+                        skillId: 'SKILL_BULLSEYE',
+                        stage: 'CHOOSE_TOP_CARD',
+                        allowedCardIds: remainingCards.map(card => card.id)
+                    };
+                    io.emit('message', `${getPlayerName(gameState, player.id)} selected a card with Bullseye and is ordering the remaining cards.`);
+                    // Broadcast the updated hand first. Rendering that state may
+                    // close transient overlays; emit the private second step after
+                    // it so the ordering chooser remains on top.
+                    broadcastState();
+                    io.to(socket.id).emit('peek_cards', {
+                        cards: remainingCards,
+                        skillId: 'SKILL_BULLSEYE',
+                        title: 'Order the Remaining Cards',
+                        subtitle: 'Choose which card goes directly on top of the deck.',
+                        actionLabel: 'Put On Top'
+                    });
+                    return;
+                } else {
+                    gameState.pendingPeek = null;
+                    io.emit('message', `${getPlayerName(gameState, player.id)} selected a card from the deck using Bullseye's skill.`);
+                }
+                broadcastState();
+            } else if (peek.stage === 'CHOOSE_TOP_CARD') {
+                const remainingCards = peek.allowedCardIds
+                    .map(id => gameState.mainDeck.find(card => card.id === id))
+                    .filter(Boolean);
+                const topCard = remainingCards.find(card => card.id === cardId);
+                const belowCard = remainingCards.find(card => card.id !== cardId);
+                if (!topCard || !belowCard) return;
+
+                gameState.mainDeck = gameState.mainDeck
+                    .filter(card => !peek.allowedCardIds.includes(card.id));
+                gameState.mainDeck.push(belowCard, topCard);
+                gameState.pendingPeek = null;
+                io.emit('message', `${getPlayerName(gameState, player.id)} finished ordering the deck with Bullseye.`);
                 broadcastState();
             }
         } else if (skillId === 'SKILL_SILENT_SHADOW') {
@@ -2366,9 +2422,11 @@ socket.on('resolve_immediate_play', (data) => {
                         const pulledCard = tp.hand.splice(randomIndex, 1)[0];
                         io.emit('message', `${getPlayerName(gameState, socket.id)} pulled a card from ${getPlayerName(gameState, targetId)}!`);
 
-                        if (pulledCard.type === pAction.conditionType) {
+                        const conditionTypes = pAction.conditionTypes || [pAction.conditionType];
+                        if (conditionTypes.includes(pulledCard.type)) {
+                            const matchedType = pulledCard.type;
                             if (pAction.actionOnSuccess === 'PLAY_IMMEDIATELY') {
-                                io.emit('message', `The pulled card was a ${pAction.conditionType}! They may play it immediately!`);
+                                io.emit('message', `The pulled card was a ${matchedType}! They may play it immediately!`);
                                 gameState.state = 'WAITING_FOR_IMMEDIATE_PLAY';
                                 gameState.pendingCard = pulledCard;
                                 gameState.pendingAction = { playerToChoose: socket.id, type: 'IMMEDIATE_PLAY', originalActor: socket.id };
@@ -2376,7 +2434,7 @@ socket.on('resolve_immediate_play', (data) => {
                                 return;
                             } else {
                                 player.hand.push(pulledCard);
-                                io.emit('message', `The pulled card was a ${pAction.conditionType}! They get to pull another card!`);
+                                io.emit('message', `The pulled card was a ${matchedType}! They get to pull another card!`);
                                 if (tp.hand.length > 0) {
                                     const randomIndex2 = Math.floor(Math.random() * tp.hand.length);
                                     const pulledCard2 = tp.hand.splice(randomIndex2, 1)[0];
@@ -2546,6 +2604,7 @@ socket.on('resolve_immediate_play', (data) => {
         currentPlayer.usedLeaderSkillThisTurn = false;
         
         const nextPlayer = gameState.players[gameState.activePlayerSocketId];
+        clearUntilNextTurnProtections(nextPlayer);
         nextPlayer.usedLeaderSkillThisTurn = false;
         let baseAP = 3;
         if (nextPlayer.slainMonsters && nextPlayer.slainMonsters.some(m => m.effect_id === 'MONSTER_MEGA_SLIME')) {
@@ -2613,5 +2672,6 @@ module.exports = {
     gameState,
     removePlayerAndResetMatch,
     isValidItemEquipTarget,
+    clearUntilNextTurnProtections,
     RECONNECT_GRACE_MS,
 };

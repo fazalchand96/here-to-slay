@@ -16,7 +16,7 @@ const BULLSEYE = 'card_040';
 // three distinct main-deck cards to stack (pushed in this order; last = very top)
 const A = 'card_039', B = 'card_045', C = 'card_049';
 
-test('Bullseye: look at top 3, take one, leave the other two on top', async ({ browser }) => {
+test('Bullseye: take one card and choose the order of the other two', async ({ browser }) => {
     const errors = [];
     const { host, p2, ctx1, ctx2 } = await startMobileGame(browser);
     host.on('pageerror', e => errors.push(e.message));
@@ -45,14 +45,25 @@ test('Bullseye: look at top 3, take one, leave the other two on top', async ({ b
     await host.locator('#deck-peek-cards .peek-select-btn').first().click({ force: true });
     await host.waitForTimeout(500);
 
-    // (mainDeck contents aren't sent to clients, so we verify the observable part:
-    //  the chosen top card is added to the hand and the peek modal closes.)
+    // A second chooser must now ask which remaining card goes directly on top.
+    await expect(host.locator('#deck-peek-modal')).not.toHaveClass(/hidden/, { timeout: 5_000 });
+    await expect(host.locator('#deck-peek-title')).toHaveText(/Order the Remaining Cards/i);
+    await expect(host.locator('#deck-peek-cards .peek-card-wrap')).toHaveCount(2);
+
+    // The remaining cards are A and B in deck order. Choose the second (B) as the
+    // top card, then draw once to prove that the selected order was applied.
+    await host.locator('#deck-peek-cards .peek-select-btn').nth(1).click({ force: true });
+    await expect(host.locator('#deck-peek-modal')).toHaveClass(/hidden/);
+    await host.evaluate(() => window._socket.emit('draw_card_action'));
+    await host.waitForTimeout(400);
+
     const hasC = await host.evaluate((id) => window.latestGameState.players[window.myId].hand.some(c => c.id === id), C);
+    const hasB = await host.evaluate((id) => window.latestGameState.players[window.myId].hand.some(c => c.id === id), B);
     const handAfter = await host.evaluate(() => window.latestGameState.players[window.myId].hand.length);
 
     expect(hasC, 'chosen top card (C) goes to hand').toBe(true);
-    expect(handAfter, 'exactly one card added to hand').toBe(handBefore + 1);
-    await expect(host.locator('#deck-peek-modal')).toHaveClass(/hidden/);
+    expect(hasB, 'the card chosen as top (B) is drawn next').toBe(true);
+    expect(handAfter, 'Bullseye adds one and the following draw adds the selected top card').toBe(handBefore + 2);
 
     expect(errors).toEqual([]);
     await ctx1.close(); await ctx2.close();
