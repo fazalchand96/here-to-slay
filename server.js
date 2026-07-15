@@ -156,7 +156,10 @@ function loadCards() {
         'Party Leader': { directory: 'leader-fullgen-v1', extension: 'webp', ids: loadCardAssetIds('assets/skin/cards/leader-fullgen-v1', '.webp') },
         'Item Card': { directory: 'item-fullgen-v1', extension: 'webp', ids: loadCardAssetIds('assets/skin/cards/item-fullgen-v1', '.webp') },
         'Cursed Item Card': { directory: 'cursed-item-fullgen-v1', extension: 'webp', ids: loadCardAssetIds('assets/skin/cards/cursed-item-fullgen-v1', '.webp') },
-        'Magic Card': { directory: 'magic-fullgen-v1', extension: 'webp', ids: loadCardAssetIds('assets/skin/cards/magic-fullgen-v1', '.webp') }
+        'Magic Card': { directory: 'magic-fullgen-v1', extension: 'webp', ids: loadCardAssetIds('assets/skin/cards/magic-fullgen-v1', '.webp') },
+        'Hero Card': { directory: 'hero-fullgen-v1', extension: 'webp', ids: loadCardAssetIds('assets/skin/cards/hero-fullgen-v1', '.webp') },
+        'Modifier Card': { directory: 'modifier-fullgen-v1', extension: 'webp', ids: loadCardAssetIds('assets/skin/cards/modifier-fullgen-v1', '.webp') },
+        'Challenge Card': { directory: 'challenge-fullgen-v1', extension: 'webp', ids: loadCardAssetIds('assets/skin/cards/challenge-fullgen-v1', '.webp') }
     };
 
     // ALL_CARDS is a separate raw require of cards.json used for by-id lookups
