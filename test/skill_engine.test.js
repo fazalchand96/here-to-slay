@@ -1112,6 +1112,20 @@ test('Rex Major grants an extra draw when a Magic effect draws a Modifier', () =
     assert.ok(alice.hand.includes(bonus));
 });
 
+test('Rex Major processes every Modifier in a multi-draw and chained bonus draw', () => {
+    const alice = player('alice', { slainMonsters: [{ effect_id: 'MONSTER_REX_MAJOR' }] });
+    const finalBonus = card('Final Bonus', 'Hero Card');
+    const secondModifier = card('-2', 'Modifier Card');
+    const firstModifier = card('+2', 'Modifier Card');
+    const regularDraw = card('Regular Draw', 'Item Card');
+    const gs = makeState([alice], { mainDeck: [finalBonus, secondModifier, firstModifier, regularDraw] });
+    const io = makeIo();
+    drawCardsWithPassives(gs, io, 2, alice);
+    assert.deepEqual(alice.hand, [regularDraw, firstModifier, secondModifier, finalBonus]);
+    const reveals = io.emits.filter(event => event.event === 'rex_major_reveal');
+    assert.deepEqual(reveals.map(event => event.payload.card), [firstModifier, secondModifier]);
+});
+
 test('Crowned Serpent owner draws when another player plays a Modifier', () => {
     const owner = player('owner', { slainMonsters: [{ effect_id: 'MONSTER_CROWNED_SERPENT' }] });
     const other = player('other');

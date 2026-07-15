@@ -920,6 +920,7 @@ function hideModifierDecisionControls() {
     }
     const instruction = document.getElementById('modifier-instruction-text');
     if (instruction) instruction.style.display = 'none';
+    document.getElementById('noble-shaman-controls')?.remove();
 }
 
 function hasPassedModifierPhase(state = latestGameState) {
@@ -939,6 +940,20 @@ function syncModifierDecisionControls(state = latestGameState) {
     passButton.style.display = 'block';
     passButton.disabled = passed;
     passButton.innerText = passed ? 'WAITING FOR OTHERS...' : 'NO MODIFIERS TO PLAY';
+
+    document.getElementById('noble-shaman-controls')?.remove();
+    const me = state.players && state.players[myId];
+    if (me && me.leader && me.leader.effect_id === 'LEADER_DRUID' && !me.usedNobleShamanThisTurn) {
+        const controls = document.createElement('div');
+        controls.id = 'noble-shaman-controls';
+        controls.className = 'noble-shaman-controls';
+        if (state.pendingRoll && state.pendingRoll.type === 'CHALLENGE') {
+            controls.innerHTML = `<button class="action-btn" onclick="socket.emit('use_noble_shaman',{targetRoll:'ACTIVE'})">-1 ${getPlayerName(state.pendingRoll.activeId)}</button><button class="action-btn" onclick="socket.emit('use_noble_shaman',{targetRoll:'CHALLENGER'})">-1 ${getPlayerName(state.pendingRoll.challengerId)}</button>`;
+        } else {
+            controls.innerHTML = `<button class="action-btn" onclick="socket.emit('use_noble_shaman')">USE NOBLE SHAMAN (-1)</button>`;
+        }
+        passButton.insertAdjacentElement('beforebegin', controls);
+    }
 }
 
 
@@ -2261,6 +2276,19 @@ function renderBoard(data) {
 
 
     currentPendingAction = data.pendingAction;
+
+    if (data.state === 'WAITING_FOR_MODIFIER_RETRIEVAL' && data.pendingAction
+        && data.pendingAction.type === 'MODIFIER_MINUS_FOUR_RETRIEVAL'
+        && data.pendingAction.playerToChoose === myId) {
+        openDiscardSearch('MODIFIER_MINUS_FOUR_RETRIEVAL');
+        const title = document.getElementById('discard-search-title');
+        if (title) title.innerText = 'Modifier -4: Choose a card';
+        const close = document.querySelector('#discard-search-modal .picker-close-action');
+        if (close) close.style.display = 'none';
+    } else {
+        const close = document.querySelector('#discard-search-modal .picker-close-action');
+        if (close) close.style.display = '';
+    }
     
     // Prevent the generic target mode from swallowing dedicated waiting states
     const dedicatedStates = [
@@ -2644,24 +2672,6 @@ function renderBoard(data) {
             renderDiceAttackTarget(data); // name + show the targeted monster or hero
 
 
-
-            // Check passives
-
-            if (roller.leader) {
-
-                if (roller.leader.effect_id === 'LEADER_BARD' && data.pendingRoll.type === 'HERO_SKILL') {
-
-                    passivesContainer.innerHTML += `<div class="equipped-item-badge" style="position:relative; transform:none; bottom:auto; left:auto;">🎵 Bard Passive: +1</div>`;
-
-                }
-
-                if (roller.leader.effect_id === 'LEADER_RANGER' && data.pendingRoll.type === 'ATTACK') {
-
-                    passivesContainer.innerHTML += `<div class="equipped-item-badge" style="position:relative; transform:none; bottom:auto; left:auto; background: var(--warning);">🏹 Ranger Passive: +1</div>`;
-
-                }
-
-            }
 
             if (roller.magicRollBonus) {
 
@@ -4095,6 +4105,17 @@ socket.on('peek_cards', (data) => {
 
 });
 
+socket.on('rex_major_reveal', ({ playerName, card }) => {
+    if (!card) return;
+    document.getElementById('rex-major-reveal-modal')?.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'rex-major-reveal-modal';
+    overlay.className = 'overlay rex-major-reveal-modal';
+    overlay.innerHTML = `<div class="glass-panel rex-major-reveal-panel"><h2>Rex Major!</h2><p>${playerName} revealed a Modifier and draws another card.</p>${renderCard(card, false, false)}</div>`;
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.remove(), 2600);
+});
+
 
 
 window.selectPeekCard = function(cardId, skillId) {
@@ -4852,6 +4873,13 @@ window.selectPoolCard = function(cardId) {
 
 
 window.selectDiscardCard = function selectDiscardCard(cardId) {
+
+    if (latestGameState && latestGameState.state === 'WAITING_FOR_MODIFIER_RETRIEVAL'
+        && latestGameState.pendingAction && latestGameState.pendingAction.type === 'MODIFIER_MINUS_FOUR_RETRIEVAL') {
+        socket.emit('submit_minus_four_retrieval', { cardId });
+        document.getElementById('discard-search-modal').classList.add('hidden');
+        return;
+    }
 
     // Deferred post-roll selection: the hero skill already rolled and the server
     // is waiting for the discard target. Submit it without re-rolling.

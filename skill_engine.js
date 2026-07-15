@@ -37,14 +37,24 @@ function drawCardsWithPassives(gameState, io, count, player) {
         }
     };
 
-    for (let i = 0; i < count && gameState.mainDeck.length > 0; i++) {
+    const drawOne = () => {
+        if (gameState.mainDeck.length === 0) return;
         const card = gameState.mainDeck.pop();
         drawn.push(card);
         receive(card);
-        if (hasRex && card.type === 'Modifier Card' && gameState.mainDeck.length > 0) {
+        if (hasRex && card.type === 'Modifier Card') {
+            if (io && io.emit) io.emit('rex_major_reveal', {
+                playerId: player.id,
+                playerName: getPlayerName(gameState, player.id),
+                card
+            });
             if (io && io.emit) io.emit('message', `${getPlayerName(gameState, player.id)} revealed a Modifier due to Rex Major and drew another card!`);
-            receive(gameState.mainDeck.pop());
+            drawOne();
         }
+    };
+
+    for (let i = 0; i < count; i++) {
+        drawOne();
     }
     return drawn;
 }

@@ -505,6 +505,16 @@ function calculateRollDetails(player, baseRoll, context, targetCard = null) {
             total += 2;
             breakdown.push({ source: player.leader.name, value: 2 });
         }
+        if (player.leader.effect_id === 'LEADER_WARRIOR') {
+            const equippedItemCount = (player.party || []).reduce((count, hero) => {
+                const items = [hero && hero.equippedItem, hero && hero.equippedItem2].filter(Boolean);
+                return count + items.filter(item => ['Item Card', 'Cursed Item Card'].includes(item.type)).length;
+            }, 0);
+            if (equippedItemCount > 0) {
+                total += equippedItemCount;
+                breakdown.push({ source: player.leader.name, value: equippedItemCount });
+            }
+        }
     }
 
     // 2. Check Slain Monsters Passives
@@ -622,6 +632,43 @@ function meetsMonsterRequirements(playerData, reqString) {
     return true;
 }
 
+function grantExpansionModifierDraws(pendingRoll, finalForEntry) {
+    if (pendingRoll.expansionRewardsProcessed) return;
+    (pendingRoll.playedExpansionModifiers || []).forEach(entry => {
+        const player = gameState.players[entry.playerId];
+        if (!player) return;
+        let count = entry.drawCount || 0;
+        if (entry.effectId === 'MOD_PLUS_4_DRAW_ABOVE_12' && finalForEntry(entry) > 12) count = 1;
+        if (count > 0) {
+            drawCardsWithPassives(gameState, io, count, player);
+            io.emit('message', `${getPlayerName(gameState, entry.playerId)} drew ${count} card${count === 1 ? '' : 's'} from a Modifier effect.`);
+        }
+    });
+    pendingRoll.expansionRewardsProcessed = true;
+}
+
+function prepareMinusFourRetrievals(pendingRoll, finalForEntry) {
+    if (pendingRoll.minusFourRetrievalsProcessed) return false;
+    const queue = (pendingRoll.playedExpansionModifiers || [])
+        .filter(entry => entry.effectId === 'MOD_MINUS_4_RETRIEVE_BELOW_2' && finalForEntry(entry) < 2)
+        .map(entry => entry.playerId);
+    if (queue.length === 0 || gameState.discardPile.length === 0) {
+        pendingRoll.minusFourRetrievalsProcessed = true;
+        gameState.discardPile.push(...(pendingRoll.heldMinusFourCards || []));
+        pendingRoll.heldMinusFourCards = [];
+        return false;
+    }
+    gameState.state = 'WAITING_FOR_MODIFIER_RETRIEVAL';
+    gameState.pendingAction = {
+        type: 'MODIFIER_MINUS_FOUR_RETRIEVAL',
+        playerToChoose: queue[0],
+        queue
+    };
+    io.emit('message', `${getPlayerName(gameState, queue[0])} may retrieve a card from the discard pile due to Modifier -4.`);
+    broadcastState();
+    return true;
+}
+
 function resolvePendingRoll() {
     if (!gameState.pendingRoll) return;
     if (modifierTimer) clearTimeout(modifierTimer);
@@ -634,6 +681,8 @@ function resolvePendingRoll() {
         const pRoll = gameState.pendingRoll;
         const aFinal = pRoll.activeBase + (pRoll.activeModifiers || 0);
         const cFinal = pRoll.challengerBase + (pRoll.challengerModifiers || 0);
+        if (prepareMinusFourRetrievals(pRoll, entry => entry.targetRoll === 'ACTIVE' ? aFinal : cFinal)) return;
+        grantExpansionModifierDraws(pRoll, entry => entry.targetRoll === 'ACTIVE' ? aFinal : cFinal);
         const aName = getPlayerName(gameState, pRoll.activeId);
         const cName = getPlayerName(gameState, pRoll.challengerId);
 
@@ -680,6 +729,8 @@ function resolvePendingRoll() {
 
     // passiveBonus is already baked into currentRoll when generated!
     let finalRoll = currentRoll; 
+    if (prepareMinusFourRetrievals(gameState.pendingRoll, () => finalRoll)) return;
+    grantExpansionModifierDraws(gameState.pendingRoll, () => finalRoll);
 
     if (passiveBonus !== 0 && type !== 'CHALLENGE') {
         io.emit('message', `[Passive/Magic Modifier] ${getPlayerName(gameState, player.id)} had a ${passiveBonus > 0 ? '+' : ''}${passiveBonus} passive bonus! Final roll: ${finalRoll}`);
@@ -1822,6 +1873,52 @@ io.on('connection', (socket) => {
     });
 
 /* --- MODIFIER / DICE PHASE --- */
+    socket.on('submit_minus_four_retrieval', ({ cardId } = {}) => {
+        const action = gameState.pendingAction;
+        if (gameState.state !== 'WAITING_FOR_MODIFIER_RETRIEVAL' || !action
+            || action.type !== 'MODIFIER_MINUS_FOUR_RETRIEVAL' || action.playerToChoose !== socket.id) return;
+        const cardIndex = gameState.discardPile.findIndex(card => card.id === cardId);
+        if (cardIndex === -1) return;
+        const [card] = gameState.discardPile.splice(cardIndex, 1);
+        gameState.players[socket.id].hand.push(card);
+        io.emit('message', `${getPlayerName(gameState, socket.id)} retrieved ${card.name} with Modifier -4.`);
+
+        action.queue.shift();
+        if (action.queue.length > 0 && gameState.discardPile.length > 0) {
+            action.playerToChoose = action.queue[0];
+            io.emit('message', `${getPlayerName(gameState, action.playerToChoose)} may now retrieve a card with Modifier -4.`);
+            broadcastState();
+            return;
+        }
+
+        gameState.pendingRoll.minusFourRetrievalsProcessed = true;
+        gameState.discardPile.push(...(gameState.pendingRoll.heldMinusFourCards || []));
+        gameState.pendingRoll.heldMinusFourCards = [];
+        gameState.pendingAction = null;
+        gameState.state = 'WAITING_FOR_MODIFIERS';
+        resolvePendingRoll();
+    });
+
+    socket.on('use_noble_shaman', (data = {}) => {
+        if (gameState.state !== 'WAITING_FOR_MODIFIERS' || !gameState.pendingRoll) return;
+        const player = gameState.players[socket.id];
+        if (!player || !player.leader || player.leader.effect_id !== 'LEADER_DRUID' || player.usedNobleShamanThisTurn) return;
+
+        if (gameState.pendingRoll.type === 'CHALLENGE') {
+            if (!['ACTIVE', 'CHALLENGER'].includes(data.targetRoll)) return;
+            if (data.targetRoll === 'ACTIVE') gameState.pendingRoll.activeModifiers = (gameState.pendingRoll.activeModifiers || 0) - 1;
+            else gameState.pendingRoll.challengerModifiers = (gameState.pendingRoll.challengerModifiers || 0) - 1;
+        } else {
+            gameState.pendingRoll.modifierTotal = (gameState.pendingRoll.modifierTotal || 0) - 1;
+            gameState.pendingRoll.currentRoll -= 1;
+        }
+        player.usedNobleShamanThisTurn = true;
+        gameState.passedModifiers = [];
+        io.emit('message', `${getPlayerName(gameState, socket.id)} used The Noble Shaman to give -1 to a roll.`);
+        startModifierTimer();
+        broadcastState();
+    });
+
     socket.on('submit_modifier_action', (data, acknowledgement) => {
         const reply = payload => {
             if (typeof acknowledgement === 'function') acknowledgement(payload);
@@ -1871,7 +1968,22 @@ io.on('connection', (socket) => {
                     if (modValue > 0) modValue += 1; else if (modValue < 0) modValue -= 1;
                 }
                 player.hand.splice(cardIndex, 1);
-                gameState.discardPile.push(card);
+                if (card.effect_id === 'MOD_MINUS_4_RETRIEVE_BELOW_2') {
+                    if (!gameState.pendingRoll.heldMinusFourCards) gameState.pendingRoll.heldMinusFourCards = [];
+                    gameState.pendingRoll.heldMinusFourCards.push(card);
+                } else {
+                    gameState.discardPile.push(card);
+                }
+
+                if (!gameState.pendingRoll.playedExpansionModifiers) gameState.pendingRoll.playedExpansionModifiers = [];
+                if (['MOD_1_1_DRAW_2', 'MOD_2_1_DRAW_1', 'MOD_PLUS_4_DRAW_ABOVE_12', 'MOD_MINUS_4_RETRIEVE_BELOW_2'].includes(card.effect_id)) {
+                    gameState.pendingRoll.playedExpansionModifiers.push({
+                        playerId: socket.id,
+                        effectId: card.effect_id,
+                        drawCount: card.draw_after_resolution || 0,
+                        targetRoll: data.targetRoll || null
+                    });
+                }
 
                 // Crowned Serpent: every owner draws a card each time ANY player
                 // plays a Modifier (auto — it's a pure benefit). Includes the player
@@ -2632,6 +2744,7 @@ socket.on('resolve_immediate_play', (data) => {
 
         // Force reset usedSkillThisTurn for ALL players just to be absolutely safe
         for (const pId in gameState.players) {
+            gameState.players[pId].usedNobleShamanThisTurn = false;
             gameState.players[pId].party.forEach(c => {
                 if (c.type === 'Hero Card') c.usedSkillThisTurn = false;
             });

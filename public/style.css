@@ -7088,10 +7088,24 @@ body.landscape #party-zone > .area-label,
 
 .modifier-pass-btn {
     display: none;
-    background: url('assets/skin/buttons/secondary-parchment.png') center/100% 100% no-repeat !important;
-    color: #24160b !important;
-    text-shadow: 0 1px rgba(255, 245, 205, .65) !important;
+    background: url('assets/skin/buttons/inspector-action.png') center/100% 100% no-repeat !important;
+    color: #f7fbff !important;
+    text-shadow: 0 2px 2px rgba(0, 18, 48, .95), 0 0 5px rgba(0, 10, 32, .85) !important;
 }
+
+.noble-shaman-controls { display:flex; justify-content:center; gap:8px; margin:2px auto; }
+.noble-shaman-controls .action-btn { min-height:40px; }
+
+.rex-major-reveal-modal { z-index: 5200 !important; }
+.rex-major-reveal-panel {
+    width: min(420px, 88vw) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    animation: modal-pop .22s var(--ease-out) both;
+}
+.rex-major-reveal-panel .card { height: min(42vh, 250px) !important; width: auto !important; }
 
 @media (orientation: portrait) {
     #lobby-modal .lobby-panel {

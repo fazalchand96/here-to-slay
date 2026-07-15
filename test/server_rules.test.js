@@ -79,6 +79,19 @@ test('LEADER_FIGHTER gives +2 only on a challenge', () => {
     assert.equal(calculateRollDetails(p, 5, 'ATTACK').total, 5);
 });
 
+test('LEADER_WARRIOR adds +1 for every equipped regular or Cursed Item', () => {
+    const p = pl({
+        leader: leader('LEADER_WARRIOR', 'Warrior', 'The Piercing Howl'),
+        party: [
+            heroOf('Warrior', { equippedItem: item('ITEM_RING') }),
+            heroOf('Druid', { equippedItem: { ...item('CURSE_KEY'), type: 'Cursed Item Card' } })
+        ]
+    });
+    const result = calculateRollDetails(p, 5, 'ATTACK');
+    assert.equal(result.total, 7);
+    assert.deepEqual(result.breakdown.at(-1), { source: 'The Piercing Howl', value: 2 });
+});
+
 test('MONSTER_ANURAN_CAULDRON gives +1 in any context', () => {
     const p = pl({ slainMonsters: [monster('MONSTER_ANURAN_CAULDRON')] });
     assert.equal(calculateRollDetails(p, 4, 'ATTACK').total, 5);
