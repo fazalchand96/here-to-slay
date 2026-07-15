@@ -647,6 +647,22 @@ function grantExpansionModifierDraws(pendingRoll, finalForEntry) {
     pendingRoll.expansionRewardsProcessed = true;
 }
 
+function playerHasEffectiveClass(player, requiredClass) {
+    if (!player || !requiredClass) return false;
+    if (player.leader && player.leader.class === requiredClass) return true;
+    return (player.party || []).some(hero => effectiveHeroClass(hero) === requiredClass);
+}
+
+function triggerFeralDragon(sacrificingPlayerId) {
+    Object.values(gameState.players).forEach(owner => {
+        if (!(owner.slainMonsters || []).some(monster => monster.effect_id === 'MONSTER_FERAL_DRAGON')) return;
+        const message = `${getPlayerName(gameState, sacrificingPlayerId)} sacrificed a card, so ${getPlayerName(gameState, owner.id)} draws a card.`;
+        io.emit('monster_effect_triggered', { monsterId: 'card_138', monsterName: 'Feral Dragon', ownerId: owner.id, message });
+        io.emit('message', `Feral Dragon activated: ${message}`);
+        drawCardsWithPassives(gameState, io, 1, owner);
+    });
+}
+
 function prepareMinusFourRetrievals(pendingRoll, finalForEntry) {
     if (pendingRoll.minusFourRetrievalsProcessed) return false;
     const queue = (pendingRoll.playedExpansionModifiers || [])
@@ -1662,6 +1678,7 @@ io.on('connection', (socket) => {
                 gameState.discardPile.push(sacrificed);
                 io.emit('message', `${getPlayerName(gameState, player.id)} sacrificed a Hero.`);
             }
+            triggerFeralDragon(socket.id);
             ga.pendingPlayerIds = ga.pendingPlayerIds.filter(id => id !== socket.id);
         } else {
             // Card-based global actions: MULTI_DISCARD, MULTI_DISCARD_AND_CHOOSE, MULTI_GIVE.
@@ -1849,6 +1866,10 @@ io.on('connection', (socket) => {
                     pRoll.challengerBase += 1;
                     pRoll.challengerBreakdown.push({ source: 'Titan Wyvern', value: 1 });
                 }
+                if (pRoll.challengerCardBonus) {
+                    pRoll.challengerBase += pRoll.challengerCardBonus;
+                    pRoll.challengerBreakdown.push({ source: pRoll.challengerCardName, value: pRoll.challengerCardBonus });
+                }
                 pRoll.challengerRolled = true;
                 rolled = true;
             }
@@ -1915,6 +1936,30 @@ io.on('connection', (socket) => {
         player.usedNobleShamanThisTurn = true;
         gameState.passedModifiers = [];
         io.emit('message', `${getPlayerName(gameState, socket.id)} used The Noble Shaman to give -1 to a roll.`);
+        if (gameState.pendingRoll.type === 'CHALLENGE') {
+            const roll = gameState.pendingRoll;
+            io.emit('dice_roll_pending', {
+                isChallenge: true, type: 'CHALLENGE',
+                activeId: roll.activeId, activeName: getPlayerName(gameState, roll.activeId),
+                activeRoll1: roll.activeRoll1, activeRoll2: roll.activeRoll2, activeBreakdown: roll.activeBreakdown,
+                activeTotal: roll.activeBase, activeModifierTotal: roll.activeModifiers,
+                activeFinalTotal: roll.activeBase + (roll.activeModifiers || 0),
+                challengerId: roll.challengerId, challengerName: getPlayerName(gameState, roll.challengerId),
+                challengerRoll1: roll.challengerRoll1, challengerRoll2: roll.challengerRoll2, challengerBreakdown: roll.challengerBreakdown,
+                challengerTotal: roll.challengerBase, challengerModifierTotal: roll.challengerModifiers,
+                challengerFinalTotal: roll.challengerBase + (roll.challengerModifiers || 0),
+                reason: 'for a CHALLENGE!'
+            });
+        } else {
+            const roll = gameState.pendingRoll;
+            io.emit('dice_roll_pending', {
+                rollerId: roll.rollerId, rollerName: getPlayerName(gameState, roll.rollerId),
+                roll1: roll.roll1, roll2: roll.roll2, passiveBonus: roll.passiveBonus,
+                breakdown: roll.breakdown, modifierTotal: roll.modifierTotal,
+                finalTotal: roll.currentRoll, total: roll.currentRoll,
+                reason: roll.type === 'ATTACK' ? 'to attack a monster' : 'for a skill'
+            });
+        }
         startModifierTimer();
         broadcastState();
     });
@@ -2193,6 +2238,7 @@ socket.on('resolve_immediate_play', (data) => {
                 gameState.discardPile.push(targetHero);
                 io.emit('message', `${getPlayerName(gameState, socket.id)} sacrificed their ${targetHero.name} as a penalty!`);
             }
+            triggerFeralDragon(socket.id);
             
             resetToPlayingState();
             broadcastState();
@@ -2306,6 +2352,15 @@ socket.on('resolve_immediate_play', (data) => {
         if (cardIndex === -1) return;
 
         const challengeCard = challenger.hand.splice(cardIndex, 1)[0];
+        if (challengeCard.type !== 'Challenge Card') {
+            challenger.hand.splice(cardIndex, 0, challengeCard);
+            return;
+        }
+        if (challengeCard.required_class && !playerHasEffectiveClass(challenger, challengeCard.required_class)) {
+            challenger.hand.splice(cardIndex, 0, challengeCard);
+            io.to(socket.id).emit('message', `You need a ${challengeCard.required_class} in your Party to play this Challenge.`);
+            return;
+        }
         registerCardPlayed(challengeCard);
         gameState.discardPile.push(challengeCard);
 
@@ -2335,6 +2390,8 @@ socket.on('resolve_immediate_play', (data) => {
             challengerBase: 0,
             activeModifiers: 0,
             challengerModifiers: 0,
+            challengerCardBonus: challengeCard.challenge_bonus || 0,
+            challengerCardName: challengeCard.name,
             passedPlayers: []
         };
         broadcastState();
@@ -2643,6 +2700,19 @@ socket.on('resolve_immediate_play', (data) => {
         broadcastState();
     });
 
+    socket.on('use_muscipula_rex', () => {
+        if (gameState.state !== 'PLAYING' || socket.id !== gameState.activePlayerSocketId) return;
+        const player = gameState.players[socket.id];
+        if (!player || player.usedMuscipulaRexThisTurn
+            || !(player.slainMonsters || []).some(monster => monster.effect_id === 'MONSTER_MUSCIPULA_REX')) return;
+        player.usedMuscipulaRexThisTurn = true;
+        drawCardsWithPassives(gameState, io, 1, player);
+        const message = `${getPlayerName(gameState, player.id)} used Muscipula Rex and drew a card without spending an action point.`;
+        io.emit('monster_effect_triggered', { monsterId: 'card_139', monsterName: 'Muscipula Rex', ownerId: player.id, message });
+        io.emit('message', message);
+        broadcastState();
+    });
+
     socket.on('discard_and_draw_five_action', () => {
         if (gameState.state !== 'PLAYING') return;
         if (socket.id !== gameState.activePlayerSocketId) return;
@@ -2745,6 +2815,7 @@ socket.on('resolve_immediate_play', (data) => {
         // Force reset usedSkillThisTurn for ALL players just to be absolutely safe
         for (const pId in gameState.players) {
             gameState.players[pId].usedNobleShamanThisTurn = false;
+            gameState.players[pId].usedMuscipulaRexThisTurn = false;
             gameState.players[pId].party.forEach(c => {
                 if (c.type === 'Hero Card') c.usedSkillThisTurn = false;
             });
@@ -2804,5 +2875,6 @@ module.exports = {
     removePlayerAndResetMatch,
     isValidItemEquipTarget,
     clearUntilNextTurnProtections,
+    playerHasEffectiveClass,
     RECONNECT_GRACE_MS,
 };

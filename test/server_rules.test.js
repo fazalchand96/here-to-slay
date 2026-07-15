@@ -16,6 +16,7 @@ const {
     checkWinCondition,
     isValidItemEquipTarget,
     clearUntilNextTurnProtections,
+    playerHasEffectiveClass,
     loadCards,
     gameState
 } = require('../server');
@@ -48,6 +49,12 @@ test('Items and Cursed Items may target Heroes belonging to either player', () =
     assert.equal(isValidItemEquipTarget(state, 'bob', 'bob-hero'), true);
     assert.equal(isValidItemEquipTarget(state, 'bob', 'missing-hero'), false);
     assert.equal(isValidItemEquipTarget(state, 'missing-player', 'alice-hero'), false);
+});
+
+test('class-gated Challenges accept leaders and Heroes wearing the matching Mask', () => {
+    assert.equal(playerHasEffectiveClass(pl({ leader: leader('LEADER_DRUID', 'Druid') }), 'Druid'), true);
+    assert.equal(playerHasEffectiveClass(pl({ party: [heroOf('Wizard', { equippedItem: { ...item('ITEM_MASK', 'Warrior Mask'), class: 'Warrior' } })] }), 'Warrior'), true);
+    assert.equal(playerHasEffectiveClass(pl({ party: [heroOf('Wizard')] }), 'Druid'), false);
 });
 
 // ===========================================================================

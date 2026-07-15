@@ -738,8 +738,12 @@ function ensureDicePhaseLayout() {
     contextColumn.id = 'dice-context-column';
     const resultColumn = document.createElement('div');
     resultColumn.id = 'dice-result-column';
-    ['dice-monster-preview', 'modifier-staging-area', 'dice-hand-modifiers', 'dice-pass-btn']
+    ['dice-monster-preview', 'modifier-staging-area', 'dice-hand-modifiers']
         .forEach(id => contextColumn.appendChild(document.getElementById(id)));
+    const decisionRow = document.createElement('div');
+    decisionRow.id = 'modifier-decision-row';
+    decisionRow.appendChild(document.getElementById('dice-pass-btn'));
+    contextColumn.appendChild(decisionRow);
     ['dice-passives-container', 'dice-container', 'dice-action-area', 'math-breakdown-banner', 'dice-final-result']
         .forEach(id => resultColumn.appendChild(document.getElementById(id)));
     layout.append(contextColumn, resultColumn);
@@ -3507,15 +3511,10 @@ socket.on('dice_roll_pending', (data) => {
             }
         }
 
-        // Ensure Pass Button is visible and styled correctly inside the console
+        // Keep the pass control visible; sizing and artwork are owned by CSS.
         const passBtn = document.getElementById('dice-pass-btn');
         if (passBtn) {
             passBtn.style.display = 'block';
-            passBtn.style.width = '100%';
-            passBtn.style.padding = '15px';
-            passBtn.style.marginTop = '10px';
-            passBtn.style.fontSize = '1.1rem';
-            passBtn.style.fontWeight = 'bold';
 
             // 1. FORCE KILL INVISIBLE GAPS (Removes 240px of dead space)
             const stagingArea = document.getElementById('modifier-staging-area');
@@ -4114,6 +4113,20 @@ socket.on('rex_major_reveal', ({ playerName, card }) => {
     overlay.innerHTML = `<div class="glass-panel rex-major-reveal-panel"><h2>Rex Major!</h2><p>${playerName} revealed a Modifier and draws another card.</p>${renderCard(card, false, false)}</div>`;
     document.body.appendChild(overlay);
     setTimeout(() => overlay.remove(), 2600);
+});
+
+socket.on('monster_effect_triggered', ({ monsterId, monsterName, message }) => {
+    const context = findCardContext(monsterId);
+    const card = context && context.card;
+    showNotification(`${monsterName}: ${message}`);
+    if (!card) return;
+    document.getElementById('monster-trigger-modal')?.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'monster-trigger-modal';
+    overlay.className = 'overlay rex-major-reveal-modal';
+    overlay.innerHTML = `<div class="glass-panel rex-major-reveal-panel"><h2>${monsterName} activated!</h2><p>${message}</p>${renderCard(card, false, false, true)}</div>`;
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.remove(), 2400);
 });
 
 
@@ -5692,7 +5705,19 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
 
 
-    // 3. Use Leader Skill (Thief)
+    // 3. Use an active slain-Monster effect.
+    if (context.owner === myId && context.location === 'slain'
+        && card.effect_id === 'MONSTER_MUSCIPULA_REX' && !isTargetMode && isMyTurn && isPlayingState) {
+        const player = latestGameState.players[myId];
+        const btn = document.createElement('button');
+        btn.className = 'action-btn';
+        btn.innerText = player.usedMuscipulaRexThisTurn ? 'Free Draw Used' : 'Free Draw (0 AP)';
+        btn.disabled = Boolean(player.usedMuscipulaRexThisTurn);
+        btn.onclick = () => { socket.emit('use_muscipula_rex'); closeInspectorModal(); };
+        modalActions.appendChild(btn);
+    }
+
+    // 4. Use Leader Skill (Thief)
 
     if (context.owner === myId && context.location === 'leader' && card.type === 'Party Leader' && card.effect_id === 'LEADER_THIEF' && !isTargetMode) {
 
