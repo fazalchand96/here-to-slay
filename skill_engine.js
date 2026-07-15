@@ -1,6 +1,111 @@
 const SAFE_MODE = false;
 const { getPlayerName } = require('./player_utils');
 
+const rexChoiceTimers = new Map();
+const rexRevealHolds = new Map();
+const rexRevealTimers = new Map();
+let rexChoiceSequence = 0;
+
+function activateNextRexMajorChoice(gameState, io, playerId) {
+    if (!gameState.pendingRexChoices) gameState.pendingRexChoices = [];
+    if (gameState.pendingRexChoices.some(choice => choice.playerId === playerId && choice.status === 'ACTIVE')) return;
+
+    const holdUntil = rexRevealHolds.get(playerId) || 0;
+    if (holdUntil > Date.now()) return;
+
+    const choice = gameState.pendingRexChoices.find(entry => entry.playerId === playerId && entry.status === 'QUEUED');
+    if (!choice) return;
+    choice.status = 'ACTIVE';
+    choice.expiresAt = Date.now() + 3000;
+    io.to(playerId).emit('rex_major_choice', {
+        choiceId: choice.id,
+        card: choice.card,
+        durationMs: 3000
+    });
+
+    const timer = setTimeout(() => {
+        const index = (gameState.pendingRexChoices || []).findIndex(entry => entry.id === choice.id && entry.status === 'ACTIVE');
+        if (index === -1) return;
+        gameState.pendingRexChoices.splice(index, 1);
+        rexChoiceTimers.delete(choice.id);
+        io.to(playerId).emit('rex_major_choice_closed', { choiceId: choice.id });
+        activateNextRexMajorChoice(gameState, io, playerId);
+    }, 3000);
+    timer.unref?.();
+    rexChoiceTimers.set(choice.id, timer);
+}
+
+function queueRexMajorChoice(gameState, io, player, card) {
+    if (!io?.to || !player || !card) return;
+    if (!gameState.pendingRexChoices) gameState.pendingRexChoices = [];
+    const choice = {
+        id: `rex_${Date.now()}_${++rexChoiceSequence}`,
+        playerId: player.id,
+        cardId: card.id,
+        card,
+        status: 'QUEUED',
+        expiresAt: null
+    };
+    gameState.pendingRexChoices.push(choice);
+    activateNextRexMajorChoice(gameState, io, player.id);
+}
+
+function resolveRexMajorChoice(gameState, io, playerId, choiceId, reveal) {
+    const choices = gameState.pendingRexChoices || [];
+    const index = choices.findIndex(choice => choice.id === choiceId && choice.playerId === playerId && choice.status === 'ACTIVE');
+    if (index === -1) return { ok: false };
+    const choice = choices[index];
+    if (choice.expiresAt < Date.now()) {
+        clearTimeout(rexChoiceTimers.get(choice.id));
+        rexChoiceTimers.delete(choice.id);
+        choices.splice(index, 1);
+        io.to(playerId).emit('rex_major_choice_closed', { choiceId });
+        activateNextRexMajorChoice(gameState, io, playerId);
+        return { ok: false };
+    }
+
+    clearTimeout(rexChoiceTimers.get(choice.id));
+    rexChoiceTimers.delete(choice.id);
+    choices.splice(index, 1);
+    io.to(playerId).emit('rex_major_choice_closed', { choiceId });
+
+    const player = gameState.players[playerId];
+    const card = player?.hand?.find(handCard => handCard.id === choice.cardId && handCard.type === 'Modifier Card');
+    if (!reveal || !card) {
+        activateNextRexMajorChoice(gameState, io, playerId);
+        return { ok: true, revealed: false };
+    }
+
+    rexRevealHolds.set(playerId, Date.now() + 2600);
+    io.emit('rex_major_reveal', {
+        playerId,
+        playerName: getPlayerName(gameState, playerId),
+        card
+    });
+    io.emit('message', `${getPlayerName(gameState, playerId)} revealed ${card.name} due to Rex Major and draws another card!`);
+    const drawn = drawCardsWithPassives(gameState, io, 1, player);
+
+    const holdTimer = setTimeout(() => {
+        rexRevealHolds.delete(playerId);
+        rexRevealTimers.delete(playerId);
+        activateNextRexMajorChoice(gameState, io, playerId);
+    }, 2600);
+    holdTimer.unref?.();
+    rexRevealTimers.set(playerId, holdTimer);
+    return { ok: true, revealed: true, card, drawn };
+}
+
+function clearRexMajorChoices(gameState) {
+    (gameState.pendingRexChoices || []).forEach(choice => {
+        clearTimeout(rexChoiceTimers.get(choice.id));
+        rexChoiceTimers.delete(choice.id);
+    });
+    gameState.pendingRexChoices = [];
+    for (const timer of rexRevealTimers.values()) clearTimeout(timer);
+    rexRevealHolds.clear();
+    rexRevealTimers.clear();
+}
+
 function maskClass(item) {
     if (!item || item.effect_id !== 'ITEM_MASK') return null;
     if (item.class) return item.class;
@@ -106,15 +211,7 @@ function drawCardsWithPassives(gameState, io, count, player) {
         const card = gameState.mainDeck.pop();
         drawn.push(card);
         receive(card);
-        if (hasRex && card.type === 'Modifier Card') {
-            if (io && io.emit) io.emit('rex_major_reveal', {
-                playerId: player.id,
-                playerName: getPlayerName(gameState, player.id),
-                card
-            });
-            if (io && io.emit) io.emit('message', `${getPlayerName(gameState, player.id)} revealed a Modifier due to Rex Major and drew another card!`);
-            drawOne();
-        }
+        if (hasRex && card.type === 'Modifier Card') queueRexMajorChoice(gameState, io, player, card);
     };
 
     for (let i = 0; i < count; i++) {
@@ -1401,5 +1498,7 @@ module.exports = {
     hasEquippedEffect,
     refundTemporalHourglass,
     triggerCursedGlove,
-    triggerSoulTethers
+    triggerSoulTethers,
+    resolveRexMajorChoice,
+    clearRexMajorChoices
 };

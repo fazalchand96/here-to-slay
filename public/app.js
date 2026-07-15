@@ -4188,8 +4188,51 @@ socket.on('peek_cards', (data) => {
 
 });
 
+let activeRexMajorChoiceId = null;
+let rexMajorChoiceTimeout = null;
+
+function closeRexMajorChoice(choiceId = null) {
+    if (choiceId && activeRexMajorChoiceId && choiceId !== activeRexMajorChoiceId) return;
+    clearTimeout(rexMajorChoiceTimeout);
+    rexMajorChoiceTimeout = null;
+    activeRexMajorChoiceId = null;
+    document.getElementById('rex-major-choice-prompt')?.remove();
+}
+
+window.resolveRexMajorChoice = function(choiceId, reveal) {
+    if (choiceId !== activeRexMajorChoiceId) return;
+    closeRexMajorChoice(choiceId);
+    socket.emit('resolve_rex_major_choice', { choiceId, reveal });
+};
+
+socket.on('rex_major_choice', ({ choiceId, card, durationMs = 3000 }) => {
+    if (!choiceId || !card) return;
+    closeRexMajorChoice();
+    activeRexMajorChoiceId = choiceId;
+    const prompt = document.createElement('aside');
+    prompt.id = 'rex-major-choice-prompt';
+    prompt.className = 'rex-major-choice-prompt';
+    prompt.style.setProperty('--rex-choice-duration', `${durationMs}ms`);
+    prompt.innerHTML = `
+        <div class="rex-major-choice-card">${renderCard(card, true, false)}</div>
+        <div class="rex-major-choice-copy">
+            <strong>Rex Major</strong>
+            <span>You drew a Modifier. Reveal it to draw another card?</span>
+            <div class="rex-major-choice-actions">
+                <button class="action-btn" onclick="resolveRexMajorChoice('${choiceId}', true)">Reveal & Draw</button>
+                <button class="action-btn secondary" onclick="resolveRexMajorChoice('${choiceId}', false)">Keep Hidden</button>
+            </div>
+        </div>
+        <i class="rex-major-choice-timer"></i>`;
+    document.body.appendChild(prompt);
+    rexMajorChoiceTimeout = setTimeout(() => closeRexMajorChoice(choiceId), durationMs + 100);
+});
+
+socket.on('rex_major_choice_closed', ({ choiceId }) => closeRexMajorChoice(choiceId));
+
 socket.on('rex_major_reveal', ({ playerName, card }) => {
     if (!card) return;
+    closeRexMajorChoice();
     document.getElementById('rex-major-reveal-modal')?.remove();
     const overlay = document.createElement('div');
     overlay.id = 'rex-major-reveal-modal';

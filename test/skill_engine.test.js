@@ -10,7 +10,7 @@ const {
     executeSkill, executeMagic, hasOpponentHeroTarget, getTargetingSkillPlan, drawCardsWithPassives,
     triggerCrownedSerpent, prepareImmediateItemPlay, markButtonsFreePlay,
     returnEquippedItemToOwner, effectiveHeroClass, hasEquippedEffect, refundTemporalHourglass,
-    triggerCursedGlove, triggerSoulTethers
+    triggerCursedGlove, triggerSoulTethers, resolveRexMajorChoice, clearRexMajorChoices
 } = require('../skill_engine');
 
 // ---------------------------------------------------------------------------
@@ -1260,28 +1260,70 @@ test('Orthus offers a Magic card drawn by a Hero effect for immediate play', () 
     assert.equal(alice.hand.length, 0);
 });
 
-test('Rex Major grants an extra draw when a Magic effect draws a Modifier', () => {
+test('Rex Major privately offers a reveal before granting the extra draw', () => {
+    const alice = player('alice', { slainMonsters: [{ effect_id: 'MONSTER_REX_MAJOR' }] });
+    const bonus = card('Bonus', 'Hero Card');
+    const fillerOne = card('Filler One', 'Item Card');
+    const fillerTwo = card('Filler Two', 'Hero Card');
+    const modifier = card('+2', 'Modifier Card');
+    const gs = makeState([alice], { mainDeck: [bonus, fillerTwo, fillerOne, modifier] });
+    const io = makeIo();
+    executeMagic(gs, io, 'MAGIC_CRIT_BOOST', 'alice', null);
+    assert.ok(alice.hand.includes(modifier));
+    assert.ok(!alice.hand.includes(bonus));
+    assert.equal(io.emits.filter(event => event.event === 'rex_major_choice').length, 1);
+    assert.equal(io.find('rex_major_choice').to, 'alice');
+    assert.equal(io.find('rex_major_reveal'), undefined);
+
+    const choiceId = io.find('rex_major_choice').payload.choiceId;
+    const result = resolveRexMajorChoice(gs, io, 'alice', choiceId, true);
+    assert.equal(result.revealed, true);
+    assert.ok(alice.hand.includes(bonus));
+    assert.equal(io.emits.filter(event => event.event === 'rex_major_reveal').length, 1);
+    clearRexMajorChoices(gs);
+});
+
+test('Rex Major keeps a declined Modifier private and does not draw a bonus card', () => {
     const alice = player('alice', { slainMonsters: [{ effect_id: 'MONSTER_REX_MAJOR' }] });
     const bonus = card('Bonus', 'Hero Card');
     const modifier = card('+2', 'Modifier Card');
     const gs = makeState([alice], { mainDeck: [bonus, modifier] });
-    executeMagic(gs, makeIo(), 'MAGIC_CRIT_BOOST', 'alice', null);
-    assert.ok(alice.hand.includes(modifier));
-    assert.ok(alice.hand.includes(bonus));
+    const io = makeIo();
+    drawCardsWithPassives(gs, io, 1, alice);
+
+    const choiceId = io.find('rex_major_choice').payload.choiceId;
+    const result = resolveRexMajorChoice(gs, io, 'alice', choiceId, false);
+    assert.equal(result.revealed, false);
+    assert.deepEqual(alice.hand, [modifier]);
+    assert.deepEqual(gs.mainDeck, [bonus]);
+    assert.equal(io.find('rex_major_reveal'), undefined);
+    clearRexMajorChoices(gs);
 });
 
-test('Rex Major processes every Modifier in a multi-draw and chained bonus draw', () => {
+test('Rex Major queues multiple Modifier reveal choices one at a time', () => {
     const alice = player('alice', { slainMonsters: [{ effect_id: 'MONSTER_REX_MAJOR' }] });
     const finalBonus = card('Final Bonus', 'Hero Card');
     const secondModifier = card('-2', 'Modifier Card');
     const firstModifier = card('+2', 'Modifier Card');
-    const regularDraw = card('Regular Draw', 'Item Card');
-    const gs = makeState([alice], { mainDeck: [finalBonus, secondModifier, firstModifier, regularDraw] });
+    const gs = makeState([alice], { mainDeck: [finalBonus, secondModifier, firstModifier] });
     const io = makeIo();
     drawCardsWithPassives(gs, io, 2, alice);
-    assert.deepEqual(alice.hand, [regularDraw, firstModifier, secondModifier, finalBonus]);
-    const reveals = io.emits.filter(event => event.event === 'rex_major_reveal');
-    assert.deepEqual(reveals.map(event => event.payload.card), [firstModifier, secondModifier]);
+    assert.deepEqual(alice.hand, [firstModifier, secondModifier]);
+    assert.equal(io.emits.filter(event => event.event === 'rex_major_choice').length, 1);
+    assert.deepEqual(gs.pendingRexChoices.map(choice => choice.status), ['ACTIVE', 'QUEUED']);
+
+    const firstChoiceId = io.find('rex_major_choice').payload.choiceId;
+    resolveRexMajorChoice(gs, io, 'alice', firstChoiceId, false);
+    const prompts = io.emits.filter(event => event.event === 'rex_major_choice');
+    assert.equal(prompts.length, 2);
+    assert.equal(prompts[1].payload.card, secondModifier);
+
+    const secondChoiceId = prompts[1].payload.choiceId;
+    const result = resolveRexMajorChoice(gs, io, 'alice', secondChoiceId, true);
+    assert.equal(result.revealed, true);
+    assert.deepEqual(alice.hand, [firstModifier, secondModifier, finalBonus]);
+    assert.deepEqual(io.emits.filter(event => event.event === 'rex_major_reveal').map(event => event.payload.card), [secondModifier]);
+    clearRexMajorChoices(gs);
 });
 
 test('Crowned Serpent owner draws when another player plays a Modifier', () => {

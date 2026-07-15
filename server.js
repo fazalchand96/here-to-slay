@@ -10,7 +10,7 @@ const {
     executeSkill, executeMagic, hasOpponentHeroTarget, getTargetingSkillPlan, drawCardsWithPassives,
     triggerCrownedSerpent, prepareImmediateItemPlay, markButtonsFreePlay,
     returnEquippedItemToOwner, equippedItems, hasEquippedEffect, refundTemporalHourglass,
-    triggerCursedGlove, triggerSoulTethers
+    triggerCursedGlove, triggerSoulTethers, resolveRexMajorChoice, clearRexMajorChoices
 } = require('./skill_engine');
 const ALL_CARDS = require('./cards.json');
 
@@ -353,6 +353,7 @@ function resetGameForNextMatch() {
     gameState.pendingChallenge = null;
     gameState.activePlayerSocketId = null;
     gameState.winner = null;
+    clearRexMajorChoices(gameState);
 
     // Reset individual player stats but keep connections and order
     for (const playerId of gameState.playerOrder) {
@@ -1102,6 +1103,7 @@ function removePlayerAndResetMatch(socketId) {
     gameState.playerOrder = gameState.playerOrder.filter(id => id !== socketId);
 
     const clearBoard = () => {
+        clearRexMajorChoices(gameState);
         gameState.activePlayerSocketId = null;
         gameState.pendingAction = null;
         gameState.pendingCard = null;
@@ -1229,6 +1231,12 @@ io.on('connection', (socket) => {
             gameState.players[socket.id].name = name || 'Player'; // Save as .name, do NOT overwrite .id
             broadcastState();
         }
+    });
+
+    socket.on('resolve_rex_major_choice', ({ choiceId, reveal } = {}, acknowledgement) => {
+        const result = resolveRexMajorChoice(gameState, io, socket.id, choiceId, reveal === true);
+        if (result.revealed) broadcastState();
+        if (typeof acknowledgement === 'function') acknowledgement({ ok: result.ok, revealed: Boolean(result.revealed) });
     });
 
     // The browser UI has no leave button today; this event exists so controlled
@@ -3006,6 +3014,7 @@ socket.on('resolve_immediate_play', (data) => {
 
 function startGame() {
     loadCards(); console.log(`[DEBUG] After loadCards, mainDeck size: ${gameState.mainDeck.length}`);
+    clearRexMajorChoices(gameState);
     resetToPlayingState();
     gameState.waitingForInput = false;
     gameState.pendingRoll = null;

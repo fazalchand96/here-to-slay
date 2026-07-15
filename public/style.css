@@ -7125,6 +7125,71 @@ body.landscape #party-zone > .area-label,
     display: contents !important;
 }
 
+.rex-major-choice-prompt {
+    box-sizing: border-box;
+    position: fixed;
+    z-index: 5150;
+    top: max(10px, env(safe-area-inset-top));
+    left: 50%;
+    width: min(92vw, 540px);
+    min-height: 128px;
+    display: grid;
+    grid-template-columns: 78px minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px 13px;
+    overflow: hidden;
+    border: 1px solid rgba(235, 194, 99, .82);
+    border-radius: 15px;
+    background: linear-gradient(120deg, rgba(18, 8, 35, .98), rgba(6, 31, 48, .98));
+    box-shadow: inset 0 0 22px rgba(0,0,0,.52), 0 8px 28px rgba(0,0,0,.65), 0 0 16px rgba(94,197,224,.22);
+    color: #f8efff;
+    transform: translateX(-50%);
+    animation: rex-choice-in .18s var(--ease-out) both;
+}
+.rex-major-choice-card { display: grid; place-items: center; min-width: 0; }
+.rex-major-choice-card .card {
+    width: auto !important;
+    height: 108px !important;
+    max-height: 108px !important;
+    margin: 0 !important;
+    pointer-events: none !important;
+}
+.rex-major-choice-copy { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.rex-major-choice-copy > strong {
+    color: #ffe19a;
+    font: 800 clamp(.82rem, 2.4vw, 1.08rem)/1 var(--font-display);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    text-shadow: 0 2px 3px #000;
+}
+.rex-major-choice-copy > span { color: rgba(245,239,255,.88); font-size: clamp(.64rem, 1.6vw, .78rem); line-height: 1.2; }
+.rex-major-choice-actions { display: grid; grid-template-columns: 1.2fr .9fr; gap: 7px; margin-top: 3px; }
+.rex-major-choice-actions .action-btn {
+    min-width: 0 !important;
+    min-height: 36px !important;
+    margin: 0 !important;
+    padding: 6px 9px !important;
+    font-size: clamp(.58rem, 1.5vw, .72rem) !important;
+    white-space: nowrap !important;
+}
+.rex-major-choice-actions .action-btn.secondary { filter: saturate(.55) brightness(.82); }
+.rex-major-choice-timer {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #64d6e8, #f3c45e);
+    transform-origin: left;
+    animation: rex-choice-countdown var(--rex-choice-duration, 3000ms) linear forwards;
+}
+@keyframes rex-choice-in {
+    from { opacity: 0; transform: translate(-50%, -12px) scale(.96); }
+    to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+@keyframes rex-choice-countdown { to { transform: scaleX(0); } }
+
 .rex-major-reveal-modal { z-index: 5200 !important; }
 .rex-major-reveal-panel {
     width: min(420px, 88vw) !important;
@@ -7135,6 +7200,18 @@ body.landscape #party-zone > .area-label,
     animation: modal-pop .22s var(--ease-out) both;
 }
 .rex-major-reveal-panel .card { height: min(42vh, 250px) !important; width: auto !important; }
+
+@media (max-height: 520px) {
+    .rex-major-choice-prompt {
+        top: 7px;
+        width: min(82vw, 500px);
+        min-height: 104px;
+        grid-template-columns: 62px minmax(0, 1fr);
+        padding: 7px 11px 10px;
+    }
+    .rex-major-choice-card .card { height: 88px !important; max-height: 88px !important; }
+    .rex-major-choice-actions .action-btn { min-height: 31px !important; padding-block: 4px !important; }
+}
 
 @media (orientation: portrait) {
     #lobby-modal .lobby-panel {
