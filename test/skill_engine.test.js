@@ -9,7 +9,8 @@ const assert = require('node:assert/strict');
 const {
     executeSkill, executeMagic, hasOpponentHeroTarget, getTargetingSkillPlan, drawCardsWithPassives,
     triggerCrownedSerpent, prepareImmediateItemPlay, markButtonsFreePlay,
-    returnEquippedItemToOwner
+    returnEquippedItemToOwner, effectiveHeroClass, hasEquippedEffect, refundTemporalHourglass,
+    triggerCursedGlove, triggerSoulTethers
 } = require('../skill_engine');
 
 // ---------------------------------------------------------------------------
@@ -1302,4 +1303,45 @@ test('SKILL_BULLSEYE reports an empty deck gracefully', () => {
     executeSkill(gs, io, 'SKILL_BULLSEYE', 'alice', 'be', null);
     assert.equal(io.find('peek_cards'), undefined);
     assert.match(io.lastMessage(), /deck is empty/i);
+});
+
+test('Druid and Warrior Masks replace the Hero class from either item slot', () => {
+    assert.equal(effectiveHeroClass({ class: 'Fighter', equippedItem: { effect_id: 'ITEM_MASK', class: 'Druid' } }), 'Druid');
+    assert.equal(effectiveHeroClass({ class: 'Wizard', equippedItem2: { effect_id: 'ITEM_MASK', class: 'Warrior' } }), 'Warrior');
+});
+
+test('Bottomless Bag is detected from either equipped item slot', () => {
+    assert.equal(hasEquippedEffect({ equippedItem2: { effect_id: 'ITEM_BOTTOMLESS_BAG' } }, 'ITEM_BOTTOMLESS_BAG'), true);
+});
+
+test('Temporal Hourglass refunds exactly the AP spent on a failed paid skill roll', () => {
+    const hero = { equippedItem: { effect_id: 'ITEM_TEMPORAL_HOURGLASS' } };
+    const player = { ap: 2 };
+    assert.equal(refundTemporalHourglass(hero, player, true), true);
+    assert.equal(player.ap, 3);
+    assert.equal(refundTemporalHourglass(hero, player, false), false);
+    assert.equal(player.ap, 3);
+});
+
+test('Cursed Glove moves its equipped Hero when another Hero is stolen', () => {
+    const gloveHero = { id: 'glove', usedSkillThisTurn: true, equippedItem: { effect_id: 'CURSE_GLOVE' } };
+    const owner = { party: [gloveHero] };
+    const thief = { party: [{ id: 'stolen' }] };
+    const moved = triggerCursedGlove({ discardPile: [] }, owner, thief);
+    assert.deepEqual(moved, [gloveHero]);
+    assert.equal(owner.party.length, 0);
+    assert.equal(thief.party.at(-1), gloveHero);
+    assert.equal(gloveHero.usedSkillThisTurn, false);
+});
+
+test('Soul Tether sacrifices its equipped Hero and both equipped items', () => {
+    const tether = { effect_id: 'CURSE_SOUL_TETHER', name: 'Soul Tether' };
+    const secondItem = { effect_id: 'ITEM_RING', name: 'Ring' };
+    const tetheredHero = { id: 'tethered', equippedItem: tether, equippedItem2: secondItem };
+    const owner = { party: [tetheredHero] };
+    const gameState = { discardPile: [] };
+    const sacrificed = triggerSoulTethers(gameState, owner);
+    assert.deepEqual(sacrificed, [tetheredHero]);
+    assert.equal(owner.party.length, 0);
+    assert.deepEqual(gameState.discardPile, [tether, secondItem, tetheredHero]);
 });

@@ -9,7 +9,8 @@ const { getPlayerName } = require('./player_utils');
 const {
     executeSkill, executeMagic, hasOpponentHeroTarget, getTargetingSkillPlan, drawCardsWithPassives,
     triggerCrownedSerpent, prepareImmediateItemPlay, markButtonsFreePlay,
-    returnEquippedItemToOwner
+    returnEquippedItemToOwner, equippedItems, hasEquippedEffect, refundTemporalHourglass,
+    triggerCursedGlove, triggerSoulTethers
 } = require('./skill_engine');
 const ALL_CARDS = require('./cards.json');
 
@@ -556,15 +557,19 @@ function calculateRollDetails(player, baseRoll, context, targetCard = null) {
     // 4. Check Global Item Effects (None currently modify rolls globally)
 
     // 5. Check Target-Specific Equipped Items
-    if (context === 'HERO_SKILL' && targetCard && targetCard.equippedItem) {
-        const item = targetCard.equippedItem;
-        if (item.effect_id === 'ITEM_RING') {
-            total += 2;
-            breakdown.push({ source: item.name, value: 2 });
-        } else if (item.effect_id === 'CURSE_SNAKE') {
-            total -= 2;
-            breakdown.push({ source: item.name, value: -2 });
-        }
+    if (context === 'HERO_SKILL' && targetCard) {
+        equippedItems(targetCard).forEach(item => {
+            if (item.effect_id === 'ITEM_RING') {
+                total += 2;
+                breakdown.push({ source: item.name, value: 2 });
+            } else if (item.effect_id === 'ITEM_EVEN_BIGGER_RING') {
+                total += 4;
+                breakdown.push({ source: item.name, value: 4 });
+            } else if (item.effect_id === 'CURSE_SNAKE') {
+                total -= 2;
+                breakdown.push({ source: item.name, value: -2 });
+            }
+        });
     }
 
     return { total, breakdown };
@@ -889,6 +894,10 @@ function resolvePendingRoll() {
             } else {
                 io.emit('message', `${getPlayerName(gameState, player.id)}'s skill roll for ${hero.name} failed! (Needed ${hero.roll_requirement}+, rolled ${finalRoll})`);
                 
+                if (refundTemporalHourglass(hero, player, gameState.pendingRoll.apSpent)) {
+                    io.emit('message', `Temporal Hourglass returned the action point spent on ${hero.name}'s failed skill roll.`);
+                }
+
                 // Check for Particularly Rusty Coin
                 if (hero.equippedItem && hero.equippedItem.effect_id === 'ITEM_COIN_RUSTY') {
                     io.emit('message', `Particularly Rusty Coin allows ${getPlayerName(gameState, player.id)} to draw a card because the roll failed!`);
@@ -1500,12 +1509,13 @@ io.on('connection', (socket) => {
         if (!hero) {
             return;
         }
-        if (hero.usedSkillThisTurn) {
+        if (hero.usedSkillThisTurn && !hasEquippedEffect(hero, 'ITEM_BOTTOMLESS_BAG')) {
             return;
         }
         // Sealing Key (CURSE_KEY): the equipped Hero cannot use its effect at all.
-        if (hero.equippedItem && hero.equippedItem.effect_id === 'CURSE_KEY') {
-            io.to(socket.id).emit('message', `${hero.name} is sealed by ${hero.equippedItem.name} and cannot use its effect!`);
+        const sealingKey = equippedItems(hero).find(item => item.effect_id === 'CURSE_KEY');
+        if (sealingKey) {
+            io.to(socket.id).emit('message', `${hero.name} is sealed by ${sealingKey.name} and cannot use its effect!`);
             return;
         }
 
@@ -1533,7 +1543,8 @@ io.on('connection', (socket) => {
             modifierTotal: 0,
             baseRoll: 0,
             currentRoll: 0,
-            passedPlayers: []
+            passedPlayers: [],
+            apSpent: !isFree
         };
 
         broadcastState();
@@ -1676,6 +1687,7 @@ io.on('connection', (socket) => {
                     sacrificed.equippedItem = null;
                 }
                 gameState.discardPile.push(sacrificed);
+                triggerSoulTethers(gameState, player);
                 io.emit('message', `${getPlayerName(gameState, player.id)} sacrificed a Hero.`);
             }
             triggerFeralDragon(socket.id);
@@ -2236,6 +2248,7 @@ socket.on('resolve_immediate_play', (data) => {
                 }
                 player.party.splice(tHeroIndex, 1);
                 gameState.discardPile.push(targetHero);
+                triggerSoulTethers(gameState, player);
                 io.emit('message', `${getPlayerName(gameState, socket.id)} sacrificed their ${targetHero.name} as a penalty!`);
             }
             triggerFeralDragon(socket.id);
@@ -2502,13 +2515,16 @@ socket.on('resolve_immediate_play', (data) => {
                         p.party.splice(heroIndex, 1);
 
                         if (pAction.type === 'STEAL') {
-                            gameState.players[pAction.originalActor].party.push(hero);
+                            const thief = gameState.players[pAction.originalActor];
+                            thief.party.push(hero);
+                            triggerCursedGlove(gameState, p, thief);
                             io.emit('message', `Stole ${hero.name}!`);
                         } else if (pAction.type === 'DESTROY') {
                             gameState.discardPile.push(hero);
                             if (hero.equippedItem) {
                                 gameState.discardPile.push(hero.equippedItem);
                             }
+                            triggerSoulTethers(gameState, p);
                             io.emit('message', `Destroyed ${hero.name}!`);
 
                             const hasDracos = p.slainMonsters && p.slainMonsters.some(m => m.effect_id === 'MONSTER_DRACOS');
@@ -2563,6 +2579,7 @@ socket.on('resolve_immediate_play', (data) => {
                         const targetHeroToSteal = tp.party[targetHeroIndex];
                         tp.party.splice(targetHeroIndex, 1);
                         player.party.push(targetHeroToSteal);
+                        triggerCursedGlove(gameState, tp, player);
                         tp.party.push(myHeroToGive);
                         io.emit('message', `${getPlayerName(gameState, player.id)} exchanged ${myHeroToGive.name} for ${targetHeroToSteal.name}!`);
                         swapped = true;

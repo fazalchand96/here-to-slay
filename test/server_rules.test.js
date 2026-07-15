@@ -136,6 +136,19 @@ test('ITEM_RING on the target hero adds +2 to a hero skill roll', () => {
     assert.equal(calculateRollDetails(pl(), 5, 'HERO_SKILL', target).total, 7);
 });
 
+test('Even Bigger Ring adds +4 to its equipped Hero skill roll', () => {
+    setBoard([{
+        party: [heroOf('Fighter', {
+            id: 'ring-hero',
+            equippedItem: { effect_id: 'ITEM_EVEN_BIGGER_RING', name: 'Even Bigger Ring' },
+        })],
+    }]);
+    const hero = gameState.players.p0.party[0];
+    const result = calculateRollDetails(gameState.players.p0, 7, 'HERO_SKILL', hero);
+    assert.equal(result.total, 11);
+    assert.deepEqual(result.breakdown.at(-1), { source: 'Even Bigger Ring', value: 4 });
+});
+
 test('CURSE_SNAKE on the target hero subtracts 2 from a hero skill roll', () => {
     const target = heroOf('Fighter', { equippedItem: item('CURSE_SNAKE') });
     assert.equal(calculateRollDetails(pl(), 5, 'HERO_SKILL', target).total, 3);
@@ -276,7 +289,7 @@ test('only expansion cards with full card art enter live decks', () => {
     assert.ok(liveExpansionCards.every(card => card.fullCardArtUrl));
     assert.deepEqual(
         [...new Set(liveExpansionCards.map(card => card.type))].sort(),
-        ['Magic Card', 'Modifier Card', 'Monster Card', 'Party Leader']
+        ['Cursed Item Card', 'Item Card', 'Magic Card', 'Modifier Card', 'Monster Card', 'Party Leader']
     );
     assert.deepEqual(
         liveExpansionCards
@@ -286,7 +299,12 @@ test('only expansion cards with full card art enter live decks', () => {
         ['Beast Call', 'Rapid Refresh']
     );
     assert.equal(liveExpansionCards.some(card => card.type === 'Hero Card'), false);
-    assert.equal(liveExpansionCards.some(card => card.type === 'Item Card'), false);
-    assert.equal(liveExpansionCards.some(card => card.type === 'Cursed Item Card'), false);
+    assert.deepEqual(
+        liveExpansionCards
+            .filter(card => ['Item Card', 'Cursed Item Card'].includes(card.type))
+            .map(card => card.name)
+            .sort(),
+        ['Bottomless Bag', 'Cursed Glove', 'Druid Mask', 'Even Bigger Ring', 'Soul Tether', 'Temporal Hourglass', 'Warrior Mask']
+    );
     assert.equal(liveExpansionCards.some(card => card.type === 'Challenge Card'), false);
 });

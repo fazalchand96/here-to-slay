@@ -3756,12 +3756,6 @@ socket.on('challenge_resolved', (data) => {
     showNotification(data.message);
 
     if (challengeModal) {
-        const display = document.createElement('div');
-        display.className = 'challenge-resolution-display';
-        display.innerHTML = challengeCardDisplay.innerHTML;
-        document.body.appendChild(display);
-        const cleanup = () => display.remove();
-        setTimeout(cleanup, 850);
         challengeModal.classList.add('hidden');
         challengeModal.style.display = 'none';
     }
@@ -5647,7 +5641,9 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
             
 
-            const isSealed = card.equippedItem && card.equippedItem.effect_id === 'CURSE_KEY';
+            const equippedItems = [card.equippedItem, card.equippedItem2].filter(Boolean);
+            const isSealed = equippedItems.some(item => item.effect_id === 'CURSE_KEY');
+            const hasBottomlessBag = equippedItems.some(item => item.effect_id === 'ITEM_BOTTOMLESS_BAG');
 
             if (isSealed) {
 
@@ -5659,7 +5655,7 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
                 btn.style.cursor = 'not-allowed';
 
-            } else if (card.usedSkillThisTurn) {
+            } else if (card.usedSkillThisTurn && !hasBottomlessBag) {
 
                 btn.innerText = 'Skill Used';
 

@@ -10,7 +10,56 @@ function maskClass(item) {
 
 function effectiveHeroClass(hero) {
     if (!hero) return null;
-    return (hero.equippedItem && maskClass(hero.equippedItem)) || hero.class;
+    const mask = [hero.equippedItem, hero.equippedItem2].find(item => maskClass(item));
+    return (mask && maskClass(mask)) || hero.class;
+}
+
+function equippedItems(hero) {
+    return [hero && hero.equippedItem, hero && hero.equippedItem2].filter(Boolean);
+}
+
+function hasEquippedEffect(hero, effectId) {
+    return equippedItems(hero).some(item => item.effect_id === effectId);
+}
+
+function refundTemporalHourglass(hero, player, apSpent) {
+    if (!apSpent || !player || !hasEquippedEffect(hero, 'ITEM_TEMPORAL_HOURGLASS')) return false;
+    player.ap += 1;
+    return true;
+}
+
+function discardHeroWithItems(gameState, hero) {
+    equippedItems(hero).forEach(item => gameState.discardPile.push(item));
+    hero.equippedItem = null;
+    hero.equippedItem2 = null;
+    gameState.discardPile.push(hero);
+}
+
+function triggerCursedGlove(gameState, formerOwner, thief) {
+    if (!formerOwner || !thief) return [];
+    const moved = [];
+    for (let index = formerOwner.party.length - 1; index >= 0; index--) {
+        const hero = formerOwner.party[index];
+        if (!hasEquippedEffect(hero, 'CURSE_GLOVE')) continue;
+        formerOwner.party.splice(index, 1);
+        hero.usedSkillThisTurn = false;
+        thief.party.push(hero);
+        moved.push(hero);
+    }
+    return moved;
+}
+
+function triggerSoulTethers(gameState, owner) {
+    if (!owner) return [];
+    const sacrificed = [];
+    for (let index = owner.party.length - 1; index >= 0; index--) {
+        const hero = owner.party[index];
+        if (!hasEquippedEffect(hero, 'CURSE_SOUL_TETHER')) continue;
+        owner.party.splice(index, 1);
+        discardHeroWithItems(gameState, hero);
+        sacrificed.push(hero);
+    }
+    return sacrificed;
 }
 
 // Put cards drawn by an effect through the slain-monster draw passives. This is
@@ -190,6 +239,7 @@ function resolveDestroyAction(gameState, initiatorId, targetPlayerId, targetHero
         targetPlayer.party.splice(tHeroIndex, 1);
         targetHero.usedSkillThisTurn = false;
         initiator.party.push(targetHero);
+        triggerCursedGlove(gameState, targetPlayer, initiator);
         actionMessage = `Corrupted Sabretooth turned a Destroy into a Steal! ${getPlayerName(gameState, initiatorId)} STOLE ${getPlayerName(gameState, targetPlayerId)}'s ${targetHero.name}!`;
     } else {
         let itemNote = '';
@@ -204,6 +254,7 @@ function resolveDestroyAction(gameState, initiatorId, targetPlayerId, targetHero
         }
         targetPlayer.party.splice(tHeroIndex, 1);
         gameState.discardPile.push(targetHero);
+        triggerSoulTethers(gameState, targetPlayer);
         actionMessage = `${getPlayerName(gameState, initiatorId)} DESTROYED ${getPlayerName(gameState, targetPlayerId)}'s ${targetHero.name}!${itemNote}`;
 
         const hasDracos = targetPlayer.slainMonsters && targetPlayer.slainMonsters.some(m => m.effect_id === 'MONSTER_DRACOS');
@@ -583,6 +634,7 @@ case 'DRAW_CARD':
                         tp.party.splice(tHeroIndex, 1);
                         targetHero.usedSkillThisTurn = false;
                         player.party.push(targetHero);
+                        triggerCursedGlove(gameState, tp, player);
                         msg += `, STEALING ${targetHero.name}`;
                     } else {
                         msg += `; the STEAL clause had no legal target`;
@@ -620,6 +672,7 @@ case 'DRAW_CARD':
                         tp.party.splice(tHeroIndex, 1);
                         targetHero.usedSkillThisTurn = false;
                         player.party.push(targetHero);
+                        triggerCursedGlove(gameState, tp, player);
                         actionMessage = `${getPlayerName(gameState, player.id)} used Whiskers to STEAL ${targetHero.name} from ${getPlayerName(gameState, tp.id)}`;
                     }
                 }
@@ -672,6 +725,7 @@ case 'DRAW_CARD':
                         tp.party.splice(tHeroIndex, 1);
                         targetHero.usedSkillThisTurn = false;
                         player.party.push(targetHero);
+                        triggerCursedGlove(gameState, tp, player);
                         // "...and roll to use its effect immediately." Set up a FREE
                         // HERO_SKILL roll for the stolen Hero, exactly as the normal
                         // use_hero_skill flow would. The roller then triggers
@@ -742,6 +796,7 @@ case 'DESTROY_HERO':
                         const targetHero = tp.party[tHeroIndex];
                         tp.party.splice(tHeroIndex, 1);
                         player.party.push(targetHero);
+                        triggerCursedGlove(gameState, tp, player);
                         actionMessage = `${getPlayerName(gameState, player.id)} STOLE ${targetHero.name} from ${getPlayerName(gameState, tp.id)}!`;
                     }
                 } else if (tp && tp.cannotBeStolen) {
@@ -1002,6 +1057,7 @@ case 'DESTROY_HERO':
                         // 1. Steal the target hero
                         tp.party.splice(tHeroIndex, 1);
                         player.party.push(targetHero);
+                        triggerCursedGlove(gameState, tp, player);
 
                         // 2. Move Tipsy Tootie to their party
                         const tipsyIndex = player.party.findIndex(h => h.name === 'Tipsy Tootie');
@@ -1208,5 +1264,10 @@ module.exports = {
     triggerCrownedSerpent,
     prepareImmediateItemPlay,
     markButtonsFreePlay,
-    returnEquippedItemToOwner
+    returnEquippedItemToOwner,
+    equippedItems,
+    hasEquippedEffect,
+    refundTemporalHourglass,
+    triggerCursedGlove,
+    triggerSoulTethers
 };
