@@ -263,7 +263,7 @@ test('a Mask can complete the 6-class win by changing a duplicate class', () => 
     assert.match(res.reason, /6 classes/);
 });
 
-test('unfinished expansion cards stay out of live decks until full card art exists', () => {
+test('only expansion cards with full card art enter live decks', () => {
     loadCards();
     const liveCards = [
         ...gameState.availableLeaders,
@@ -276,6 +276,17 @@ test('unfinished expansion cards stay out of live decks until full card art exis
     assert.ok(liveExpansionCards.every(card => card.fullCardArtUrl));
     assert.deepEqual(
         [...new Set(liveExpansionCards.map(card => card.type))].sort(),
-        ['Modifier Card', 'Monster Card', 'Party Leader']
+        ['Magic Card', 'Modifier Card', 'Monster Card', 'Party Leader']
     );
+    assert.deepEqual(
+        liveExpansionCards
+            .filter(card => card.type === 'Magic Card')
+            .map(card => card.name)
+            .sort(),
+        ['Beast Call', 'Rapid Refresh']
+    );
+    assert.equal(liveExpansionCards.some(card => card.type === 'Hero Card'), false);
+    assert.equal(liveExpansionCards.some(card => card.type === 'Item Card'), false);
+    assert.equal(liveExpansionCards.some(card => card.type === 'Cursed Item Card'), false);
+    assert.equal(liveExpansionCards.some(card => card.type === 'Challenge Card'), false);
 });
