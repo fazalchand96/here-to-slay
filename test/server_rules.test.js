@@ -16,6 +16,7 @@ const {
     checkWinCondition,
     isValidItemEquipTarget,
     clearUntilNextTurnProtections,
+    loadCards,
     gameState
 } = require('../server');
 
@@ -198,22 +199,22 @@ test('slaying 3 monsters wins', () => {
     assert.match(res.reason, /3 monsters/);
 });
 
-test('assembling 7 different classes (leader + party) wins with the expansion', () => {
+test('assembling 6 different classes (leader + party) wins until expansion Heroes go live', () => {
     setBoard([{
         leader: leader('LEADER_WIZARD', 'Wizard'),
-        party: [heroOf('Fighter'), heroOf('Bard'), heroOf('Guardian'), heroOf('Ranger'), heroOf('Thief'), heroOf('Druid')],
+        party: [heroOf('Fighter'), heroOf('Bard'), heroOf('Guardian'), heroOf('Ranger'), heroOf('Thief')],
     }]);
     const res = checkWinCondition();
     assert.equal(res.winnerId, 'p0');
-    assert.match(res.reason, /7 classes/);
+    assert.match(res.reason, /6 classes/);
 });
 
-test('duplicate classes do NOT count toward the 7-class win', () => {
+test('duplicate classes do NOT count toward the 6-class win', () => {
     setBoard([{
         leader: leader('LEADER_FIGHTER', 'Fighter'),
         party: [heroOf('Fighter'), heroOf('Fighter'), heroOf('Bard'), heroOf('Thief'), heroOf('Ranger')],
     }]);
-    // Distinct classes: Fighter, Bard, Thief, Ranger = 4 < 7
+    // Distinct classes: Fighter, Bard, Thief, Ranger = 4 < 6
     assert.equal(checkWinCondition(), null);
 });
 
@@ -227,17 +228,34 @@ test('a Mask makes the equipped Hero count as the Mask\'s class for requirements
     assert.equal(meetsMonsterRequirements(fighterWithBardMask, '1 Fighter'), false); // original class is replaced
 });
 
-test('a Mask can complete the 7-class win by changing a duplicate class', () => {
-    // Leader Fighter + {Bard, Guardian, Ranger, Thief, Druid} + a second Fighter
-    // wearing a Wizard Mask -> the masked hero counts as Wizard -> 7 classes.
+test('a Mask can complete the 6-class win by changing a duplicate class', () => {
+    // Leader Fighter + {Bard, Guardian, Ranger, Thief} + a second Fighter
+    // wearing a Wizard Mask -> the masked hero counts as Wizard -> 6 classes.
     setBoard([{
         leader: leader('LEADER_FIGHTER', 'Fighter'),
         party: [
-            heroOf('Bard'), heroOf('Guardian'), heroOf('Ranger'), heroOf('Thief'), heroOf('Druid'),
+            heroOf('Bard'), heroOf('Guardian'), heroOf('Ranger'), heroOf('Thief'),
             heroOf('Fighter', { equippedItem: item('ITEM_MASK', 'Wizard Mask') }),
         ],
     }]);
     const res = checkWinCondition();
     assert.equal(res && res.winnerId, 'p0');
-    assert.match(res.reason, /7 classes/);
+    assert.match(res.reason, /6 classes/);
+});
+
+test('unfinished expansion cards stay out of live decks until full card art exists', () => {
+    loadCards();
+    const liveCards = [
+        ...gameState.availableLeaders,
+        ...gameState.monsterDeck,
+        ...gameState.mainDeck,
+    ];
+    const liveExpansionCards = liveCards.filter(card => card.expansion === 'Warrior & Druid');
+
+    assert.ok(liveExpansionCards.length > 0);
+    assert.ok(liveExpansionCards.every(card => card.fullCardArtUrl));
+    assert.deepEqual(
+        [...new Set(liveExpansionCards.map(card => card.type))].sort(),
+        ['Modifier Card', 'Monster Card', 'Party Leader']
+    );
 });

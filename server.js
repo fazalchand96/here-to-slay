@@ -204,6 +204,13 @@ function loadCards() {
 
         applyGeneratedCardArt(card, artIds, fullArtSources);
 
+        // Expansion cards enter live decks only after their complete baked card
+        // face exists. This lets us add names/rules ahead of the visual rollout
+        // without exposing unfinished cards during normal matches.
+        if (card.expansion && !card.fullCardArtUrl) {
+            return;
+        }
+
         if (card.type === 'Party Leader') {
             PARTY_LEADERS.push(card);
             gameState.availableLeaders.push(card);
@@ -305,8 +312,8 @@ function checkWinCondition() {
             if (cls) classes.add(cls);
         });
 
-        if (classes.size >= 7) {
-            return { winnerId: p.id, reason: 'assembled 7 classes' };
+        if (classes.size >= 6) {
+            return { winnerId: p.id, reason: 'assembled 6 classes' };
         }
     }
     return null;

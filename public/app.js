@@ -2173,7 +2173,7 @@ function buildBoardParts(data, ctx) {
     const slain = Math.min(myStats.monsters, 3);
     const slainPips = [0, 1, 2].map(i => `<span class="wt-pip${i < slain ? ' on' : ''}">${i < slain ? '✦' : '○'}</span>`).join('');
     const winTrackHtml = `<span class="wt-slain" title="Slay 3 monsters to win">Slain ${slainPips}</span>`
-        + `<span class="wt-classes" title="Collect 7 different classes to win">Classes <b>${myStats.uniqueClasses}/7</b></span>`;
+        + `<span class="wt-classes" title="Collect 6 different classes to win">Classes <b>${myStats.uniqueClasses}/6</b></span>`;
 
     // --- My hand ---
     const handHtml = me.hand.map(c => renderCard(c, true, true, false, isMyTurn)).join('');
