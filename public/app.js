@@ -1237,7 +1237,7 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
         ? `<div class="board-card-name" title="${card.name || ''}">${card.name || 'Unknown'}</div>`
         : '';
     // Per-class / per-type accent that tints the frame border + type ribbon (--cc).
-    const CLASS_TINT = { Fighter: 'var(--class-fighter)', Bard: 'var(--class-bard)', Guardian: 'var(--class-guardian)', Ranger: 'var(--class-ranger)', Thief: 'var(--class-thief)', Wizard: 'var(--class-wizard)' };
+    const CLASS_TINT = { Fighter: 'var(--class-fighter)', Bard: 'var(--class-bard)', Guardian: 'var(--class-guardian)', Ranger: 'var(--class-ranger)', Thief: 'var(--class-thief)', Wizard: 'var(--class-wizard)', Druid: 'var(--class-druid)', Warrior: 'var(--class-warrior)' };
     const TYPE_TINT = { 'Item Card': 'var(--gold)', 'Cursed Item Card': 'var(--class-wizard)', 'Magic Card': 'var(--class-wizard)', 'Modifier Card': '#5aa8b8', 'Challenge Card': '#e07a4a' };
     let cardTint, variantClass = '';
     if (card.type === 'Party Leader') { cardTint = 'var(--leader-pink)'; variantClass = ' card-leader'; }
@@ -2173,7 +2173,7 @@ function buildBoardParts(data, ctx) {
     const slain = Math.min(myStats.monsters, 3);
     const slainPips = [0, 1, 2].map(i => `<span class="wt-pip${i < slain ? ' on' : ''}">${i < slain ? '✦' : '○'}</span>`).join('');
     const winTrackHtml = `<span class="wt-slain" title="Slay 3 monsters to win">Slain ${slainPips}</span>`
-        + `<span class="wt-classes" title="Collect 6 different classes to win">Classes <b>${myStats.uniqueClasses}/6</b></span>`;
+        + `<span class="wt-classes" title="Collect 7 different classes to win">Classes <b>${myStats.uniqueClasses}/7</b></span>`;
 
     // --- My hand ---
     const handHtml = me.hand.map(c => renderCard(c, true, true, false, isMyTurn)).join('');

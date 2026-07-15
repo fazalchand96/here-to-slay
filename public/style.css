@@ -36,13 +36,15 @@
     --gold: #e8b84a;             /* brass/gold frame (mockup gold) */
     --gold-deep: #a87818;
 
-    /* Per-class colors (six classes; matches mockup CLASS map) */
+    /* Per-class colors; Warrior and Druid join the six base classes. */
     --class-fighter: #e05a4a;
     --class-bard: #e89a3a;
     --class-guardian: #e8c84a;
     --class-ranger: #5ab85a;
     --class-thief: #4a90d9;
     --class-wizard: #9a5ad9;
+    --class-druid: #4f9b77;
+    --class-warrior: #9b5962;
 
     /* Radii */
     --r-card: 8px;

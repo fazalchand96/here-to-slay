@@ -96,7 +96,7 @@ function pendingActionForTargetingPlan(plan, rollerId, skillId, heroId) {
     return { type: plan.type, originalActor: rollerId, skillId, heroId };
 }
 
-const CLASSES = ['Fighter', 'Bard', 'Guardian', 'Ranger', 'Thief', 'Wizard'];
+const CLASSES = ['Fighter', 'Bard', 'Guardian', 'Ranger', 'Thief', 'Wizard', 'Druid', 'Warrior'];
 
 const TARGETING_SKILLS = ['DESTROY_HERO', 'STEAL_HERO', 'MAGIC_DESTRUCTIVE', 'SKILL_MEOWZIO', 'SKILL_SHURIKITTY', 'SKILL_TIPSY_TOOTIE', 'SKILL_WHISKERS', 'SKILL_WIGGLES', 'SKILL_SERIOUS_GREY'];
 // Skills whose executeSkill consumes targetData and resolves immediately (single
@@ -134,6 +134,16 @@ function loadCardAssetIds(relativeDir, extension) {
     }
 }
 
+function loadFullCardArtSource(directory, extensions) {
+    const extensionById = new Map();
+    extensions.forEach(extension => {
+        loadCardAssetIds(`assets/skin/cards/${directory}`, extension).forEach(id => {
+            extensionById.set(id, extension.slice(1));
+        });
+    });
+    return { directory, extensionById };
+}
+
 // Card ids that have generated illustration art on disk (art-web/<id>.webp,
 // produced by scripts/compress-art.js). Selected card families additionally have
 // fully baked card faces; those are rendered whole on the board.
@@ -143,8 +153,9 @@ function applyGeneratedCardArt(card, artIds, fullArtSources) {
         card.illustrationArtUrl = `assets/skin/cards/art-web/${card.id}.webp`;
     }
     const fullArtSource = fullArtSources[card.type];
-    if (fullArtSource && fullArtSource.ids.has(card.id)) {
-        card.fullCardArtUrl = `assets/skin/cards/${fullArtSource.directory}/${card.id}.${fullArtSource.extension}`;
+    const fullArtExtension = fullArtSource?.extensionById.get(card.id);
+    if (fullArtSource && fullArtExtension) {
+        card.fullCardArtUrl = `assets/skin/cards/${fullArtSource.directory}/${card.id}.${fullArtExtension}`;
         card.artUrl = card.fullCardArtUrl;
         return;
     }
@@ -158,14 +169,14 @@ function loadCards() {
     const cards = JSON.parse(rawData);
     const artIds = loadCardAssetIds('assets/skin/cards/art-web', '.webp');
     const fullArtSources = {
-        'Monster Card': { directory: 'monster-fullgen-v1', extension: 'png', ids: loadCardAssetIds('assets/skin/cards/monster-fullgen-v1', '.png') },
-        'Party Leader': { directory: 'leader-fullgen-v1', extension: 'webp', ids: loadCardAssetIds('assets/skin/cards/leader-fullgen-v1', '.webp') },
-        'Item Card': { directory: 'item-fullgen-v1', extension: 'webp', ids: loadCardAssetIds('assets/skin/cards/item-fullgen-v1', '.webp') },
-        'Cursed Item Card': { directory: 'cursed-item-fullgen-v1', extension: 'webp', ids: loadCardAssetIds('assets/skin/cards/cursed-item-fullgen-v1', '.webp') },
-        'Magic Card': { directory: 'magic-fullgen-v1', extension: 'webp', ids: loadCardAssetIds('assets/skin/cards/magic-fullgen-v1', '.webp') },
-        'Hero Card': { directory: 'hero-fullgen-v1', extension: 'webp', ids: loadCardAssetIds('assets/skin/cards/hero-fullgen-v1', '.webp') },
-        'Modifier Card': { directory: 'modifier-fullgen-v1', extension: 'webp', ids: loadCardAssetIds('assets/skin/cards/modifier-fullgen-v1', '.webp') },
-        'Challenge Card': { directory: 'challenge-fullgen-v1', extension: 'webp', ids: loadCardAssetIds('assets/skin/cards/challenge-fullgen-v1', '.webp') }
+        'Monster Card': loadFullCardArtSource('monster-fullgen-v1', ['.png', '.webp']),
+        'Party Leader': loadFullCardArtSource('leader-fullgen-v1', ['.webp']),
+        'Item Card': loadFullCardArtSource('item-fullgen-v1', ['.webp']),
+        'Cursed Item Card': loadFullCardArtSource('cursed-item-fullgen-v1', ['.webp']),
+        'Magic Card': loadFullCardArtSource('magic-fullgen-v1', ['.webp']),
+        'Hero Card': loadFullCardArtSource('hero-fullgen-v1', ['.webp']),
+        'Modifier Card': loadFullCardArtSource('modifier-fullgen-v1', ['.webp']),
+        'Challenge Card': loadFullCardArtSource('challenge-fullgen-v1', ['.webp'])
     };
 
     // ALL_CARDS is a separate raw require of cards.json used for by-id lookups
@@ -286,7 +297,7 @@ function checkWinCondition() {
             return { winnerId: p.id, reason: 'slayed 3 monsters' };
         }
 
-        // Condition 2: 6 Different Classes in Party
+        // Condition 2: 7 Different Classes in Party with this expansion.
         const classes = new Set();
         if (p.leader) classes.add(p.leader.class);
         p.party.forEach(hero => {
@@ -294,8 +305,8 @@ function checkWinCondition() {
             if (cls) classes.add(cls);
         });
 
-        if (classes.size >= 6) {
-            return { winnerId: p.id, reason: 'assembled 6 classes' };
+        if (classes.size >= 7) {
+            return { winnerId: p.id, reason: 'assembled 7 classes' };
         }
     }
     return null;
