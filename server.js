@@ -1748,9 +1748,18 @@ io.on('connection', (socket) => {
     });
 
 /* --- MODIFIER / DICE PHASE --- */
-    socket.on('submit_modifier_action', (data) => {
-        if (gameState.state !== 'WAITING_FOR_MODIFIERS') return;
-        if (!gameState.pendingRoll) return;
+    socket.on('submit_modifier_action', (data, acknowledgement) => {
+        const reply = payload => {
+            if (typeof acknowledgement === 'function') acknowledgement(payload);
+        };
+        if (gameState.state !== 'WAITING_FOR_MODIFIERS') {
+            reply({ ok: false, reason: 'Modifier phase is no longer active.' });
+            return;
+        }
+        if (!gameState.pendingRoll || !gameState.players[socket.id]) {
+            reply({ ok: false, reason: 'Player or roll is unavailable.' });
+            return;
+        }
 
         // Ensure the array exists
         if (!gameState.passedModifiers) gameState.passedModifiers = [];
@@ -1847,10 +1856,17 @@ io.on('connection', (socket) => {
             if (!gameState.passedModifiers.includes(socket.id)) {
                 gameState.passedModifiers.push(socket.id);
             }
+            reply({ ok: true });
         }
 
-        // Check if ALL connected players have passed
-        if (gameState.passedModifiers.length >= Object.keys(gameState.players).length) {
+        // Seats in the reconnect grace period cannot respond and must not force
+        // the connected players to wait for the full modifier timer.
+        const connectedPlayerIds = Object.keys(gameState.players)
+            .filter(playerId => io.sockets.sockets.has(playerId));
+        const everyonePassed = connectedPlayerIds.length > 0
+            && connectedPlayerIds.every(playerId => gameState.passedModifiers.includes(playerId));
+
+        if (everyonePassed) {
 
             // End the phase
             gameState.passedModifiers = []; // Reset for future rolls

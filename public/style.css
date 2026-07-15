@@ -6849,18 +6849,19 @@ body.landscape #party-zone > .area-label,
 }
 
 #event-console #dice-overlay.mod-compact #modifier-instruction-text {
-    margin: 4px 0 !important;
-    color: #dff7ff !important;
-    font-size: .78rem !important;
-    line-height: 1.2 !important;
+    display: none !important;
 }
 
 #event-console #dice-overlay.mod-compact #dice-pass-btn {
     width: min(100%, 210px) !important;
-    min-height: 38px !important;
-    margin: 4px 0 0 !important;
-    padding: 6px 10px !important;
+    min-height: 42px !important;
+    flex: 0 0 42px !important;
+    margin: 8px auto 0 !important;
+    padding: 7px 12px !important;
     font-size: .76rem !important;
+    position: relative !important;
+    z-index: 12 !important;
+    pointer-events: auto !important;
 }
 
 #event-console #dice-overlay.mod-compact #dice-result-column #dice-container {

@@ -930,7 +930,6 @@ function hasPassedModifierPhase(state = latestGameState) {
 
 function syncModifierDecisionControls(state = latestGameState) {
     const passButton = document.getElementById('dice-pass-btn');
-    const instruction = document.getElementById('modifier-instruction-text');
     if (!passButton) return;
 
     if (!state || state.state !== 'WAITING_FOR_MODIFIERS') {
@@ -942,15 +941,6 @@ function syncModifierDecisionControls(state = latestGameState) {
     passButton.style.display = 'block';
     passButton.disabled = passed;
     passButton.innerText = passed ? 'WAITING FOR OTHERS...' : 'NO MODIFIERS TO PLAY';
-
-    if (instruction) {
-        const hand = state.players?.[myId]?.hand || [];
-        const modifierCount = hand.filter(card => card.type === 'Modifier Card').length;
-        instruction.style.display = passed ? 'none' : 'block';
-        instruction.innerHTML = modifierCount > 0
-            ? '<div>Tap a Modifier card in your hand to play it.</div>'
-            : '<div>No Modifier cards in hand.</div>';
-    }
 }
 
 
@@ -3547,32 +3537,15 @@ socket.on('dice_roll_pending', (data) => {
             // 3. INSTRUCTION HINT ABOVE PASS BUTTON. Modifiers are now played by
             // tapping the card in your hand (inspect → Play Modifier), not from
             // buttons inside this overlay.
-            let instructionEl = document.getElementById('modifier-instruction-text');
-            if (!instructionEl) {
-                instructionEl = document.createElement('div');
-                instructionEl.id = 'modifier-instruction-text';
-                instructionEl.style.width = '100%';
-                instructionEl.style.textAlign = 'center';
-                instructionEl.style.margin = '8px 0';
-                passBtn.parentNode.insertBefore(instructionEl, passBtn);
-            }
-
             const hasPassed = hasPassedModifierPhase();
 
             if (hasPassed) {
                 passBtn.disabled = true;
                 passBtn.innerText = "WAITING FOR OTHERS...";
-                instructionEl.innerHTML = '';
             } else {
                 passBtn.disabled = false;
                 passBtn.innerText = "NO MODIFIERS TO PLAY";
 
-                const hand = latestGameState && latestGameState.players[myId] ? latestGameState.players[myId].hand : [];
-                const modCount = hand.filter(c => c.type === 'Modifier Card').length;
-
-                instructionEl.innerHTML = modCount > 0
-                    ? `<div style="color: var(--text-muted); font-size: 0.95rem;">Tap a Modifier card in your hand to play it.</div>`
-                    : `<div style="color: var(--text-muted); font-size: 0.95rem;">No modifiers in hand.</div>`;
             }
         }
 
@@ -5287,18 +5260,17 @@ function executeManualRoll() {
 
 
 function passModifierPhase() {
-
-    socket.emit('submit_modifier_action', { action: 'PASS' });
-
     const passBtn = document.getElementById('dice-pass-btn');
-
     if (passBtn) {
-
         passBtn.disabled = true;
-
         passBtn.innerText = 'WAITING FOR OTHERS...';
-
     }
+
+    socket.emit('submit_modifier_action', { action: 'PASS' }, response => {
+        if (response?.ok || !passBtn) return;
+        passBtn.disabled = false;
+        passBtn.innerText = 'NO MODIFIERS TO PLAY';
+    });
 
 }
 
