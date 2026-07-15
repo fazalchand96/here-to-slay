@@ -456,6 +456,35 @@ test('Using a skill marks the hero as having used it this turn', () => {
 // Magic effects
 // ---------------------------------------------------------------------------
 
+test('MAGIC_BEAST_CALL replaces face-up Monsters and grants one extra AP', () => {
+    const alice = player('alice', { ap: 1 });
+    const oldMonsters = [card('Old 1', 'Monster Card'), card('Old 2', 'Monster Card'), card('Old 3', 'Monster Card')];
+    const newMonsters = [card('New 1', 'Monster Card'), card('New 2', 'Monster Card'), card('New 3', 'Monster Card')];
+    const gs = makeState([alice], { activeMonsters: [...oldMonsters], monsterDeck: [...newMonsters] });
+    executeMagic(gs, makeIo(), 'MAGIC_BEAST_CALL', 'alice', null);
+    assert.equal(alice.ap, 2);
+    assert.deepEqual(gs.activeMonsters, [newMonsters[2], newMonsters[1], newMonsters[0]]);
+    assert.deepEqual(gs.monsterDeck, oldMonsters);
+});
+
+test('MAGIC_RAPID_REFRESH discards any remaining hand and draws four cards', () => {
+    const oldCards = [card('Old 1', 'Hero Card'), card('Old 2', 'Item Card')];
+    const draws = [card('Draw 1', 'Hero Card'), card('Draw 2', 'Hero Card'), card('Draw 3', 'Hero Card'), card('Draw 4', 'Hero Card')];
+    const alice = player('alice', { hand: [...oldCards] });
+    const gs = makeState([alice], { mainDeck: [...draws] });
+    executeMagic(gs, makeIo(), 'MAGIC_RAPID_REFRESH', 'alice', null);
+    assert.deepEqual(gs.discardPile, oldCards);
+    assert.equal(alice.hand.length, 4);
+});
+
+test('MAGIC_RAPID_REFRESH also draws four with an empty hand', () => {
+    const alice = player('alice');
+    const draws = [1, 2, 3, 4].map(n => card(`Draw ${n}`, 'Hero Card'));
+    const gs = makeState([alice], { mainDeck: [...draws] });
+    executeMagic(gs, makeIo(), 'MAGIC_RAPID_REFRESH', 'alice', null);
+    assert.equal(alice.hand.length, 4);
+});
+
 test('MAGIC_ENCHANTED grants +2 magic roll bonus and reports success', () => {
     const p = player('alice');
     const gs = makeState([p]);

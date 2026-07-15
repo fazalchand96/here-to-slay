@@ -1035,6 +1035,25 @@ function executeMagic(gameState, io, effectId, playerId, targetData) {
     const drawCards = (num, p) => drawCardsWithPassives(gameState, io, num, p);
 
     switch(effectId) {
+        case 'MAGIC_BEAST_CALL': {
+            const faceUp = gameState.activeMonsters.splice(0);
+            gameState.monsterDeck.unshift(...faceUp);
+            while (gameState.activeMonsters.length < 3 && gameState.monsterDeck.length > 0) {
+                gameState.activeMonsters.push(gameState.monsterDeck.pop());
+            }
+            player.ap = (player.ap || 0) + 1;
+            actionMessage = `${getPlayerName(gameState, player.id)} cast Beast Call, replaced the face-up Monsters, and gained 1 extra action point this turn.`;
+            break;
+        }
+
+        case 'MAGIC_RAPID_REFRESH': {
+            const discardedCount = player.hand.length;
+            gameState.discardPile.push(...player.hand.splice(0));
+            drawCards(4, player);
+            actionMessage = `${getPlayerName(gameState, player.id)} cast Rapid Refresh, discarded ${discardedCount} card(s), and drew 4 cards.`;
+            break;
+        }
+
         case 'MAGIC_CALL_FALLEN':
             if (targetData && targetData.targetCardId) {
                 const cardIndex = gameState.discardPile.findIndex(c => c.id === targetData.targetCardId);
