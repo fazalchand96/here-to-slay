@@ -847,8 +847,6 @@ function playMagicResolution(card) {
     document.body.appendChild(display);
     const cleanup = () => display.remove();
     setTimeout(cleanup, 850);
-    const kind = MAGIC_BURST_MAP[card.effect_id] || (String(card.effect || '').match(/destroy|steal|discard|sacrifice/i) ? 'damage' : 'buff');
-    playResolutionBurst(display.querySelector('.card') || display, kind, { onDone: cleanup });
 }
 
 function playGameoverFinale() {
@@ -3469,7 +3467,6 @@ socket.on('dice_roll_pending', (data) => {
                     banner.innerHTML = buildChallengeEquationHTML(data);
                     
                     resultDisplay.innerText = `Active: ${data.activeFinalTotal} | Challenger: ${data.challengerFinalTotal}`;
-                    playResolutionBurst(banner, 'damage');
                 } else {
                     const r1 = data.roll1 || 1;
                     const r2 = data.roll2 || 1;
@@ -3641,7 +3638,6 @@ socket.on('modifier_played', (data) => {
     `;
 
     stagingArea.appendChild(cardEl);
-    playResolutionBurst(document.getElementById('math-breakdown-banner'), data.modValue >= 0 ? 'buff' : 'debuff');
 
 });
 
@@ -3757,7 +3753,6 @@ socket.on('challenge_resolved', (data) => {
         document.body.appendChild(display);
         const cleanup = () => display.remove();
         setTimeout(cleanup, 850);
-        playResolutionBurst(display.querySelector('.card') || display, 'damage', { onDone: cleanup });
         challengeModal.classList.add('hidden');
         challengeModal.style.display = 'none';
     }
