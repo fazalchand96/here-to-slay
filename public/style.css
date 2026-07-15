@@ -7388,3 +7388,242 @@ body.landscape #player-win-tracker {
     text-align: center !important;
     font-size: clamp(0.48rem, 1.25vw, 0.7rem) !important;
 }
+
+/* Compact local Party Dock. The complete party now lives in the class-sorted
+   modal, keeping the battlefield readable without hiding party progress. */
+#player-party {
+    overflow: hidden !important;
+    mask-image: none !important;
+    -webkit-mask-image: none !important;
+}
+#party-dock {
+    box-sizing: border-box;
+    position: relative;
+    width: min(96%, 760px);
+    height: min(96%, 112px);
+    min-height: 70px;
+    display: grid;
+    grid-template-columns: minmax(142px, 1.35fr) minmax(150px, 1.5fr) minmax(70px, .55fr) 30px;
+    align-items: center;
+    gap: clamp(6px, 1.2vw, 14px);
+    padding: 9px 12px;
+    border: 1px solid rgba(235, 195, 111, .72);
+    border-radius: 15px;
+    background:
+        linear-gradient(110deg, rgba(15, 31, 51, .95), rgba(24, 15, 42, .93)),
+        radial-gradient(circle at 50% 0, rgba(67, 177, 203, .18), transparent 60%);
+    box-shadow: inset 0 0 22px rgba(0, 5, 16, .76), 0 5px 12px rgba(0, 0, 0, .42);
+    color: #fff4d2;
+    font-family: var(--font-body);
+    text-align: left;
+    cursor: pointer;
+    isolation: isolate;
+}
+#party-dock::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    z-index: -1;
+    border: 1px solid rgba(91, 193, 216, .22);
+    border-radius: 11px;
+    pointer-events: none;
+}
+#party-dock:hover,
+#party-dock:focus-visible {
+    border-color: #ffe09a;
+    box-shadow: inset 0 0 22px rgba(0, 5, 16, .72), 0 0 16px rgba(79, 202, 225, .35), 0 6px 14px rgba(0, 0, 0, .46);
+    transform: translateY(-1px);
+}
+#party-dock.valid-target { animation: targetPulse 1.4s ease-in-out infinite; }
+.party-dock-copy { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.party-dock-copy > strong {
+    font-family: var(--font-display);
+    font-size: clamp(.72rem, 1.55vw, 1rem);
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    text-shadow: 0 2px 3px #000;
+}
+.party-dock-copy > strong b {
+    display: inline-grid;
+    place-items: center;
+    min-width: 19px;
+    height: 19px;
+    margin-left: 4px;
+    border-radius: 999px;
+    background: #d6a84f;
+    color: #231305;
+}
+.party-dock-copy small { color: rgba(233, 242, 255, .75); font-size: clamp(.52rem, 1vw, .68rem); white-space: nowrap; }
+.party-dock-classes { display: flex; gap: 3px; margin-top: 3px; min-height: 18px; }
+.party-dock-classes i { color: rgba(255,255,255,.5); font-size: .6rem; }
+.party-dock-class {
+    display: inline-grid;
+    place-items: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 3px;
+    border: 1px solid rgba(255,255,255,.45);
+    border-radius: 6px;
+    background: var(--class-color, #536276);
+    color: #fff;
+    font: 700 .56rem/1 var(--font-display);
+    text-shadow: 0 1px 2px #000;
+}
+[data-class="fighter"] { --class-color: #b64b36; }
+[data-class="bard"] { --class-color: #7954b8; }
+[data-class="guardian"] { --class-color: #50a7c4; }
+[data-class="ranger"] { --class-color: #4a9a58; }
+[data-class="thief"] { --class-color: #454b73; }
+[data-class="wizard"] { --class-color: #6c50a3; }
+[data-class="druid"] { --class-color: #16866f; }
+[data-class="warrior"] { --class-color: #a96538; }
+.party-dock-preview { min-width: 0; display: flex; align-items: center; justify-content: center; padding-left: 16px; }
+.party-dock-card {
+    width: clamp(34px, 4.5vw, 51px);
+    aspect-ratio: 2 / 3;
+    margin-left: clamp(-15px, -1.5vw, -8px);
+    flex: 0 0 auto;
+    border: 1px solid rgba(255, 224, 159, .75);
+    border-radius: 5px;
+    background-position: center;
+    background-size: cover;
+    box-shadow: 0 3px 7px rgba(0,0,0,.66);
+}
+.party-dock-card:nth-child(2n) { transform: translateY(-3px) rotate(1.5deg); }
+.party-dock-card:nth-child(2n + 1) { transform: translateY(2px) rotate(-1.5deg); }
+.party-dock-more {
+    display: grid;
+    place-items: center;
+    width: 29px;
+    height: 29px;
+    margin-left: -7px;
+    z-index: 3;
+    border-radius: 999px;
+    background: #e6b956;
+    border: 2px solid #4a280c;
+    color: #2b1707;
+    font-size: .68rem;
+}
+.party-dock-empty { color: rgba(255,255,255,.52); font-size: .64rem; font-style: italic; }
+.party-dock-slay { display: grid; grid-template-columns: auto auto; align-items: center; gap: 2px 7px; text-align: center; }
+.party-dock-slay strong { color: rgba(255,241,207,.72); font-size: .58rem; text-transform: uppercase; }
+.party-dock-slay > b { color: #ffe092; font: 700 .9rem/1 var(--font-display); }
+.party-dock-slay i { grid-column: 1 / -1; display: flex; justify-content: center; gap: 4px; }
+.party-dock-slay em { width: 8px; height: 8px; border: 1px solid #b79054; border-radius: 50%; background: #20152b; }
+.party-dock-slay em.on { background: #f0c04f; box-shadow: 0 0 7px #ffc84c; }
+.party-dock-open { color: #ffe19b; font: 700 1.45rem/1 var(--font-display); text-align: center; transform: rotate(-18deg); }
+
+/* Own Party modal: one fixed column per class, Heroes stacked top-to-bottom. */
+#opponent-modal.own-party-view > .glass-panel {
+    width: min(98vw, 1180px) !important;
+    max-width: 1180px !important;
+    height: min(94dvh, 760px) !important;
+    max-height: 94dvh !important;
+}
+#opponent-modal.own-party-view #opponent-modal-title { text-align: left !important; }
+.own-party-title-stats {
+    margin-left: 10px;
+    color: rgba(236, 226, 255, .74);
+    font: 500 .62em/1 var(--font-body);
+    letter-spacing: .03em;
+}
+#opponent-modal.own-party-view #opponent-modal-content {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    padding: 10px !important;
+}
+.party-class-grid {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(78px, 1fr));
+    align-items: start;
+    gap: 7px;
+    width: 100%;
+}
+.party-class-column {
+    min-width: 0;
+    min-height: 150px;
+    padding: 6px;
+    border: 1px solid color-mix(in srgb, var(--class-color) 62%, #f6d98c 38%);
+    border-radius: 10px;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--class-color) 36%, rgba(12,8,29,.9) 64%), rgba(8,5,24,.76));
+    box-shadow: inset 0 0 16px rgba(0,0,0,.32);
+}
+.party-class-column > header {
+    display: grid;
+    grid-template-columns: 10px minmax(0, 1fr) 17px;
+    align-items: center;
+    gap: 4px;
+    min-height: 24px;
+    margin-bottom: 6px;
+    color: #fff4d7;
+    font-family: var(--font-display);
+    font-size: clamp(.46rem, .85vw, .64rem);
+    text-transform: uppercase;
+    text-shadow: 0 1px 2px #000;
+}
+.party-class-column > header strong { overflow: hidden; text-overflow: ellipsis; }
+.party-class-column > header b { display: grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: var(--class-color); }
+.party-class-gem { width: 8px; height: 8px; border: 1px solid rgba(255,255,255,.7); border-radius: 50%; background: var(--class-color); box-shadow: 0 0 6px var(--class-color); }
+.party-class-leader {
+    width: 100%;
+    min-height: 29px;
+    margin-bottom: 6px;
+    padding: 3px 4px;
+    border: 1px solid rgba(255, 218, 126, .62);
+    border-radius: 7px;
+    background: rgba(223, 171, 67, .18);
+    color: #ffe29b;
+    font-size: clamp(.42rem, .7vw, .56rem);
+    line-height: 1.1;
+    cursor: pointer;
+}
+.party-class-leader span { display: block; font-size: .75rem; }
+.party-class-stack { display: flex; flex-direction: column; align-items: center; gap: 7px; min-height: 94px; }
+#opponent-modal.own-party-view .party-class-stack .card {
+    width: auto !important;
+    height: clamp(98px, 22dvh, 136px) !important;
+    max-height: 136px !important;
+    margin: 0 !important;
+    flex: 0 0 auto !important;
+}
+.party-class-empty {
+    display: grid;
+    place-items: center;
+    min-height: 76px;
+    color: rgba(236,226,255,.42);
+    font-size: .58rem;
+    font-style: italic;
+    text-align: center;
+}
+.own-party-monsters {
+    flex: 0 0 auto;
+    padding: 8px 10px;
+    border: 1px solid rgba(218,178,103,.28);
+    border-radius: 10px;
+    background: rgba(28,17,58,.42);
+}
+.own-party-monsters h3 {
+    margin: 0 0 7px;
+    color: #f1d78f;
+    font-size: .72rem;
+    letter-spacing: .08em;
+    text-align: center;
+    text-transform: uppercase;
+}
+.own-party-monsters h3 span { color: #fff; }
+.own-party-monster-row { display: flex; justify-content: center; align-items: center; gap: 9px; min-height: 82px; }
+#opponent-modal.own-party-view .own-party-monster-row .card { height: clamp(96px, 21dvh, 132px) !important; max-height: 132px !important; margin: 0 !important; }
+
+@media (max-width: 760px) {
+    #party-dock { grid-template-columns: minmax(120px, 1fr) minmax(110px, 1.1fr) 62px 24px; padding: 7px 8px; }
+    .party-dock-copy small { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+    .party-class-grid { grid-template-columns: repeat(4, minmax(76px, 1fr)); }
+}
+@media (max-height: 520px) {
+    #party-dock { height: 78px; min-height: 62px; }
+    #opponent-modal.own-party-view > .glass-panel { padding-top: 34px !important; padding-bottom: 30px !important; }
+    #opponent-modal.own-party-view .party-class-stack .card { height: 104px !important; }
+}

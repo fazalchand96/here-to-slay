@@ -535,7 +535,8 @@ function closeAllModals() {
 // highlighting). Derived from the Mask's name ("Bard Mask" -> "Bard").
 function effectiveHeroClass(hero) {
     if (!hero) return null;
-    const item = hero.equippedItem;
+    const item = [hero.equippedItem, hero.equippedItem2]
+        .find(equipped => equipped && equipped.effect_id === 'ITEM_MASK');
     if (item && item.effect_id === 'ITEM_MASK') {
         if (item.class) return item.class;
         const m = /^(\w+)\s+Mask$/.exec(item.name || '');
@@ -710,6 +711,39 @@ function updateWaitingOverlay(data) {
         WAITING_FOR_GLOBAL_ACTION: 'The shared action is being resolved.'
     };
     if (detail) detail.textContent = stateDetails[data.state] || 'The next action is being resolved.';
+}
+
+const PARTY_CLASS_ORDER = ['Fighter', 'Bard', 'Guardian', 'Ranger', 'Thief', 'Wizard', 'Druid', 'Warrior'];
+
+function buildClassPartyGrid(player, isOwn) {
+    const isMyTurn = latestGameState?.activePlayerSocketId === myId;
+    const columns = PARTY_CLASS_ORDER.map(className => {
+        const heroes = (player.party || []).filter(hero => effectiveHeroClass(hero) === className);
+        const leaderInClass = player.leader?.class === className;
+        const leaderMarker = leaderInClass
+            ? `<button class="party-class-leader" onclick="inspectCard('${player.leader.id}')" title="View ${player.leader.name}"><span>♛</span>${player.leader.name}</button>`
+            : '';
+        const heroCards = heroes.length
+            ? heroes.map(hero => renderCard(hero, isOwn, false, false, isMyTurn)).join('')
+            : `<div class="party-class-empty">Empty</div>`;
+        return `
+            <section class="party-class-column" data-class="${className.toLowerCase()}">
+                <header><span class="party-class-gem"></span><strong>${className}</strong><b>${heroes.length}</b></header>
+                ${leaderMarker}
+                <div class="party-class-stack">${heroCards}</div>
+            </section>`;
+    }).join('');
+
+    const monsters = (player.slainMonsters || []).length
+        ? player.slainMonsters.map(monster => renderCard(monster, isOwn, false, true, isMyTurn)).join('')
+        : `<div class="party-class-empty">No slain Monsters yet</div>`;
+
+    return `
+        <div class="party-class-grid">${columns}</div>
+        <section class="own-party-monsters">
+            <h3>Slain Monsters <span>${(player.slainMonsters || []).length}/3</span></h3>
+            <div class="own-party-monster-row">${monsters}</div>
+        </section>`;
 }
 
 
@@ -1338,6 +1372,23 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
 
 
 
+window.openOwnPartyModal = function() {
+    const me = latestGameState?.players?.[myId];
+    const modal = document.getElementById('opponent-modal');
+    const modalTitle = document.getElementById('opponent-modal-title');
+    const modalContent = document.getElementById('opponent-modal-content');
+    if (!me || !modal || !modalTitle || !modalContent) return;
+
+    currentlyViewedOpponentId = myId;
+    modal.dataset.view = 'own-party';
+    modal.classList.add('own-party-view');
+    modalTitle.innerHTML = `Your Party <span class="own-party-title-stats">${(me.party || []).length} Heroes · ${(me.slainMonsters || []).length}/3 Slain</span>`;
+    modalContent.innerHTML = buildClassPartyGrid(me, true);
+    modal.style.display = 'flex';
+    modal.classList.remove('hidden');
+    window._oppModalSig = oppModalSignature(myId);
+};
+
 window.openOpponentModal = function(id) {
 
     if (isLeaderSkillTargeting) {
@@ -1399,6 +1450,9 @@ window.openOpponentModal = function(id) {
 
 
     if (!modal) return;
+
+    modal.dataset.view = 'opponent';
+    modal.classList.remove('own-party-view');
 
 
 
@@ -1471,7 +1525,7 @@ function oppModalSignature(id) {
     const targetingActive = isSkillTargeting || isMultiTargeting || isLocalTargeting || isSelfItemTargeting || myTargetMode;
     return JSON.stringify({
         l: opp.leader ? opp.leader.id : null,
-        p: (opp.party || []).map(h => `${h.id}:${h.equippedItem ? h.equippedItem.id : ''}`),
+        p: (opp.party || []).map(h => `${h.id}:${h.equippedItem ? h.equippedItem.id : ''}:${h.equippedItem2 ? h.equippedItem2.id : ''}:${effectiveHeroClass(h) || ''}`),
         m: (opp.slainMonsters || []).map(monster => monster.id),
         t: targetingActive,
         s: latestGameState ? latestGameState.state : null,
@@ -1496,6 +1550,8 @@ window.closeOpponentModal = function() {
         modal.classList.add('hidden');
 
         modal.style.display = 'none';
+        modal.classList.remove('own-party-view');
+        delete modal.dataset.view;
 
     }
 
@@ -2173,23 +2229,33 @@ function buildBoardParts(data, ctx) {
     // --- My party leader (rendered into #leader-slot on the tray, NOT prepended
     //     to the party row) + party + slain ---
     const leaderHtml = me.leader ? renderCard(me.leader, true, false, false, isMyTurn) : '';
-    let partyHtml = '';
-    if (me.party && me.party.length > 0) {
-        const sortedMyParty = [...me.party].sort((a, b) => {
-            const classA = a.class || '';
-            const classB = b.class || '';
-            return classA.localeCompare(classB);
-        });
-        partyHtml += sortedMyParty.map(c => renderCard(c, true, false, false, isMyTurn)).join('');
-    }
-    if (me.slainMonsters.length > 0) {
-        partyHtml += `<div class="slain-monsters-container">
-            <h3>Slain (${me.slainMonsters.length}/3)</h3>
-            <div class="slain-monsters-list">
-                ${me.slainMonsters.map(m => `<div class="slain-monster-icon" data-id="${m.id}" onclick="inspectCard('${m.id}')" style="background-image:url('${cardArt(m)}'); cursor:pointer;" title="${m.name}"></div>`).join('')}
-            </div>
-        </div>`;
-    }
+    const classCounts = new Map();
+    (me.party || []).forEach(hero => {
+        const className = effectiveHeroClass(hero);
+        if (className) classCounts.set(className, (classCounts.get(className) || 0) + 1);
+    });
+    if (me.leader?.class && !classCounts.has(me.leader.class)) classCounts.set(me.leader.class, 0);
+    const classChips = PARTY_CLASS_ORDER
+        .filter(className => classCounts.has(className))
+        .map(className => `<span class="party-dock-class" data-class="${className.toLowerCase()}" title="${className}">${className.slice(0, 1)}${classCounts.get(className) || ''}</span>`)
+        .join('');
+    const previewHeroes = (me.party || []).slice(0, 4);
+    const previewCards = previewHeroes.length
+        ? previewHeroes.map(hero => `<span class="party-dock-card" style="background-image:url('${cardArt(hero)}')" title="${hero.name}"></span>`).join('')
+        : `<span class="party-dock-empty">Your Heroes will appear here</span>`;
+    const hiddenHeroCount = Math.max(0, (me.party || []).length - previewHeroes.length);
+    const targetingParty = myTargetMode || isLocalTargeting || isSelfItemTargeting;
+    const partyHtml = `
+        <button id="party-dock" class="party-dock${targetingParty ? ' valid-target' : ''}" type="button" onclick="openOwnPartyModal()" aria-label="Open your full party">
+            <span class="party-dock-copy">
+                <strong>Your Party <b>${(me.party || []).length}</b></strong>
+                <small>${targetingParty ? 'Tap to select a Hero' : 'Tap your party to view all Heroes'}</small>
+                <span class="party-dock-classes">${classChips || '<i>No classes yet</i>'}</span>
+            </span>
+            <span class="party-dock-preview">${previewCards}${hiddenHeroCount ? `<b class="party-dock-more">+${hiddenHeroCount}</b>` : ''}</span>
+            <span class="party-dock-slay"><strong>Slain</strong><b>${(me.slainMonsters || []).length}/3</b><i>${[0, 1, 2].map(i => `<em class="${i < (me.slainMonsters || []).length ? 'on' : ''}"></em>`).join('')}</i></span>
+            <span class="party-dock-open" aria-hidden="true">⌕</span>
+        </button>`;
 
     // --- Local win tracker --- (Phase 7: slain ✦✦○ pips + X/6 classes; both win paths)
     const myStats = calculateWinStats(me);
@@ -3173,7 +3239,8 @@ function renderBoard(data) {
     // which looked like "nothing happened" when targeting in multiplayer.
     if (currentlyViewedOpponentId && opponentModal && !opponentModal.classList.contains('hidden')) {
         if (oppModalSignature(currentlyViewedOpponentId) !== window._oppModalSig) {
-            openOpponentModal(currentlyViewedOpponentId);
+            if (opponentModal.dataset.view === 'own-party') openOwnPartyModal();
+            else openOpponentModal(currentlyViewedOpponentId);
         }
     }
 
@@ -3285,7 +3352,8 @@ function renderBoard(data) {
     // My Area
 
     setRegionHtml(playerParty, boardParts.partyHtml);
-    setCardCountState(playerParty, (me.party || []).length + (me.slainMonsters || []).length);
+    playerParty?.classList.remove('cards-many', 'cards-crowded', 'cards-packed');
+    if (playerParty) delete playerParty.dataset.cardCount;
 
     // Party leader — raised on the tray (own slot), not in the party row.
     setRegionHtml(document.getElementById('leader-slot'), boardParts.leaderHtml);
