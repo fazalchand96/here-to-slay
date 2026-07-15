@@ -84,6 +84,8 @@ function clearUntilNextTurnProtections(player) {
     if (!player) return;
     player.cannotBeStolen = false;
     player.cannotBeDestroyed = false;
+    player.maegistyActive = false;
+    player.untilNextTurnRollBonus = 0;
 }
 
 function pendingActionForTargetingPlan(plan, rollerId, skillId, heroId) {
@@ -105,10 +107,10 @@ const TARGETING_SKILLS = ['DESTROY_HERO', 'STEAL_HERO', 'MAGIC_DESTRUCTIVE', 'SK
 // their executeSkill sets up its own pull-targeting (LOOK_AND_PULL/PUMA_PULL/
 // CONDITIONAL_PULL), so listing them here caused a double player-selection that
 // soft-locked (you picked once, then had no clickable opponent for the pull).
-const PLAYER_TARGETING_SKILLS = ['PULL_CARD', 'SKILL_HEAVY_BEAR', 'TRADE_HANDS', 'SKILL_SHARP_FOX', 'SKILL_SILENT_SHADOW', 'SKILL_SLIPPERY_PAWS', 'SKILL_HOPPER'];
-const DISCARD_TARGETING_SKILLS = ['SKILL_GUIDING_LIGHT', 'SKILL_RADIANT_HORN', 'SKILL_LOOKIE_ROOKIE', 'SKILL_BUN_BUN', 'MAGIC_CALL_FALLEN'];
+const PLAYER_TARGETING_SKILLS = ['PULL_CARD', 'SKILL_HEAVY_BEAR', 'TRADE_HANDS', 'SKILL_SHARP_FOX', 'SKILL_SILENT_SHADOW', 'SKILL_SLIPPERY_PAWS', 'SKILL_HOPPER', 'SKILL_BUCK_OMENS', 'SKILL_BLINDING_BLADE'];
+const DISCARD_TARGETING_SKILLS = ['SKILL_GUIDING_LIGHT', 'SKILL_RADIANT_HORN', 'SKILL_LOOKIE_ROOKIE', 'SKILL_BUN_BUN', 'SKILL_MAGUS_MOOSE', 'MAGIC_CALL_FALLEN'];
 const SELF_ITEM_TARGETING_SKILLS = ['SKILL_HOLY_CURSELIFTER'];
-const MULTI_TARGETING_SKILLS = ['SKILL_FLUFFY'];
+const MULTI_TARGETING_SKILLS = ['SKILL_FLUFFY', 'SKILL_TENACIOUS_TIMBER'];
 
 let PARTY_LEADERS = [];
 let trackedCardsPlayed = [];
@@ -236,6 +238,10 @@ function shuffle(array) {
 function dealCards(count, playerSocketId) {
     const player = gameState.players[playerSocketId];
     if (count === 1 && gameState.state === 'PLAYING') {
+        if (gameState.mainDeck.length === 0) {
+            drawCardsWithPassives(gameState, io, 1, player);
+            return;
+        }
         if (gameState.mainDeck.length > 0) {
             const nextCard = gameState.mainDeck[gameState.mainDeck.length - 1];
             const hasMalamammoth = player.slainMonsters && player.slainMonsters.some(m => m.effect_id === 'MONSTER_MALAMAMMOTH');
@@ -281,16 +287,17 @@ function maskClass(item) {
 }
 function effectiveHeroClass(hero) {
     if (!hero) return null;
-    return (hero.equippedItem && maskClass(hero.equippedItem)) || hero.class;
+    return [hero.equippedItem, hero.equippedItem2].map(maskClass).find(Boolean) || hero.class;
 }
 
 // Decoy Doll (ITEM_DECOY): sacrifice the Doll to save the Hero from sacrifice/destroy.
 // Auto-applied (always the better choice). Returns true if it absorbed the effect.
 function consumeDecoyDoll(targetHero, action = 'DESTROY') {
     if (action === 'STEAL') return false;
-    if (targetHero && targetHero.equippedItem && targetHero.equippedItem.effect_id === 'ITEM_DECOY') {
-        gameState.discardPile.push(targetHero.equippedItem);
-        targetHero.equippedItem = null;
+    const slot = ['equippedItem', 'equippedItem2'].find(key => targetHero?.[key]?.effect_id === 'ITEM_DECOY');
+    if (slot) {
+        gameState.discardPile.push(targetHero[slot]);
+        targetHero[slot] = null;
         return true;
     }
     return false;
@@ -382,7 +389,41 @@ function resetToPlayingState() {
     gameState.pendingChallenge = null;
 }
 
+function resumeExpansionChoices() {
+    if (gameState.state !== 'PLAYING' || gameState.pendingAction || gameState.pendingCard || gameState.pendingChallenge) return;
+
+    if (gameState.pendingSilentShieldActorId) {
+        const playerId = gameState.pendingSilentShieldActorId;
+        gameState.pendingSilentShieldActorId = null;
+        if (gameState.players[playerId]?.silentShieldActive && gameState.discardPile.some(card => card.type === 'Hero Card')) {
+            gameState.state = 'WAITING_FOR_SKILL_TARGET';
+            gameState.pendingAction = {
+                type: 'SKILL_TARGET_DISCARD', originalActor: playerId, playerToChoose: playerId,
+                skillId: 'SKILL_SILENT_SHIELD_RETRIEVE', optional: true
+            };
+            return;
+        }
+    }
+
+    const queue = gameState.freePlayQueue;
+    if (!queue) return;
+    const player = gameState.players[queue.playerId];
+    const eligible = (player?.hand || []).filter(card => queue.allowedTypes.includes(card.type)
+        && (!queue.allowedCardIds || queue.allowedCardIds.includes(card.id)));
+    if (queue.remaining <= 0 || eligible.length === 0) {
+        gameState.freePlayQueue = null;
+        return;
+    }
+    gameState.state = 'WAITING_FOR_HAND_SELECTION';
+    gameState.pendingAction = {
+        type: 'PLAY_FROM_HAND', allowedTypes: queue.allowedTypes, allowedCardIds: queue.allowedCardIds,
+        playerToChoose: queue.playerId, originalActor: queue.playerId,
+        optional: !queue.mandatory, expansionFreePlay: true
+    };
+}
+
 function broadcastState() {
+    resumeExpansionChoices();
     // Hide hands of other players before sending
     const stateToSend = JSON.parse(JSON.stringify(gameState)); console.log(`[DEBUG] broadcastState: playerOrder=${gameState.playerOrder.join(", ")}, players:`, Object.keys(gameState.players).map(k => `${k} has ${gameState.players[k].hand.length} cards`));
     console.log(`[DEBUG] broadcastState -> state=${gameState.state}, mainDeck=${gameState.mainDeck.length}, monsterDeck=${gameState.monsterDeck.length}, activeMonsters=${gameState.activeMonsters.length}`);
@@ -444,10 +485,15 @@ function resolvePendingCard() {
             if (targetPlayer) {
                 const targetHero = targetPlayer.party.find(h => h.id === targetHeroId);
                 if (targetHero) {
-                    if (targetHero.equippedItem) {
+                    const hasSecondSlot = Number(targetHero.item_slots || 1) >= 2;
+                    if (!targetHero.equippedItem) {
+                        targetHero.equippedItem = card;
+                    } else if (hasSecondSlot && !targetHero.equippedItem2) {
+                        targetHero.equippedItem2 = card;
+                    } else {
                         gameState.discardPile.push(targetHero.equippedItem);
+                        targetHero.equippedItem = card;
                     }
-                    targetHero.equippedItem = card;
                     io.emit('message', `${getPlayerName(gameState, player.id)} equipped ${card.name} to ${targetHero.name}!`);
                 } else {
                     gameState.discardPile.push(card);
@@ -554,6 +600,15 @@ function calculateRollDetails(player, baseRoll, context, targetCard = null) {
         }
     }
 
+    if (player.untilNextTurnRollBonus) {
+        total += player.untilNextTurnRollBonus;
+        breakdown.push({ source: 'Majestelk', value: player.untilNextTurnRollBonus });
+    }
+    if (context === 'ATTACK' && player.attackRollBonus) {
+        total += player.attackRollBonus;
+        breakdown.push({ source: 'Critical Fang', value: player.attackRollBonus });
+    }
+
     // 4. Check Global Item Effects (None currently modify rolls globally)
 
     // 5. Check Target-Specific Equipped Items
@@ -573,6 +628,12 @@ function calculateRollDetails(player, baseRoll, context, targetCard = null) {
     }
 
     return { total, breakdown };
+}
+
+function isHeroSkillRollSuccessful(hero, roll) {
+    return hero?.rollType === 'LOW_ROLL'
+        ? roll <= hero.roll_requirement
+        : roll >= hero.roll_requirement;
 }
 
 // Count Hero cards belonging to the actor's OPPONENTS that can actually be
@@ -764,7 +825,7 @@ function resolvePendingRoll() {
             // Strictly enforce usage flag whether roll succeeds or fails
             hero.usedSkillThisTurn = true;
             
-            if (finalRoll >= hero.roll_requirement) {
+            if (isHeroSkillRollSuccessful(hero, finalRoll)) {
                 const hasAries = player.slainMonsters && player.slainMonsters.some(m => m.effect_id === 'MONSTER_ARTIC_ARIES');
                 if (hasAries) {
                     io.emit('message', `${getPlayerName(gameState, player.id)} draws a card due to Artic Aries!`);
@@ -807,7 +868,10 @@ function resolvePendingRoll() {
                             type: 'SKILL_TARGET_MULTI',
                             originalActor: rollerId,
                             skillId: hero.skill_id,
-                            heroId: hero.id
+                            heroId: hero.id,
+                            maxTargets: hero.skill_id === 'SKILL_TENACIOUS_TIMBER'
+                                ? Math.max(0, (player.slainMonsters || []).length)
+                                : 2
                         };
                     } else {
                         nextAction = {
@@ -867,12 +931,21 @@ function resolvePendingRoll() {
                         io.emit('message', `${getPlayerName(gameState, player.id)} successfully rolled for ${hero.name}! Waiting for them to select an item...`);
                         broadcastState();
                     } else if (MULTI_TARGETING_SKILLS.includes(hero.skill_id)) {
+                        const maxTargets = hero.skill_id === 'SKILL_TENACIOUS_TIMBER'
+                            ? Math.max(0, (player.slainMonsters || []).length)
+                            : 2;
+                        if (maxTargets === 0) {
+                            executeSkill(gameState, io, hero.skill_id, rollerId, hero.id, { targetHeroIds: [] });
+                            broadcastState();
+                            return;
+                        }
                         gameState.state = 'WAITING_FOR_SKILL_TARGET';
                         gameState.pendingAction = {
                             type: 'SKILL_TARGET_MULTI',
                             originalActor: rollerId,
                             skillId: hero.skill_id,
-                            heroId: hero.id
+                            heroId: hero.id,
+                            maxTargets
                         };
                         io.emit('message', `${getPlayerName(gameState, player.id)} successfully rolled for ${hero.name}! Waiting for them to select targets...`);
                         broadcastState();
@@ -892,7 +965,8 @@ function resolvePendingRoll() {
                     }
                 }
             } else {
-                io.emit('message', `${getPlayerName(gameState, player.id)}'s skill roll for ${hero.name} failed! (Needed ${hero.roll_requirement}+, rolled ${finalRoll})`);
+                const requirementText = hero.rollType === 'LOW_ROLL' ? `${hero.roll_requirement} or lower` : `${hero.roll_requirement} or higher`;
+                io.emit('message', `${getPlayerName(gameState, player.id)}'s skill roll for ${hero.name} failed! (Needed ${requirementText}, rolled ${finalRoll})`);
                 
                 if (refundTemporalHourglass(hero, player, gameState.pendingRoll.apSpent)) {
                     io.emit('message', `Temporal Hourglass returned the action point spent on ${hero.name}'s failed skill roll.`);
@@ -1581,6 +1655,21 @@ io.on('connection', (socket) => {
         const player = gameState.players[socket.id];
         if (!player) return;
 
+        if (skillId === 'SKILL_BUCK_OMENS') {
+            const peek = gameState.pendingPeek;
+            const target = peek?.targetPlayerId && gameState.players[peek.targetPlayerId];
+            if (!peek || peek.skillId !== skillId || peek.rollerId !== socket.id || !peek.allowedCardIds?.includes(cardId) || !target) return;
+            const index = target.hand.findIndex(card => card.id === cardId && card.type === 'Hero Card');
+            if (index === -1) return;
+            const hero = target.hand.splice(index, 1)[0];
+            hero.usedSkillThisTurn = false;
+            player.party.push(hero);
+            gameState.pendingPeek = null;
+            io.emit('message', `${getPlayerName(gameState, player.id)} brought ${hero.name} directly into their party with Buck Omens.`);
+            broadcastState();
+            return;
+        }
+
         // Verify the user was peeking from BULLSEYE (top 3 cards)
         if (skillId === 'SKILL_BULLSEYE') {
             const peek = gameState.pendingPeek;
@@ -1989,6 +2078,12 @@ io.on('connection', (socket) => {
             return;
         }
 
+        const activeTurnPlayer = gameState.players[gameState.activePlayerSocketId];
+        if (data.action === 'PLAY' && activeTurnPlayer?.stagguardActive && socket.id !== gameState.activePlayerSocketId) {
+            reply({ ok: false, reason: 'Stagguard prevents other players from playing Modifiers this turn.' });
+            return;
+        }
+
         // Ensure the array exists
         if (!gameState.passedModifiers) gameState.passedModifiers = [];
 
@@ -2134,6 +2229,7 @@ io.on('connection', (socket) => {
 
         if (data.cancel && (gameState.pendingAction.optional || !player.hand.some(c => gameState.pendingAction.allowedTypes.includes(c.type)))) {
             io.emit('message', `${getPlayerName(gameState, player.id)} declined to play a card.`);
+            if (gameState.pendingAction.expansionFreePlay) gameState.freePlayQueue = null;
             resetToPlayingState();
             broadcastState();
             return;
@@ -2150,6 +2246,10 @@ io.on('connection', (socket) => {
                 // it for a Magic follow-up (forcing PLAYING and clobbering a Hero's
                 // skill-roll prompt — Hook / Quick Draw / Fuzzy Cheeks).
                 const thenDraw = gameState.pendingAction.thenDraw || 0;
+                if (gameState.pendingAction.expansionFreePlay && gameState.freePlayQueue) {
+                    gameState.freePlayQueue.remaining -= 1;
+                    if (gameState.freePlayQueue.remaining <= 0) gameState.freePlayQueue = null;
+                }
                 gameState.pendingAction = null;
                 player.hand.splice(cardIndex, 1);
                 gameState.pendingCard = card;
@@ -2239,23 +2339,53 @@ socket.on('resolve_immediate_play', (data) => {
         const tHeroIndex = player.party.findIndex(h => h.id === data.targetHeroId);
         if (tHeroIndex !== -1) {
             const targetHero = player.party[tHeroIndex];
+            const pendingSkillId = gameState.pendingAction.skillId;
             if (consumeDecoyDoll(targetHero, 'SACRIFICE')) {
                 io.emit('message', `${getPlayerName(gameState, socket.id)} discarded Decoy Doll instead of sacrificing ${targetHero.name}!`);
-            } else {
-                if (targetHero.equippedItem) {
-                    gameState.discardPile.push(targetHero.equippedItem);
-                    targetHero.equippedItem = null;
-                }
+            } else if (player.maegistyActive) {
+                const items = equippedItems(targetHero);
                 player.party.splice(tHeroIndex, 1);
+                targetHero.equippedItem = null;
+                targetHero.equippedItem2 = null;
+                player.hand.push(targetHero, ...items);
+                io.emit('message', `${targetHero.name} and its equipped Items returned to ${getPlayerName(gameState, socket.id)}'s hand due to Maegisty.`);
+            } else {
+                player.party.splice(tHeroIndex, 1);
+                equippedItems(targetHero).forEach(item => gameState.discardPile.push(item));
+                targetHero.equippedItem = null;
+                targetHero.equippedItem2 = null;
                 gameState.discardPile.push(targetHero);
                 triggerSoulTethers(gameState, player);
-                io.emit('message', `${getPlayerName(gameState, socket.id)} sacrificed their ${targetHero.name} as a penalty!`);
+                if (player.silentShieldActive) gameState.pendingSilentShieldActorId = socket.id;
+                io.emit('message', `${getPlayerName(gameState, socket.id)} sacrificed their ${targetHero.name}!`);
             }
             triggerFeralDragon(socket.id);
-            
-            resetToPlayingState();
+
+            if (pendingSkillId === 'SKILL_DOE_FALLOW') {
+                resetToPlayingState();
+                const amount = Math.max(0, 7 - player.hand.length);
+                drawCardsWithPassives(gameState, io, amount, player);
+                io.emit('message', `${getPlayerName(gameState, socket.id)} drew ${amount} card(s) to reach 7 cards with Doe Fallow.`);
+            } else if (pendingSkillId === 'SKILL_MAJESTELK') {
+                gameState.state = 'WAITING_FOR_MAJESTELK_CHOICE';
+                gameState.pendingAction = { type: 'MAJESTELK_CHOICE', playerToChoose: socket.id, originalActor: socket.id };
+                broadcastState();
+                return;
+            } else {
+                resetToPlayingState();
+            }
             broadcastState();
         }
+    });
+
+    socket.on('choose_majestelk_modifier', ({ value }) => {
+        if (gameState.state !== 'WAITING_FOR_MAJESTELK_CHOICE' || gameState.pendingAction?.playerToChoose !== socket.id) return;
+        if (![5, -5].includes(value)) return;
+        const player = gameState.players[socket.id];
+        player.untilNextTurnRollBonus = value;
+        io.emit('message', `${getPlayerName(gameState, socket.id)} chose ${value > 0 ? '+' : ''}${value} with Majestelk until the start of their next turn.`);
+        resetToPlayingState();
+        broadcastState();
     });
 
     socket.on('submit_penalty_discard', (data) => {
@@ -2447,6 +2577,21 @@ socket.on('resolve_immediate_play', (data) => {
         if (pAction.playerToChoose !== socket.id) return;
 
         const player = gameState.players[socket.id];
+
+        if (pAction.type === 'FREE_ATTACK') {
+            const monster = gameState.activeMonsters.find(card => card.id === targetId);
+            if (!monster || !meetsMonsterRequirements(player, monster.requirement)) return;
+            gameState.pendingAction = null;
+            gameState.state = 'WAITING_TO_ROLL';
+            gameState.pendingRoll = {
+                type: 'ATTACK', rollerId: socket.id, targetId: monster.id,
+                roll1: 0, roll2: 0, passiveBonus: 0, modifierTotal: 0,
+                baseRoll: 0, currentRoll: 0, passedPlayers: [], freeAttack: true
+            };
+            io.emit('message', `${getPlayerName(gameState, socket.id)} selected ${monster.name} for Big Buckley's free attack.`);
+            broadcastState();
+            return;
+        }
         
         if (pAction.type === 'DISCARD') {
             const cardIndex = player.hand.findIndex(c => c.id === targetId);
@@ -2520,12 +2665,20 @@ socket.on('resolve_immediate_play', (data) => {
                             triggerCursedGlove(gameState, p, thief);
                             io.emit('message', `Stole ${hero.name}!`);
                         } else if (pAction.type === 'DESTROY') {
-                            gameState.discardPile.push(hero);
-                            if (hero.equippedItem) {
-                                gameState.discardPile.push(hero.equippedItem);
+                            const items = equippedItems(hero);
+                            hero.equippedItem = null;
+                            hero.equippedItem2 = null;
+                            if (p.maegistyActive) {
+                                p.hand.push(hero, ...items);
+                                io.emit('message', `${hero.name} and its Items returned to ${getPlayerName(gameState, p.id)}'s hand due to Maegisty.`);
+                            } else {
+                                gameState.discardPile.push(hero, ...items);
+                                if (gameState.players[pAction.originalActor]?.silentShieldActive) {
+                                    gameState.pendingSilentShieldActorId = pAction.originalActor;
+                                }
+                                triggerSoulTethers(gameState, p);
+                                io.emit('message', `Destroyed ${hero.name}!`);
                             }
-                            triggerSoulTethers(gameState, p);
-                            io.emit('message', `Destroyed ${hero.name}!`);
 
                             const hasDracos = p.slainMonsters && p.slainMonsters.some(m => m.effect_id === 'MONSTER_DRACOS');
                             if (hasDracos) {
@@ -2817,6 +2970,9 @@ socket.on('resolve_immediate_play', (data) => {
         currentPlayer.magicRollBonus = 0; // Clear at end of turn
         currentPlayer.rollBonus = 0;      // Wise Shield / Vibrant Glow expire at end of turn
         currentPlayer.rollBonusSources = [];
+        currentPlayer.attackRollBonus = 0;
+        currentPlayer.stagguardActive = false;
+        currentPlayer.silentShieldActive = false;
         currentPlayer.cannotBeChallenged = false; // Iron Resolve lasts only this turn
         currentPlayer.usedLeaderSkillThisTurn = false;
         
@@ -2884,6 +3040,7 @@ if (require.main === module) {
 // functions not covered by the skill_engine matrix.
 module.exports = {
     calculateRollDetails,
+    isHeroSkillRollSuccessful,
     meetsMonsterRequirements,
     checkWinCondition,
     loadCards,

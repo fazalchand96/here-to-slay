@@ -1199,7 +1199,7 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
             // their harmful intent, and the regular equip glow for normal items.
             glowClass += isCurseEquip() ? ' valid-target valid-target-steal' : ' valid-target valid-target-equip';
 
-        } else if (myTargetMode && !inHand && isMine && currentPendingAction.type === 'PENALTY' && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE' && card.type === 'Hero Card') {
+        } else if (myTargetMode && !inHand && isMine && ['PENALTY', 'DRUID_SKILL_SACRIFICE'].includes(currentPendingAction.type) && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE' && card.type === 'Hero Card') {
 
             glowClass += ' valid-target valid-target-steal';
 
@@ -1229,6 +1229,11 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
 
         }
 
+    }
+
+    if (isMonster && myTargetMode && currentPendingAction?.type === 'FREE_ATTACK'
+        && meetsMonsterRequirements(latestGameState.players[myId], card.requirement)) {
+        glowClass += ' attackable-monster valid-target';
     }
 
 
@@ -1436,7 +1441,6 @@ window.openOpponentModal = function(id) {
     } else {
         cardsHtml += `<section class="opponent-party-section opponent-heroes-section"><h3>Heroes (0)</h3><div class="opponent-empty-state">No Heroes in this party yet.</div></section>`;
     }
-
     if (opp.slainMonsters && opp.slainMonsters.length > 0) {
         cardsHtml += `<section class="opponent-party-section slain-monsters-container"><h3>Slain Monsters (${opp.slainMonsters.length}/3)</h3><div class="slain-monsters-list">${opp.slainMonsters.map(m => `<div class="slain-monster-icon" data-id="${m.id}" onclick="inspectCard('${m.id}')" style="background-image:url('${cardArt(m)}'); cursor:pointer;" title="${m.name}"></div>`).join('')}</div></section>`;
     }
@@ -2833,8 +2837,9 @@ function renderBoard(data) {
                 if (!isMultiTargeting) multiTargetSelected = [];
 
                 isMultiTargeting = true;
+                multiTargetMax = Math.max(1, data.pendingAction.maxTargets || 2);
 
-                targetBannerText.innerText = "Select up to 2 opponent Heroes to target.";
+                targetBannerText.innerText = `Select up to ${multiTargetMax} opponent Heroes to target.`;
 
                 targetBannerText.innerHTML += ` <button onclick="submitMultiTargets()" style="margin-left: 10px; padding: 5px 10px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer;">Submit Targets</button>`;
 
@@ -2936,7 +2941,9 @@ function renderBoard(data) {
 
             targetBanner?.classList.remove('hidden');
 
-            targetBannerText.innerText = `SELECT ONE OF YOUR HEROES TO SACRIFICE AS A PENALTY`;
+            targetBannerText.innerText = data.pendingAction.type === 'DRUID_SKILL_SACRIFICE'
+                ? `SELECT ONE OF YOUR HEROES TO SACRIFICE`
+                : `SELECT ONE OF YOUR HEROES TO SACRIFICE AS A PENALTY`;
 
         } else {
 
@@ -2949,6 +2956,21 @@ function renderBoard(data) {
 
             targetBannerText.innerText = "WAITING FOR OPPONENT TO RESOLVE PENALTY...";
 
+        }
+
+    } else if (data.state === 'WAITING_FOR_MAJESTELK_CHOICE') {
+
+        endTurnBtn.disabled = true;
+        drawCardBtn.disabled = true;
+        discardDrawBtn.disabled = true;
+        targetBanner?.classList.remove('hidden');
+
+        if (data.pendingAction?.playerToChoose === myId) {
+            waitingOverlay?.classList.add('hidden');
+            targetBannerText.innerHTML = `CHOOSE MAJESTELK'S MODIFIER <button class="action-btn inline" onclick="chooseMajestelkModifier(5)">+5</button> <button class="action-btn inline attack" onclick="chooseMajestelkModifier(-5)">-5</button>`;
+        } else {
+            waitingOverlay?.classList.remove('hidden');
+            targetBannerText.innerText = 'WAITING FOR THE MAJESTELK CHOICE...';
         }
 
     } else if (data.state === 'WAITING_FOR_DISCARD_PENALTY' || data.state === 'WAITING_FOR_MULTIPLE_DISCARDS' || data.state === 'WAITING_FOR_VARIABLE_DISCARD') {
@@ -4773,7 +4795,7 @@ function openDiscardSearch(skillId) {
 
     let condition = () => true;
 
-    if (skillId === 'SKILL_GUIDING_LIGHT' || skillId === 'MAGIC_CALL_FALLEN') condition = c => c.type === 'Hero Card';
+    if (['SKILL_GUIDING_LIGHT', 'SKILL_MAGUS_MOOSE', 'SKILL_SILENT_SHIELD_RETRIEVE', 'MAGIC_CALL_FALLEN'].includes(skillId)) condition = c => c.type === 'Hero Card';
 
     if (skillId === 'SKILL_RADIANT_HORN') condition = c => c.type === 'Modifier Card';
 
@@ -5309,6 +5331,11 @@ function passModifierPhase() {
 
 }
 
+function chooseMajestelkModifier(value) {
+    socket.emit('choose_majestelk_modifier', { value });
+}
+window.chooseMajestelkModifier = chooseMajestelkModifier;
+
 
 
 
@@ -5767,7 +5794,14 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
     // 4. Attack Monster
 
-    if (context.location === 'monsters' && !isTargetMode) {
+    if (context.location === 'monsters' && myTargetMode && currentPendingAction?.type === 'FREE_ATTACK') {
+        const btn = document.createElement('button');
+        btn.className = 'action-btn attack';
+        btn.innerText = 'ATTACK FOR FREE';
+        btn.disabled = !meetsMonsterRequirements(latestGameState.players[myId], card.requirement);
+        btn.onclick = () => { selectTarget(card.id); closeInspectorModal(); };
+        actions.appendChild(btn);
+    } else if (context.location === 'monsters' && !isTargetMode) {
 
         if (isMyTurn && isPlayingState) {
 
@@ -5855,7 +5889,9 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
             else if (type === 'RETURN_ITEM' && !inHand && card.type === 'Hero Card' && card.equippedItem) isValid = true;
 
-            else if (type === 'PENALTY' && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE' && !inHand && isMine && card.type === 'Hero Card') isValid = true;
+            else if (['PENALTY', 'DRUID_SKILL_SACRIFICE'].includes(type) && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE' && !inHand && isMine && card.type === 'Hero Card') isValid = true;
+
+            else if (type === 'FREE_ATTACK' && context.location === 'monsters') isValid = meetsMonsterRequirements(latestGameState.players[myId], card.requirement);
 
         } else if (isLocalTargeting) {
 
@@ -5916,7 +5952,7 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
             btn.onclick = () => {
 
-                if (myTargetMode && currentPendingAction.type === 'PENALTY' && window.latestGameState?.state === 'WAITING_FOR_SACRIFICE') {
+                if (myTargetMode && ['PENALTY', 'DRUID_SKILL_SACRIFICE'].includes(currentPendingAction.type) && window.latestGameState?.state === 'WAITING_FOR_SACRIFICE') {
 
                     socket.emit('submit_penalty_sacrifice', { targetHeroId: card.id });
 
@@ -6151,13 +6187,15 @@ function handleTargetingClick(cardEl, cardId) {
 
             else if (type === 'RETURN_ITEM' && !inHand && card.type === 'Hero Card' && card.equippedItem) isValid = true;
 
-            else if (type === 'PENALTY' && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE' && !inHand && isMine && card.type === 'Hero Card') isValid = true;
+            else if (['PENALTY', 'DRUID_SKILL_SACRIFICE'].includes(type) && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE' && !inHand && isMine && card.type === 'Hero Card') isValid = true;
+
+            else if (type === 'FREE_ATTACK' && context.location === 'monsters') isValid = meetsMonsterRequirements(latestGameState.players[myId], card.requirement);
 
             
 
             if (isValid) {
 
-                if (type === 'PENALTY' && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE') {
+                if (['PENALTY', 'DRUID_SKILL_SACRIFICE'].includes(type) && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE') {
 
                     socket.emit('submit_penalty_sacrifice', { targetHeroId: cardId });
 

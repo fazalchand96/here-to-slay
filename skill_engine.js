@@ -56,7 +56,14 @@ function triggerSoulTethers(gameState, owner) {
         const hero = owner.party[index];
         if (!hasEquippedEffect(hero, 'CURSE_SOUL_TETHER')) continue;
         owner.party.splice(index, 1);
-        discardHeroWithItems(gameState, hero);
+        if (owner.maegistyActive) {
+            const items = equippedItems(hero);
+            hero.equippedItem = null;
+            hero.equippedItem2 = null;
+            owner.hand.push(hero, ...items);
+        } else {
+            discardHeroWithItems(gameState, hero);
+        }
         sacrificed.push(hero);
     }
     return sacrificed;
@@ -87,6 +94,14 @@ function drawCardsWithPassives(gameState, io, count, player) {
     };
 
     const drawOne = () => {
+        if (gameState.mainDeck.length === 0 && gameState.discardPile.length > 0) {
+            gameState.mainDeck.push(...gameState.discardPile.splice(0));
+            for (let i = gameState.mainDeck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [gameState.mainDeck[i], gameState.mainDeck[j]] = [gameState.mainDeck[j], gameState.mainDeck[i]];
+            }
+            if (io?.emit) io.emit('message', 'The main deck was empty, so the discard pile was shuffled into a fresh deck.');
+        }
         if (gameState.mainDeck.length === 0) return;
         const card = gameState.mainDeck.pop();
         drawn.push(card);
@@ -153,9 +168,11 @@ function returnEquippedItemToOwner(gameState, heroId) {
 // discard the Doll instead. It does not protect against stealing.
 function consumeDecoyDoll(gameState, targetHero, action = 'DESTROY') {
     if (action === 'STEAL') return false;
-    if (targetHero && targetHero.equippedItem && targetHero.equippedItem.effect_id === 'ITEM_DECOY') {
-        gameState.discardPile.push(targetHero.equippedItem);
-        targetHero.equippedItem = null;
+    const slot = ['equippedItem', 'equippedItem2']
+        .find(key => targetHero && targetHero[key] && targetHero[key].effect_id === 'ITEM_DECOY');
+    if (slot) {
+        gameState.discardPile.push(targetHero[slot]);
+        targetHero[slot] = null;
         return true;
     }
     return false;
@@ -243,17 +260,21 @@ function resolveDestroyAction(gameState, initiatorId, targetPlayerId, targetHero
         actionMessage = `Corrupted Sabretooth turned a Destroy into a Steal! ${getPlayerName(gameState, initiatorId)} STOLE ${getPlayerName(gameState, targetPlayerId)}'s ${targetHero.name}!`;
     } else {
         let itemNote = '';
-        if (targetHero.equippedItem) {
-            if (keepItem) {
-                initiator.hand.push(targetHero.equippedItem);
-                itemNote = ` ${getPlayerName(gameState, initiatorId)} took the equipped ${targetHero.equippedItem.name}!`;
-            } else {
-                gameState.discardPile.push(targetHero.equippedItem);
-            }
+        const items = equippedItems(targetHero);
+        if (targetPlayer.maegistyActive) {
+            targetPlayer.party.splice(tHeroIndex, 1);
             targetHero.equippedItem = null;
+            targetHero.equippedItem2 = null;
+            targetPlayer.hand.push(targetHero, ...items);
+            return `${targetHero.name} and its equipped Items returned to ${getPlayerName(gameState, targetPlayerId)}'s hand due to Maegisty!`;
         }
+        items.forEach(item => keepItem ? initiator.hand.push(item) : gameState.discardPile.push(item));
+        if (keepItem && items.length) itemNote = ` ${getPlayerName(gameState, initiatorId)} took ${items.length} equipped Item${items.length === 1 ? '' : 's'}!`;
+        targetHero.equippedItem = null;
+        targetHero.equippedItem2 = null;
         targetPlayer.party.splice(tHeroIndex, 1);
         gameState.discardPile.push(targetHero);
+        if (initiator.silentShieldActive) gameState.pendingSilentShieldActorId = initiatorId;
         triggerSoulTethers(gameState, targetPlayer);
         actionMessage = `${getPlayerName(gameState, initiatorId)} DESTROYED ${getPlayerName(gameState, targetPlayerId)}'s ${targetHero.name}!${itemNote}`;
 
@@ -288,6 +309,117 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
     const drawCards = (num, p) => drawCardsWithPassives(gameState, io, num, p);
 
     switch(skillId) {
+        // --- WARRIOR & DRUID EXPANSION ---
+        case 'SKILL_BIG_BUCKLEY':
+            gameState.state = 'PLAYING';
+            gameState.pendingAction = { type: 'FREE_ATTACK', playerToChoose: rollerId, originalActor: rollerId };
+            actionMessage = `${getPlayerName(gameState, player.id)} may attack a Monster for free with Big Buckley.`;
+            break;
+        case 'SKILL_BUCK_OMENS': {
+            const target = targetData?.targetPlayerId && gameState.players[targetData.targetPlayerId];
+            const heroes = (target?.hand || []).filter(card => card.type === 'Hero Card');
+            if (target && heroes.length) {
+                gameState.pendingPeek = { rollerId, targetPlayerId: target.id, skillId, allowedCardIds: heroes.map(card => card.id) };
+                io.to(rollerId).emit('peek_cards', { cards: heroes, skillId, title: `Bring a Hero from ${getPlayerName(gameState, target.id)}'s hand`, actionLabel: 'Bring To Party' });
+                actionMessage = `${getPlayerName(gameState, player.id)} is choosing a Hero with Buck Omens.`;
+            } else actionMessage = `${target ? getPlayerName(gameState, target.id) : 'That player'} has no Hero cards for Buck Omens.`;
+            break;
+        }
+        case 'SKILL_DOE_FALLOW':
+        case 'SKILL_MAJESTELK':
+            if (player.party.some(card => card.type === 'Hero Card')) {
+                gameState.state = 'WAITING_FOR_SACRIFICE';
+                gameState.pendingAction = { type: 'DRUID_SKILL_SACRIFICE', playerToChoose: rollerId, originalActor: rollerId, skillId };
+                actionMessage = `${getPlayerName(gameState, player.id)} must sacrifice a Hero for ${heroName}.`;
+            }
+            break;
+        case 'SKILL_GLOWING_ANTLER':
+            gameState.freePlayQueue = { playerId: rollerId, remaining: 2, allowedTypes: ['Magic Card'], source: heroName };
+            actionMessage = `${getPlayerName(gameState, player.id)} may play up to 2 Magic cards immediately.`;
+            break;
+        case 'SKILL_MAEGISTY':
+            player.maegistyActive = true;
+            actionMessage = `${getPlayerName(gameState, player.id)}'s Heroes and their Items return to hand instead of being sacrificed or destroyed until their next turn.`;
+            break;
+        case 'SKILL_MAGUS_MOOSE':
+        case 'SKILL_SILENT_SHIELD_RETRIEVE': {
+            const index = gameState.discardPile.findIndex(card => card.id === targetData?.targetCardId && card.type === 'Hero Card');
+            if (index !== -1) {
+                const card = gameState.discardPile.splice(index, 1)[0];
+                player.hand.push(card);
+                if (skillId === 'SKILL_MAGUS_MOOSE') {
+                    gameState.freePlayQueue = { playerId: rollerId, remaining: 1, allowedTypes: ['Hero Card'], allowedCardIds: [card.id], source: heroName, mandatory: true };
+                }
+                actionMessage = `${getPlayerName(gameState, player.id)} retrieved ${card.name} from the discard pile.`;
+            }
+            break;
+        }
+        case 'SKILL_STAGGUARD':
+            player.stagguardActive = true;
+            actionMessage = `Only ${getPlayerName(gameState, player.id)} may play Modifiers for the rest of this turn.`;
+            break;
+        case 'SKILL_AGILE_DAGGER':
+            gameState.freePlayQueue = { playerId: rollerId, remaining: 2, allowedTypes: ['Item Card', 'Cursed Item Card'], source: heroName };
+            actionMessage = `${getPlayerName(gameState, player.id)} may play up to 2 Item cards immediately.`;
+            break;
+        case 'SKILL_BLINDING_BLADE': {
+            const target = targetData?.targetPlayerId && gameState.players[targetData.targetPlayerId];
+            let moved = 0;
+            (target?.party || []).forEach(targetHero => {
+                equippedItems(targetHero).forEach(item => { player.hand.push(item); moved++; });
+                targetHero.equippedItem = null;
+                targetHero.equippedItem2 = null;
+            });
+            actionMessage = `${getPlayerName(gameState, player.id)} took ${moved} equipped Item${moved === 1 ? '' : 's'} from ${target ? getPlayerName(gameState, target.id) : 'the target'}.`;
+            break;
+        }
+        case 'SKILL_CRITICAL_FANG':
+            player.attackRollBonus = (player.attackRollBonus || 0) + 4;
+            actionMessage = `${getPlayerName(gameState, player.id)} gets +4 on attack rolls for the rest of this turn.`;
+            break;
+        case 'SKILL_HARDENED_HUNTER': {
+            const amount = Object.entries(gameState.players).reduce((sum, [id, other]) => sum + (id === rollerId ? 0 : (other.slainMonsters || []).length), 0);
+            drawCards(amount, player);
+            actionMessage = `${getPlayerName(gameState, player.id)} drew ${amount} card(s), one for each opponent's slain Monster.`;
+            break;
+        }
+        case 'SKILL_LOOTING_LUPO': {
+            const amount = (player.party || []).reduce((sum, partyHero) => sum + equippedItems(partyHero).length, 0);
+            drawCards(amount, player);
+            actionMessage = `${getPlayerName(gameState, player.id)} drew ${amount} card(s), one for each equipped Item in their party.`;
+            break;
+        }
+        case 'SKILL_SILENT_SHIELD':
+            player.silentShieldActive = true;
+            actionMessage = `${getPlayerName(gameState, player.id)} may retrieve a Hero after each Hero they sacrifice or destroy this turn.`;
+            break;
+        case 'SKILL_TENACIOUS_TIMBER': {
+            const limit = (player.slainMonsters || []).length;
+            const selected = [...new Set(targetData?.targetHeroIds || [])].slice(0, limit);
+            let stolen = 0;
+            selected.forEach(targetHeroId => {
+                for (const [targetId, target] of Object.entries(gameState.players)) {
+                    if (targetId === rollerId || target.cannotBeStolen) continue;
+                    const index = target.party.findIndex(card => card.id === targetHeroId && card.type === 'Hero Card');
+                    if (index === -1) continue;
+                    const card = target.party.splice(index, 1)[0];
+                    card.usedSkillThisTurn = false;
+                    player.party.push(card);
+                    triggerCursedGlove(gameState, target, player);
+                    stolen++;
+                    break;
+                }
+            });
+            actionMessage = `${getPlayerName(gameState, player.id)} stole ${stolen} Hero${stolen === 1 ? '' : 'es'} with Tenacious Timber.`;
+            break;
+        }
+        case 'SKILL_WOLFGANG_PACK': {
+            const bonus = Math.max(0, (player.party || []).filter(card => card.type === 'Hero Card' && card.id !== heroId).length);
+            player.rollBonus = (player.rollBonus || 0) + bonus;
+            player.rollBonusSources = [...(player.rollBonusSources || []), { source: heroName, value: bonus }];
+            actionMessage = `${getPlayerName(gameState, player.id)} gets +${bonus} on all rolls for the rest of this turn.`;
+            break;
+        }
         // --- FIGHTER CLASS SKILLS ---
         case 'SKILL_HEAVY_BEAR': {
             // The target player was already chosen via SKILL_TARGET_PLAYER (Heavy Bear

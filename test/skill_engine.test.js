@@ -34,6 +34,122 @@ function makeIo() {
     return io;
 }
 
+test('Druid expansion skills create their agreed follow-up actions and protections', () => {
+    const io = makeIo();
+    const caster = player('p1', { party: [
+        hero('Big Buckley', { id: 'buckley', skill_id: 'SKILL_BIG_BUCKLEY' }),
+        hero('Doe Fallow', { id: 'doe', skill_id: 'SKILL_DOE_FALLOW' }),
+        hero('Glowing Antler', { id: 'antler', skill_id: 'SKILL_GLOWING_ANTLER' }),
+        hero('Maegisty', { id: 'maegisty', skill_id: 'SKILL_MAEGISTY' }),
+        hero('Majestelk', { id: 'majestelk', skill_id: 'SKILL_MAJESTELK' }),
+        hero('Stagguard', { id: 'stagguard', skill_id: 'SKILL_STAGGUARD' })
+    ] });
+    const state = makeState([caster]);
+
+    executeSkill(state, io, 'SKILL_BIG_BUCKLEY', 'p1', 'buckley');
+    assert.equal(state.pendingAction.type, 'FREE_ATTACK');
+    executeSkill(state, io, 'SKILL_DOE_FALLOW', 'p1', 'doe');
+    assert.equal(state.pendingAction.type, 'DRUID_SKILL_SACRIFICE');
+    executeSkill(state, io, 'SKILL_GLOWING_ANTLER', 'p1', 'antler');
+    assert.deepEqual(state.freePlayQueue.allowedTypes, ['Magic Card']);
+    assert.equal(state.freePlayQueue.remaining, 2);
+    executeSkill(state, io, 'SKILL_MAEGISTY', 'p1', 'maegisty');
+    assert.equal(caster.maegistyActive, true);
+    executeSkill(state, io, 'SKILL_MAJESTELK', 'p1', 'majestelk');
+    assert.equal(state.pendingAction.skillId, 'SKILL_MAJESTELK');
+    executeSkill(state, io, 'SKILL_STAGGUARD', 'p1', 'stagguard');
+    assert.equal(caster.stagguardActive, true);
+});
+
+test('Buck Omens reveals only Heroes and Blinding Blade takes both item slots', () => {
+    const io = makeIo();
+    const caster = player('p1', { party: [
+        hero('Buck Omens', { id: 'omens' }), hero('Blinding Blade', { id: 'blade' })
+    ] });
+    const targetHero = hero('Target', {
+        equippedItem: card('Ring', 'Item Card'),
+        equippedItem2: card('Curse', 'Cursed Item Card')
+    });
+    const target = player('p2', { hand: [hero('Hidden Hero'), card('Magic', 'Magic Card')], party: [targetHero] });
+    const state = makeState([caster, target]);
+
+    executeSkill(state, io, 'SKILL_BUCK_OMENS', 'p1', 'omens', { targetPlayerId: 'p2' });
+    assert.equal(io.find('peek_cards').payload.cards.length, 1);
+    executeSkill(state, io, 'SKILL_BLINDING_BLADE', 'p1', 'blade', { targetPlayerId: 'p2' });
+    assert.equal(caster.hand.length, 2);
+    assert.equal(targetHero.equippedItem, null);
+    assert.equal(targetHero.equippedItem2, null);
+});
+
+test('Magus Moose retrieves a Hero and queues that exact Hero for immediate play', () => {
+    const io = makeIo();
+    const moose = hero('Magus Moose', { id: 'moose' });
+    const caster = player('p1', { party: [moose] });
+    const fallen = hero('Fallen Hero', { id: 'fallen' });
+    const state = makeState([caster], { discardPile: [fallen] });
+    executeSkill(state, io, 'SKILL_MAGUS_MOOSE', 'p1', 'moose', { targetCardId: 'fallen' });
+    assert.equal(caster.hand[0].id, 'fallen');
+    assert.deepEqual(state.freePlayQueue.allowedCardIds, ['fallen']);
+    assert.equal(state.freePlayQueue.mandatory, true);
+});
+
+test('Warrior draw and roll skills count the agreed board objects one by one', () => {
+    const io = makeIo();
+    const caster = player('p1', { party: [
+        hero('Critical Fang', { id: 'fang' }),
+        hero('Hardened Hunter', { id: 'hunter' }),
+        hero('Looting Lupo', { id: 'lupo', equippedItem: card('A', 'Item Card'), equippedItem2: card('B', 'Cursed Item Card') }),
+        hero('Wolfgang Pack', { id: 'wolfgang' })
+    ] });
+    const opponent = player('p2', { slainMonsters: [card('M1', 'Monster Card'), card('M2', 'Monster Card')] });
+    const deck = Array.from({ length: 5 }, (_, i) => card(`Draw ${i}`, 'Magic Card'));
+    const state = makeState([caster, opponent], { mainDeck: deck });
+
+    executeSkill(state, io, 'SKILL_CRITICAL_FANG', 'p1', 'fang');
+    assert.equal(caster.attackRollBonus, 4);
+    executeSkill(state, io, 'SKILL_HARDENED_HUNTER', 'p1', 'hunter');
+    assert.equal(caster.hand.length, 2);
+    executeSkill(state, io, 'SKILL_LOOTING_LUPO', 'p1', 'lupo');
+    assert.equal(caster.hand.length, 4);
+    executeSkill(state, io, 'SKILL_WOLFGANG_PACK', 'p1', 'wolfgang');
+    assert.equal(caster.rollBonus, 3);
+});
+
+test('Agile Dagger queues two Items and Tenacious Timber steals sequential selected Heroes', () => {
+    const io = makeIo();
+    const caster = player('p1', { party: [hero('Agile Dagger', { id: 'dagger' }), hero('Tenacious Timber', { id: 'timber' })], slainMonsters: [card('M1', 'Monster Card'), card('M2', 'Monster Card')] });
+    const target = player('p2', { party: [hero('One', { id: 'one' }), hero('Two', { id: 'two' }), hero('Three', { id: 'three' })] });
+    const state = makeState([caster, target]);
+    executeSkill(state, io, 'SKILL_AGILE_DAGGER', 'p1', 'dagger');
+    assert.equal(state.freePlayQueue.remaining, 2);
+    assert.deepEqual(state.freePlayQueue.allowedTypes, ['Item Card', 'Cursed Item Card']);
+    executeSkill(state, io, 'SKILL_TENACIOUS_TIMBER', 'p1', 'timber', { targetHeroIds: ['one', 'two', 'three'] });
+    assert.deepEqual(caster.party.slice(-2).map(card => card.id), ['one', 'two']);
+    assert.deepEqual(target.party.map(card => card.id), ['three']);
+});
+
+test('Maegisty returns a destroyed Hero and both equipped Items to the owner hand', () => {
+    const attacker = player('p1');
+    const protectedHero = hero('Protected', {
+        id: 'protected', equippedItem: card('Ring', 'Item Card'), equippedItem2: card('Tether', 'Cursed Item Card')
+    });
+    const owner = player('p2', { party: [protectedHero], maegistyActive: true });
+    const state = makeState([attacker, owner]);
+    executeSkill(state, makeIo(), 'DESTROY_HERO', 'p1', null, { targetPlayerId: 'p2', targetHeroId: 'protected' });
+    assert.equal(owner.party.length, 0);
+    assert.deepEqual(owner.hand.map(card => card.name), ['Protected', 'Ring', 'Tether']);
+    assert.equal(state.discardPile.length, 0);
+});
+
+test('Silent Shield marks every successful destroy for an optional Hero retrieval', () => {
+    const attacker = player('p1', { silentShieldActive: true });
+    const owner = player('p2', { party: [hero('Target', { id: 'target' })] });
+    const state = makeState([attacker, owner]);
+    executeSkill(state, makeIo(), 'DESTROY_HERO', 'p1', null, { targetPlayerId: 'p2', targetHeroId: 'target' });
+    assert.equal(state.pendingSilentShieldActorId, 'p1');
+    assert.equal(state.discardPile[0].id, 'target');
+});
+
 let cardSeq = 0;
 function card(name, type, extra = {}) {
     cardSeq += 1;
@@ -484,6 +600,18 @@ test('MAGIC_RAPID_REFRESH also draws four with an empty hand', () => {
     const gs = makeState([alice], { mainDeck: [...draws] });
     executeMagic(gs, makeIo(), 'MAGIC_RAPID_REFRESH', 'alice', null);
     assert.equal(alice.hand.length, 4);
+});
+
+test('draw effects rebuild the main deck from the discard pile only after it empties', () => {
+    const p = player('alice');
+    const gs = makeState([p], {
+        mainDeck: [card('last main card', 'Hero Card')],
+        discardPile: [card('recycled one', 'Magic Card'), card('recycled two', 'Item Card')]
+    });
+    withRandom(0, () => drawCardsWithPassives(gs, makeIo(), 3, p));
+    assert.equal(p.hand.length, 3);
+    assert.equal(gs.mainDeck.length, 0);
+    assert.equal(gs.discardPile.length, 0);
 });
 
 test('MAGIC_ENCHANTED grants +2 magic roll bonus and reports success', () => {

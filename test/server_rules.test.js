@@ -12,6 +12,7 @@ const assert = require('node:assert/strict');
 
 const {
     calculateRollDetails,
+    isHeroSkillRollSuccessful,
     meetsMonsterRequirements,
     checkWinCondition,
     isValidItemEquipTarget,
@@ -66,6 +67,21 @@ test('calculateRollDetails returns the base roll with no modifiers', () => {
     assert.equal(total, 7);
     assert.equal(breakdown[0].source, 'Base Dice');
     assert.equal(breakdown.length, 1);
+});
+
+test('Druid skills use low-roll requirements while Warrior skills use high-roll requirements', () => {
+    assert.equal(isHeroSkillRollSuccessful({ rollType: 'LOW_ROLL', roll_requirement: 7 }, 6), true);
+    assert.equal(isHeroSkillRollSuccessful({ rollType: 'LOW_ROLL', roll_requirement: 7 }, 8), false);
+    assert.equal(isHeroSkillRollSuccessful({ rollType: 'HIGH_ROLL', roll_requirement: 7 }, 8), true);
+    assert.equal(isHeroSkillRollSuccessful({ rollType: 'HIGH_ROLL', roll_requirement: 7 }, 6), false);
+});
+
+test('Critical Fang affects attacks only and Majestelk affects every roll until next turn', () => {
+    const player = pl({ attackRollBonus: 4, untilNextTurnRollBonus: -5 });
+    assert.equal(calculateRollDetails(player, 8, 'ATTACK').total, 7);
+    assert.equal(calculateRollDetails(player, 8, 'HERO_SKILL').total, 3);
+    clearUntilNextTurnProtections(player);
+    assert.equal(player.untilNextTurnRollBonus, 0);
 });
 
 test('LEADER_BARD gives +1 on a hero skill but not on an attack', () => {
@@ -285,11 +301,11 @@ test('only expansion cards with full card art enter live decks', () => {
     ];
     const liveExpansionCards = liveCards.filter(card => card.expansion === 'Warrior & Druid');
 
-    assert.ok(liveExpansionCards.length > 0);
+    assert.equal(liveExpansionCards.length, 35);
     assert.ok(liveExpansionCards.every(card => card.fullCardArtUrl));
     assert.deepEqual(
         [...new Set(liveExpansionCards.map(card => card.type))].sort(),
-        ['Cursed Item Card', 'Item Card', 'Magic Card', 'Modifier Card', 'Monster Card', 'Party Leader']
+        ['Challenge Card', 'Cursed Item Card', 'Hero Card', 'Item Card', 'Magic Card', 'Modifier Card', 'Monster Card', 'Party Leader']
     );
     assert.deepEqual(
         liveExpansionCards
@@ -298,7 +314,8 @@ test('only expansion cards with full card art enter live decks', () => {
             .sort(),
         ['Beast Call', 'Rapid Refresh']
     );
-    assert.equal(liveExpansionCards.some(card => card.type === 'Hero Card'), false);
+    assert.equal(liveExpansionCards.filter(card => card.type === 'Hero Card').length, 16);
+    assert.ok(liveExpansionCards.filter(card => card.type === 'Hero Card').every(card => card.fullCardArtUrl));
     assert.deepEqual(
         liveExpansionCards
             .filter(card => ['Item Card', 'Cursed Item Card'].includes(card.type))
@@ -306,5 +323,8 @@ test('only expansion cards with full card art enter live decks', () => {
             .sort(),
         ['Bottomless Bag', 'Cursed Glove', 'Druid Mask', 'Even Bigger Ring', 'Soul Tether', 'Temporal Hourglass', 'Warrior Mask']
     );
-    assert.equal(liveExpansionCards.some(card => card.type === 'Challenge Card'), false);
+    assert.deepEqual(
+        liveExpansionCards.filter(card => card.type === 'Challenge Card').map(card => card.name).sort(),
+        ['Druid Challenge', 'Warrior Challenge']
+    );
 });
