@@ -1091,15 +1091,30 @@ io.on('connection', (socket) => {
         if (!player || !player.leader || player.hasRerolledLeader) return;
 
         const oldLeader = player.leader;
-        gameState.availableLeaders.push(oldLeader);
+        const assignedToOthers = new Set(Object.entries(gameState.players)
+            .filter(([playerId]) => playerId !== socket.id)
+            .map(([, otherPlayer]) => otherPlayer.leader?.id)
+            .filter(Boolean));
+        const eligibleLeaders = (gameState.availableLeaders || []).filter(leader =>
+            leader.id !== oldLeader.id && !assignedToOthers.has(leader.id)
+        );
 
-        if (gameState.availableLeaders.length > 0) {
-            const randomIndex = Math.floor(Math.random() * gameState.availableLeaders.length);
-            const chosenLeader = gameState.availableLeaders.splice(randomIndex, 1)[0];
-            player.leader = chosenLeader;
-            player.hasRerolledLeader = true;
-            broadcastState();
+        // A reroll always draws from the leaders that were still available before
+        // this player returned their current leader. This prevents rolling the
+        // same leader again and can never take another player's chosen leader.
+        if (eligibleLeaders.length === 0) return;
+
+        const chosenLeader = eligibleLeaders[Math.floor(Math.random() * eligibleLeaders.length)];
+        const chosenIndex = gameState.availableLeaders.findIndex(leader => leader.id === chosenLeader.id);
+        if (chosenIndex === -1) return;
+
+        gameState.availableLeaders.splice(chosenIndex, 1);
+        if (!gameState.availableLeaders.some(leader => leader.id === oldLeader.id)) {
+            gameState.availableLeaders.push(oldLeader);
         }
+        player.leader = chosenLeader;
+        player.hasRerolledLeader = true;
+        broadcastState();
     });
 
     socket.on('lock_in_leader', () => {
