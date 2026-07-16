@@ -7697,7 +7697,10 @@ body.landscape #player-win-tracker {
 @media (max-width: 760px) {
     #party-dock { grid-template-columns: minmax(120px, 1fr) minmax(110px, 1.1fr) 62px 24px; padding: 7px 8px; }
     .party-dock-copy small { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
-    .party-class-grid { grid-template-columns: repeat(4, minmax(76px, 1fr)); }
+    .party-class-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 3px; }
+    .party-class-column { padding-inline: 1px; }
+    .party-class-column > header { gap: 2px; font-size: clamp(.38rem, 1.45vw, .5rem); }
+    .party-class-leader { padding-inline: 1px; font-size: clamp(.36rem, 1.25vw, .46rem); }
 }
 @media (max-height: 520px) {
     #party-dock { height: 78px; min-height: 62px; }
@@ -7789,6 +7792,7 @@ body.landscape #player-win-tracker {
    one composition. Only an unusually tall same-class stack may scroll. */
 #opponent-modal.own-party-view #opponent-modal-content {
     overflow: hidden !important;
+    flex-wrap: nowrap !important;
     gap: 7px !important;
     padding: 7px !important;
     border-radius: 0 !important;
@@ -7798,6 +7802,8 @@ body.landscape #player-win-tracker {
 #opponent-modal.own-party-view .party-class-grid {
     flex: 1 1 auto;
     min-height: 0;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    overflow: hidden;
 }
 #opponent-modal.own-party-view .party-class-column {
     min-height: 0;
@@ -7817,8 +7823,11 @@ body.landscape #player-win-tracker {
     max-height: 98px !important;
 }
 #opponent-modal.own-party-view .own-party-monsters {
-    flex: 0 0 108px;
+    flex: 0 0 112px;
     min-height: 0;
+    width: 100%;
+    align-self: stretch;
+    box-sizing: border-box;
     display: grid;
     grid-template-columns: minmax(92px, 120px) minmax(0, 1fr);
     align-items: center;
@@ -7828,26 +7837,62 @@ body.landscape #player-win-tracker {
 #opponent-modal.own-party-view .own-party-monsters h3 { margin: 0; }
 #opponent-modal.own-party-view .own-party-monster-row {
     min-height: 0;
-    height: 96px;
+    height: 100px;
     overflow: hidden;
 }
 #opponent-modal.own-party-view .own-party-monster-row .card {
-    height: 92px !important;
-    max-height: 92px !important;
+    height: 96px !important;
+    max-height: 96px !important;
 }
 
 @media (max-width: 760px) {
     #party-dock { grid-template-columns: minmax(120px, 1.2fr) minmax(100px, 1fr) 58px !important; }
+    #opponent-modal.own-party-view > .glass-panel {
+        width: 99vw !important;
+        padding-left: clamp(26px, 5vw, 38px) !important;
+        padding-right: clamp(26px, 5vw, 38px) !important;
+    }
+    #opponent-modal.own-party-view .party-class-grid {
+        grid-template-columns: repeat(8, minmax(0, 1fr)) !important;
+        gap: 3px;
+    }
+    #opponent-modal.own-party-view .party-class-stack .card {
+        height: clamp(68px, 13dvh, 86px) !important;
+        max-height: 86px !important;
+    }
+    #opponent-modal.own-party-view .own-party-monsters {
+        flex-basis: 92px;
+        grid-template-columns: minmax(76px, 94px) minmax(0, 1fr);
+        padding: 3px 4px;
+    }
+    #opponent-modal.own-party-view .own-party-monster-row { height: 82px; }
+    #opponent-modal.own-party-view .own-party-monster-row .card {
+        height: 80px !important;
+        max-height: 80px !important;
+    }
 }
 @media (max-height: 520px) {
-    #opponent-modal.own-party-view .party-class-stack .card {
-        height: 76px !important;
-        max-height: 76px !important;
+    #opponent-modal.own-party-view > .glass-panel {
+        padding-top: 27px !important;
+        padding-bottom: 22px !important;
     }
-    #opponent-modal.own-party-view .own-party-monsters { flex-basis: 84px; }
-    #opponent-modal.own-party-view .own-party-monster-row { height: 72px; }
+    #opponent-modal.own-party-view #opponent-modal-title {
+        margin-bottom: 2px !important;
+        font-size: clamp(.86rem, 3vw, 1.15rem) !important;
+    }
+    #opponent-modal.own-party-view #opponent-modal-content { gap: 3px !important; }
+    #opponent-modal.own-party-view .party-class-stack .card {
+        height: 68px !important;
+        max-height: 68px !important;
+    }
+    #opponent-modal.own-party-view .own-party-monsters { flex-basis: 78px; }
+    #opponent-modal.own-party-view .own-party-monster-row { height: 70px; }
     #opponent-modal.own-party-view .own-party-monster-row .card {
-        height: 70px !important;
-        max-height: 70px !important;
+        height: 68px !important;
+        max-height: 68px !important;
+    }
+    #opponent-modal.own-party-view > .glass-panel > .action-btn {
+        min-height: 34px !important;
+        margin-top: 2px !important;
     }
 }
