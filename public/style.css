@@ -7622,36 +7622,36 @@ body.landscape #player-win-tracker {
 .party-class-column {
     min-width: 0;
     min-height: 150px;
-    padding: 6px;
-    border: 1px solid color-mix(in srgb, var(--class-color) 62%, #f6d98c 38%);
-    border-radius: 10px;
-    background: linear-gradient(180deg, color-mix(in srgb, var(--class-color) 36%, rgba(12,8,29,.9) 64%), rgba(8,5,24,.76));
-    box-shadow: inset 0 0 16px rgba(0,0,0,.32);
+    padding: 3px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
 }
 .party-class-column > header {
     display: grid;
-    grid-template-columns: 10px minmax(0, 1fr) 17px;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     gap: 4px;
     min-height: 24px;
     margin-bottom: 6px;
-    color: #fff4d7;
+    color: #f8e5ae;
     font-family: var(--font-display);
     font-size: clamp(.46rem, .85vw, .64rem);
     text-transform: uppercase;
     text-shadow: 0 1px 2px #000;
 }
 .party-class-column > header strong { overflow: hidden; text-overflow: ellipsis; }
-.party-class-column > header b { display: grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: var(--class-color); }
-.party-class-gem { width: 8px; height: 8px; border: 1px solid rgba(255,255,255,.7); border-radius: 50%; background: var(--class-color); box-shadow: 0 0 6px var(--class-color); }
+.party-class-column > header b { color: rgba(255,242,205,.72); font: inherit; }
+.party-class-gem { display: none; }
 .party-class-leader {
     width: 100%;
     min-height: 29px;
     margin-bottom: 6px;
     padding: 3px 4px;
-    border: 1px solid rgba(255, 218, 126, .62);
-    border-radius: 7px;
-    background: rgba(223, 171, 67, .18);
+    border: 0;
+    border-radius: 0;
+    background: transparent;
     color: #ffe29b;
     font-size: clamp(.42rem, .7vw, .56rem);
     line-height: 1.1;
@@ -7678,9 +7678,9 @@ body.landscape #player-win-tracker {
 .own-party-monsters {
     flex: 0 0 auto;
     padding: 8px 10px;
-    border: 1px solid rgba(218,178,103,.28);
-    border-radius: 10px;
-    background: rgba(28,17,58,.42);
+    border: 0;
+    border-radius: 0;
+    background: transparent;
 }
 .own-party-monsters h3 {
     margin: 0 0 7px;
@@ -7703,4 +7703,151 @@ body.landscape #player-win-tracker {
     #party-dock { height: 78px; min-height: 62px; }
     #opponent-modal.own-party-view > .glass-panel { padding-top: 34px !important; padding-bottom: 30px !important; }
     #opponent-modal.own-party-view .party-class-stack .card { height: 104px !important; }
+}
+
+/* Final shared modal controls. Older phase screens still carried the original
+   parchment/red button backgrounds; every modal decision now uses the same
+   blue action and violet close artwork as the card inspector. */
+.overlay .glass-panel .action-btn:not(.inline),
+#event-console .action-btn:not(.inline),
+#opponent-modal > .glass-panel > .action-btn,
+.rex-major-choice-prompt .action-btn,
+#target-banner .action-btn {
+    box-sizing: border-box !important;
+    min-height: 42px !important;
+    padding: 7px 14px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: url('assets/skin/buttons/inspector-action.png') center / 100% 100% no-repeat !important;
+    box-shadow: none !important;
+    color: #f7fbff !important;
+    font-family: var(--font-display) !important;
+    font-weight: 900 !important;
+    line-height: 1.05 !important;
+    text-align: center !important;
+    text-shadow: 0 2px 2px rgba(0,18,48,.95), 0 0 5px rgba(0,10,32,.85) !important;
+    filter: none !important;
+}
+.overlay .glass-panel .action-btn.modal-secondary-action,
+#event-console .action-btn.modal-secondary-action,
+#opponent-modal > .glass-panel > .action-btn.modal-secondary-action,
+.rex-major-choice-prompt .action-btn.secondary,
+.overlay .glass-panel .picker-close-action,
+#target-banner .action-btn.modal-secondary-action {
+    background-image: url('assets/skin/buttons/inspector-close.png') !important;
+    color: #fff8ff !important;
+    text-shadow: 0 2px 2px rgba(12,5,28,.98), 0 0 5px rgba(8,2,24,.9) !important;
+}
+#event-console .action-btn:not(.inline):disabled,
+.overlay .glass-panel .action-btn:not(.inline):disabled {
+    background-image: url('assets/skin/buttons/inspector-close.png') !important;
+    color: rgba(245,242,255,.65) !important;
+    opacity: .72 !important;
+}
+#opponent-modal > .glass-panel > .action-btn {
+    width: min(220px, 48vw) !important;
+    margin: 6px auto 0 !important;
+}
+.challenge-no-card {
+    display: grid;
+    place-items: center;
+    min-height: 42px;
+    color: rgba(241,235,255,.72) !important;
+}
+
+#target-banner .action-btn {
+    min-width: 116px;
+    margin: 5px 7px !important;
+}
+
+/* The equation already names every passive and global bonus numerically. */
+#dice-passives-container { display: none !important; }
+
+/* Progress now lives inside the party hotspot; remove the old duplicate chip
+   that floated between the leader and the player's hand. */
+#player-win-tracker { display: none !important; }
+
+/* Let the native board artwork show through the compact party hotspot. */
+#party-dock {
+    grid-template-columns: minmax(142px, 1.35fr) minmax(130px, 1.35fr) minmax(68px, .5fr) !important;
+    overflow: hidden !important;
+    border-color: transparent !important;
+    background: rgba(5, 12, 25, .08) !important;
+    box-shadow: none !important;
+}
+#party-dock::before { content: none !important; }
+#party-dock:hover,
+#party-dock:focus-visible {
+    border-color: rgba(255,224,154,.34) !important;
+    background: rgba(8,18,35,.14) !important;
+    box-shadow: inset 0 0 14px rgba(0,4,15,.18) !important;
+}
+.party-dock-slay { min-width: 58px; justify-self: stretch; }
+.party-dock-open { display: none !important; }
+
+/* Keep the eight class columns and the complete slain-Monster row visible in
+   one composition. Only an unusually tall same-class stack may scroll. */
+#opponent-modal.own-party-view #opponent-modal-content {
+    overflow: hidden !important;
+    gap: 7px !important;
+    padding: 7px !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+#opponent-modal.own-party-view .party-class-grid {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+#opponent-modal.own-party-view .party-class-column {
+    min-height: 0;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+#opponent-modal.own-party-view .party-class-stack {
+    flex: 1 1 auto;
+    min-height: 64px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+#opponent-modal.own-party-view .party-class-stack .card {
+    height: clamp(76px, 14dvh, 98px) !important;
+    max-height: 98px !important;
+}
+#opponent-modal.own-party-view .own-party-monsters {
+    flex: 0 0 108px;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(92px, 120px) minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    padding: 6px 9px;
+}
+#opponent-modal.own-party-view .own-party-monsters h3 { margin: 0; }
+#opponent-modal.own-party-view .own-party-monster-row {
+    min-height: 0;
+    height: 96px;
+    overflow: hidden;
+}
+#opponent-modal.own-party-view .own-party-monster-row .card {
+    height: 92px !important;
+    max-height: 92px !important;
+}
+
+@media (max-width: 760px) {
+    #party-dock { grid-template-columns: minmax(120px, 1.2fr) minmax(100px, 1fr) 58px !important; }
+}
+@media (max-height: 520px) {
+    #opponent-modal.own-party-view .party-class-stack .card {
+        height: 76px !important;
+        max-height: 76px !important;
+    }
+    #opponent-modal.own-party-view .own-party-monsters { flex-basis: 84px; }
+    #opponent-modal.own-party-view .own-party-monster-row { height: 72px; }
+    #opponent-modal.own-party-view .own-party-monster-row .card {
+        height: 70px !important;
+        max-height: 70px !important;
+    }
 }

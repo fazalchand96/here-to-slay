@@ -63,7 +63,7 @@
             <div id="opponent-modal-content" class="card-container" style="flex: 1; overflow-y: auto; display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; padding: 10px;">
                 <!-- Opponent cards go here -->
             </div>
-            <button class="action-btn" onclick="closeOpponentModal()" style="background: #ef4444; margin-top: 15px; width: 200px; align-self: center;">Close</button>
+            <button class="action-btn modal-secondary-action" onclick="closeOpponentModal()">Close</button>
         </div>
     </div>
 
@@ -127,8 +127,8 @@
             <p style="margin-bottom: 20px;">You drew this card. Because of your slain monster's effect, you may play it right now without spending Action Points.</p>
             <div id="immediate-play-card" style="display: flex; justify-content: center; margin-bottom: 20px;"></div>
             <div style="display: flex; gap: 10px; justify-content: center;">
-                <button class="action-btn" onclick="resolveImmediatePlay('PLAY')" style="background: #10b981; flex: 1;">Play Immediately (0 AP)</button>
-                <button class="action-btn primary" onclick="resolveImmediatePlay('KEEP')" style="flex: 1;">Keep in Hand</button>
+                <button class="action-btn" onclick="resolveImmediatePlay('PLAY')">Play Immediately (0 AP)</button>
+                <button class="action-btn modal-secondary-action" onclick="resolveImmediatePlay('KEEP')">Keep in Hand</button>
             </div>
         </div>
     </div>
@@ -251,7 +251,7 @@
 
                         <button id="skill-prompt-yes" class="action-btn">YES (0 AP)</button>
 
-                        <button id="skill-prompt-no" class="action-btn" style="background: #ef4444;">NO / PASS</button>
+                        <button id="skill-prompt-no" class="action-btn modal-secondary-action">NO / PASS</button>
 
                     </div>
 
@@ -283,7 +283,7 @@
 
                             <button id="challenge-play-btn" class="action-btn challenge-play" style="width: 150px;" disabled>PLAY CHALLENGE</button>
 
-                            <button id="challenge-pass-btn" class="action-btn" style="background: #ef4444; width: 150px;">PASS</button>
+                            <button id="challenge-pass-btn" class="action-btn modal-secondary-action" style="width: 150px;">PASS</button>
 
                         </div>
 
@@ -319,7 +319,7 @@
 
                     <div id="dice-action-area" style="margin-bottom: 10px;">
 
-                        <button id="manual-roll-btn" class="action-btn primary" style="font-size: 1.2rem; padding: 10px 30px; display: none;" onclick="executeManualRoll()">ROLL DICE</button>
+                        <button id="manual-roll-btn" class="action-btn" style="font-size: 1.2rem; padding: 10px 30px; display: none;" onclick="executeManualRoll()">ROLL DICE</button>
 
                         <div id="waiting-roll-text" style="font-size: 1.1rem; color: var(--warning); display: none;">Waiting for player to roll...</div>
 

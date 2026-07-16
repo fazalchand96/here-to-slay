@@ -1452,56 +1452,14 @@ window.openOpponentModal = function(id) {
     if (!modal) return;
 
     modal.dataset.view = 'opponent';
-    modal.classList.remove('own-party-view');
+    modal.classList.add('own-party-view');
 
 
 
     const displayName = getPlayerName(id);
 
-    modalTitle.innerText = displayName;
-
-
-
-    let cardsHtml = `
-        <section class="opponent-party-section opponent-leader-section">
-            <h3>Party Leader</h3>
-            <div class="opponent-party-row">
-                ${opp.leader ? renderCard(opp.leader, false, false, false, false) : '<span class="opponent-empty-state">No Party Leader</span>'}
-            </div>
-        </section>
-    `;
-
-    if (opp.party && opp.party.length > 0) {
-
-        const sortedOppParty = [...opp.party].sort((a, b) => {
-
-            const classA = a.class || '';
-
-            const classB = b.class || '';
-
-            return classA.localeCompare(classB);
-
-        });
-
-        cardsHtml += `
-            <section class="opponent-party-section opponent-heroes-section">
-                <h3>Heroes (${sortedOppParty.length})</h3>
-                <div class="opponent-party-row">
-                    ${sortedOppParty.map(c => renderCard(c, false, false, false, false)).join('')}
-                </div>
-            </section>
-        `;
-
-    } else {
-        cardsHtml += `<section class="opponent-party-section opponent-heroes-section"><h3>Heroes (0)</h3><div class="opponent-empty-state">No Heroes in this party yet.</div></section>`;
-    }
-    if (opp.slainMonsters && opp.slainMonsters.length > 0) {
-        cardsHtml += `<section class="opponent-party-section slain-monsters-container"><h3>Slain Monsters (${opp.slainMonsters.length}/3)</h3><div class="slain-monsters-list">${opp.slainMonsters.map(m => `<div class="slain-monster-icon" data-id="${m.id}" onclick="inspectCard('${m.id}')" style="background-image:url('${cardArt(m)}'); cursor:pointer;" title="${m.name}"></div>`).join('')}</div></section>`;
-    }
-
-
-
-    modalContent.innerHTML = cardsHtml;
+    modalTitle.innerHTML = `${displayName}'s Party <span class="own-party-title-stats">${(opp.party || []).length} Heroes &middot; ${(opp.slainMonsters || []).length}/3 Slain</span>`;
+    modalContent.innerHTML = buildClassPartyGrid(opp, false);
 
 
 
@@ -2254,7 +2212,6 @@ function buildBoardParts(data, ctx) {
             </span>
             <span class="party-dock-preview">${previewCards}${hiddenHeroCount ? `<b class="party-dock-more">+${hiddenHeroCount}</b>` : ''}</span>
             <span class="party-dock-slay"><strong>Slain</strong><b>${(me.slainMonsters || []).length}/3</b><i>${[0, 1, 2].map(i => `<em class="${i < (me.slainMonsters || []).length ? 'on' : ''}"></em>`).join('')}</i></span>
-            <span class="party-dock-open" aria-hidden="true">⌕</span>
         </button>`;
 
     // --- Local win tracker --- (Phase 7: slain ✦✦○ pips + X/6 classes; both win paths)
@@ -2719,11 +2676,10 @@ function renderBoard(data) {
 
 
 
-        // Populate passives
-
+        // Every roll bonus is shown numerically in the equation after rolling.
+        // Keep this legacy badge container empty so bonuses are never duplicated.
         const passivesContainer = document.getElementById('dice-passives-container');
-
-        passivesContainer.innerHTML = '';
+        if (passivesContainer) passivesContainer.innerHTML = '';
 
         
 
@@ -2746,40 +2702,6 @@ function renderBoard(data) {
             renderDiceAttackTarget(data); // name + show the targeted monster or hero
 
 
-
-            if (roller.magicRollBonus) {
-
-                passivesContainer.innerHTML += `<div class="equipped-item-badge" style="position:relative; transform:none; bottom:auto; left:auto; background: var(--accent);">✨ Magic: +${roller.magicRollBonus}</div>`;
-
-            }
-
-            if (data.pendingRoll.type === 'HERO_SKILL') {
-
-                const hero = roller.party.find(h => h.id === data.pendingRoll.targetHeroId);
-
-                if (hero && hero.equippedItem && hero.equippedItem.name === 'Fighter Mask') {
-
-                    passivesContainer.innerHTML += `<div class="equipped-item-badge" style="position:relative; transform:none; bottom:auto; left:auto; background: var(--danger);">🛡️ Fighter Mask: +1</div>`;
-
-                }
-
-            }
-
-            if (roller.slainMonsters) {
-
-                if (roller.slainMonsters.some(m => m.effect_id === 'MONSTER_ANURAN_CAULDRON')) {
-
-                    passivesContainer.innerHTML += `<div class="equipped-item-badge" style="position:relative; transform:none; bottom:auto; left:auto; background: purple;">🐸 Anuran Cauldron: +1</div>`;
-
-                }
-
-                if (roller.slainMonsters.some(m => m.effect_id === 'MONSTER_DARK_DRAGON_KING') && data.pendingRoll.type === 'HERO_SKILL') {
-
-                    passivesContainer.innerHTML += `<div class="equipped-item-badge" style="position:relative; transform:none; bottom:auto; left:auto; background: #333;">🐉 Dark Dragon: +1</div>`;
-
-                }
-
-            }
 
         }
 
@@ -3807,8 +3729,8 @@ socket.on('challenge_pending', (data) => {
         
         challengeActionArea.innerHTML = `
             <div class="challenge-buttons-container" style="display: flex; flex-direction: column; align-items: center; gap: 15px; width: 100%; margin-top: 15px;">
-                ${hasChallengeCard ? `<button id="challenge-play-btn" class="action-btn" style="width: 100%; padding: 15px; font-size: 1.1rem; background: var(--warning); color: black;">PLAY CHALLENGE</button>` : `<div style="color: var(--text-muted);">No Challenge Cards in hand</div>`}
-                <button id="challenge-pass-btn" class="action-btn" style="background: #ef4444; width: 100%; padding: 15px; font-size: 1.1rem;">PASS</button>
+                ${hasChallengeCard ? `<button id="challenge-play-btn" class="action-btn">PLAY CHALLENGE</button>` : `<div class="challenge-no-card">No Challenge Cards in hand</div>`}
+                <button id="challenge-pass-btn" class="action-btn modal-secondary-action">PASS</button>
             </div>
         `;
 
@@ -5255,9 +5177,9 @@ function showModifierRollChoice(id, values) {
     if (!banner || !text) return;
     text.innerHTML = `
         <div style="font-size: 1.2rem; margin-bottom: 10px; color: var(--text-main);">Which roll to modify?</div>
-        <button class="action-btn" style="margin: 0 10px; background: var(--accent);" onclick="modifierRollPicked('${id}', 'ACTIVE')">${activeName}</button>
-        <button class="action-btn" style="margin: 0 10px; background: var(--danger);" onclick="modifierRollPicked('${id}', 'CHALLENGER')">${challengerName}</button>
-        <button class="action-btn" style="margin: 0 10px; background: #475569;" onclick="cancelSkillTargeting()">Cancel</button>
+        <button class="action-btn" onclick="modifierRollPicked('${id}', 'ACTIVE')">${activeName}</button>
+        <button class="action-btn" onclick="modifierRollPicked('${id}', 'CHALLENGER')">${challengerName}</button>
+        <button class="action-btn modal-secondary-action" onclick="cancelSkillTargeting()">Cancel</button>
     `;
     banner.classList.remove('hidden');
 }
@@ -5283,13 +5205,12 @@ function showModifierValueChoice(id, values, targetRoll) {
     if (!banner || !text) return;
     const targetArg = targetRoll ? `'${targetRoll}'` : 'null';
     const buttons = values.map(v => {
-        const bg = v > 0 ? '#10b981' : 'var(--danger)';
-        return `<button class="action-btn" style="margin: 0 10px; background: ${bg};" onclick="submitModifierChoice('${id}', ${v}, ${targetArg})">${modValueLabel(v)}</button>`;
+        return `<button class="action-btn" onclick="submitModifierChoice('${id}', ${v}, ${targetArg})">${modValueLabel(v)}</button>`;
     }).join('');
     text.innerHTML = `
         <div style="font-size: 1.2rem; margin-bottom: 10px; color: var(--text-main);">Apply which modifier?</div>
         ${buttons}
-        <button class="action-btn" style="margin: 0 10px; background: #475569;" onclick="cancelSkillTargeting()">Cancel</button>
+        <button class="action-btn modal-secondary-action" onclick="cancelSkillTargeting()">Cancel</button>
     `;
     banner.classList.remove('hidden');
 }
