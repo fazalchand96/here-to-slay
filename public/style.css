@@ -3797,13 +3797,14 @@ body.landscape #player-party .card.card-leader { transform-origin: bottom left; 
 /* Reward toast — brief slay celebration. */
 #reward-toast {
     position: fixed;
-    top: 16%;
+    top: 11%;
     left: 50%;
-    transform: translateX(-50%) translateY(-12px) scale(0.92);
+    transform: translateX(-50%) translateY(-20px) scale(0.84);
     z-index: 10800;
     pointer-events: none;
     opacity: 0;
-    transition: opacity 0.25s ease, transform 0.25s ease;
+    filter: drop-shadow(0 16px 18px rgba(0,0,0,.72));
+    transition: opacity 0.28s ease, transform 0.34s cubic-bezier(.2,.9,.25,1.12);
 }
 #reward-toast.hidden { display: none; }
 #reward-toast.show {
@@ -3811,27 +3812,64 @@ body.landscape #player-party .card.card-leader { transform-origin: bottom left; 
     transform: translateX(-50%) translateY(0) scale(1);
 }
 #reward-toast-inner {
+    box-sizing: border-box;
+    position: relative;
+    width: min(78vw, 105dvh, 520px);
+    aspect-ratio: 900 / 367;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(2px, .8vh, 7px);
     text-align: center;
-    padding: 16px 28px;
-    border: 4px solid transparent;
-    border-radius: var(--r-panel);
-    background:
-        linear-gradient(180deg, #211a2e, #15101f) padding-box,
-        linear-gradient(180deg, var(--gold), var(--gold-deep)) border-box;
-    box-shadow: var(--shadow-panel), 0 0 0 2px rgba(232, 184, 74, 0.5);
+    padding: 19% 15% 9%;
+    border: 0;
+    background: url('assets/skin/rewards/monster-slain.webp') center / 100% 100% no-repeat;
+    filter: drop-shadow(0 0 13px rgba(66,132,255,.24));
 }
-.reward-toast-burst { font-size: 2rem; }
+#reward-toast-inner::after {
+    content: '';
+    position: absolute;
+    inset: 7% 8%;
+    border-radius: 28%;
+    background: radial-gradient(ellipse at center, rgba(255,214,113,.13), transparent 64%);
+    opacity: .75;
+    animation: reward-toast-glow 1.15s ease-in-out infinite alternate;
+    pointer-events: none;
+}
+.reward-toast-burst { display: none; }
 .reward-toast-title {
+    position: relative;
+    z-index: 1;
+    margin: 0;
     font-family: var(--font-display);
-    font-size: 1.3rem;
-    color: var(--gold);
-    text-shadow: 0 0 12px rgba(232, 184, 74, 0.6);
-    margin: 4px 0;
+    font-size: clamp(.92rem, 3.5vw, 1.62rem);
+    letter-spacing: .055em;
+    color: #ffe29a;
+    text-transform: uppercase;
+    text-shadow: 0 2px 2px #180b03, 0 0 11px rgba(232,184,74,.62);
 }
 #reward-toast-name {
+    position: relative;
+    z-index: 1;
+    max-width: 92%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-family: var(--font-body);
-    color: #fff;
-    font-size: 0.95rem;
+    color: #f6f1ff;
+    font-size: clamp(.7rem, 2.4vw, 1.05rem);
+    font-weight: 700;
+    letter-spacing: .025em;
+    text-shadow: 0 2px 3px #000, 0 0 7px rgba(64,113,217,.58);
+}
+@keyframes reward-toast-glow {
+    from { opacity: .45; transform: scale(.96); }
+    to { opacity: .9; transform: scale(1.03); }
+}
+@media (max-height: 430px) {
+    #reward-toast { top: 7%; }
+    #reward-toast-inner { width: min(72vw, 98dvh, 430px); }
 }
 
 /* Roll-requirement badge hidden on the card face (both orientations). The number

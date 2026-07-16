@@ -3346,8 +3346,11 @@ function showRewardToast(monsterName) {
     if (_rewardToastTimer) clearTimeout(_rewardToastTimer);
     _rewardToastTimer = setTimeout(() => {
         toast.classList.remove('show');
-        toast.classList.add('hidden');
-    }, 2800);
+        _rewardToastTimer = setTimeout(() => {
+            toast.classList.add('hidden');
+            _rewardToastTimer = null;
+        }, 300);
+    }, 3000);
 }
 window.showRewardToast = showRewardToast;
 
