@@ -26,7 +26,7 @@ ENCHANTED, CRIT_BOOST, WINDS_FORCE, CALL_FALLEN, ENTANGLING, EXCHANGE, WINDS_CHA
 | `ITEM_MASK/COIN_RUSTY/DECOY`, `CURSE_KEY/COIN_SHINY` (equip effects) | ⚠️ partial | e2e equip-targeting; effect logic not unit-tested |
 | `MOD_*` (modifier cards) | ⚠️ partial | e2e modifiers.spec (can be played); math not unit-tested |
 | Monster attack requirements | ✅ | server_rules (meetsMonsterRequirements) |
-| Win conditions (3 monsters / 6 classes) | ✅ | server_rules (checkWinCondition) |
+| Win conditions (3 monsters / 7 classes) | ✅ | server_rules (checkWinCondition) |
 
 ## Known gaps / follow-ups
 - Non-roll leader passives (Wizard/Guardian/Thief) and most monster on-slay passives (AP, conditional draws) live inside server.js play-flow handlers, not pure functions — they'd need either extraction or socket-level integration tests.

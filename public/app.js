@@ -352,14 +352,31 @@ document.addEventListener('click', triggerFullscreen, { once: true });
 
 function applyMobileStacking() {
 
-    const handCards = document.querySelectorAll('.hand-container .card, #player-hand .card');
+    const hand = document.getElementById('player-hand');
+    const handCards = hand ? Array.from(hand.querySelectorAll('.card')) : [];
+    const handCount = handCards.length;
+    const handWidth = hand?.clientWidth || 0;
+    const handHeight = hand?.clientHeight || 0;
+    const cardAspect = 2.5 / 3.5;
+    const cardGap = 4;
+    const widthLimitedHeight = handCount && handWidth
+        ? ((handWidth - (cardGap * Math.max(0, handCount - 1))) / handCount) / cardAspect
+        : 106;
+    const heightLimitedHeight = handHeight ? handHeight - 12 : 106;
+    const fittedHeight = Math.max(52, Math.min(106, widthLimitedHeight, heightLimitedHeight));
+    const naturalWidth = fittedHeight * cardAspect;
+    const naturalTotalWidth = (naturalWidth * handCount) + (cardGap * Math.max(0, handCount - 1));
+    const requiredOverlap = handCount > 1 && handWidth
+        ? Math.max(0, (naturalTotalWidth - handWidth) / (handCount - 1))
+        : 0;
 
     handCards.forEach((card, index) => {
-
-        card.style.marginLeft = index === 0 ? '0px' : '-15px';
-
+        card.style.setProperty('margin-left', index === 0 ? '0px' : `${cardGap - requiredOverlap}px`, 'important');
     });
 
+    if (hand) {
+        hand.style.setProperty('--hand-card-height', `${fittedHeight}px`);
+    }
 
 
     const partyCards = document.querySelectorAll('#player-party .card');
@@ -2214,12 +2231,17 @@ function buildBoardParts(data, ctx) {
             <span class="party-dock-slay"><strong>Slain</strong><b>${(me.slainMonsters || []).length}/3</b><i>${[0, 1, 2].map(i => `<em class="${i < (me.slainMonsters || []).length ? 'on' : ''}"></em>`).join('')}</i></span>
         </button>`;
 
-    // --- Local win tracker --- (Phase 7: slain ✦✦○ pips + X/6 classes; both win paths)
+    // --- Local class tracker --- (slain progress already lives in the Party dock)
     const myStats = calculateWinStats(me);
-    const slain = Math.min(myStats.monsters, 3);
-    const slainPips = [0, 1, 2].map(i => `<span class="wt-pip${i < slain ? ' on' : ''}">${i < slain ? '✦' : '○'}</span>`).join('');
-    const winTrackHtml = `<span class="wt-slain" title="Slay 3 monsters to win">Slain ${slainPips}</span>`
-        + `<span class="wt-classes" title="Collect 6 different classes to win">Classes <b>${myStats.uniqueClasses}/6</b></span>`;
+    const classProgress = Math.min(myStats.uniqueClasses, 7);
+    const classGems = Array.from({ length: 7 }, (_, index) =>
+        `<em class="${index < classProgress ? 'on' : ''}"></em>`
+    ).join('');
+    const winTrackHtml = `
+        <span class="wt-classes" title="Collect 7 different classes to win">
+            <span class="wt-class-label">Classes <b>${classProgress}/7</b></span>
+            <i class="wt-class-gems">${classGems}</i>
+        </span>`;
 
     // --- My hand ---
     const handHtml = me.hand.map(c => renderCard(c, true, true, false, isMyTurn)).join('');

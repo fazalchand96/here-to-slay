@@ -320,8 +320,8 @@ function checkWinCondition() {
             if (cls) classes.add(cls);
         });
 
-        if (classes.size >= 6) {
-            return { winnerId: p.id, reason: 'assembled 6 classes' };
+        if (classes.size >= 7) {
+            return { winnerId: p.id, reason: 'assembled 7 classes' };
         }
     }
     return null;
