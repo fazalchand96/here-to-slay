@@ -463,10 +463,10 @@ function checkWinCondition() {
     for (const socketId of gameState.playerOrder) {
         const p = gameState.players[socketId];
 
-        // Condition 1: Slay 3 Monsters
+        // Condition 1: Slay 4 Monsters
         const slainValue = (p.slainMonsters || []).reduce((sum, monster) => sum + (monster.slain_value || 1), 0);
-        if (slainValue >= 3) {
-            return { winnerId: p.id, reason: 'slayed 3 monsters' };
+        if (slainValue >= 4) {
+            return { winnerId: p.id, reason: 'slayed 4 monsters' };
         }
 
         // Condition 2: 7 Different Classes in Party with this expansion.

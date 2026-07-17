@@ -474,21 +474,27 @@ test('no winner when nobody has met a condition', () => {
     assert.equal(checkWinCondition(), null);
 });
 
-test('slaying 3 monsters wins', () => {
+test('slaying 3 monsters does not win', () => {
     setBoard([{ slainMonsters: [monster('M1'), monster('M2'), monster('M3')] }]);
+    assert.equal(checkWinCondition(), null);
+});
+
+test('slaying 4 monsters wins', () => {
+    setBoard([{ slainMonsters: [monster('M1'), monster('M2'), monster('M3'), monster('M4')] }]);
     const res = checkWinCondition();
     assert.equal(res.winnerId, 'p0');
-    assert.match(res.reason, /3 monsters/);
+    assert.match(res.reason, /4 monsters/);
 });
 
 test('Venomous Gemini counts as two slain Monsters', () => {
     setBoard([{ slainMonsters: [
         { ...monster('MONSTER_VENOMOUS_GEMINI'), slain_value: 2 },
-        monster('M2')
+        monster('M2'),
+        monster('M3')
     ] }]);
     const res = checkWinCondition();
     assert.equal(res.winnerId, 'p0');
-    assert.match(res.reason, /3 monsters/);
+    assert.match(res.reason, /4 monsters/);
 });
 
 test('assembling 7 different classes (leader + party) wins with expansion Heroes live', () => {

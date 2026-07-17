@@ -758,7 +758,7 @@ function buildClassPartyGrid(player, isOwn) {
     return `
         <div class="party-class-grid">${columns}</div>
         <section class="own-party-monsters">
-            <h3>Slain Monsters <span>${(player.slainMonsters || []).length}/3</span></h3>
+            <h3>Slain Monsters <span>${calculateWinStats(player).monsters}/4</span></h3>
             <div class="own-party-monster-row">${monsters}</div>
         </section>`;
 }
@@ -1421,7 +1421,7 @@ window.openOwnPartyModal = function() {
     currentlyViewedOpponentId = myId;
     modal.dataset.view = 'own-party';
     modal.classList.add('own-party-view');
-    modalTitle.innerHTML = `Your Party <span class="own-party-title-stats">${(me.party || []).length} Heroes · ${(me.slainMonsters || []).length}/3 Slain</span>`;
+    modalTitle.innerHTML = `Your Party <span class="own-party-title-stats">${(me.party || []).length} Heroes · ${calculateWinStats(me).monsters}/4 Slain</span>`;
     modalContent.innerHTML = buildClassPartyGrid(me, true);
     modal.style.display = 'flex';
     modal.classList.remove('hidden');
@@ -1497,7 +1497,7 @@ window.openOpponentModal = function(id) {
 
     const displayName = getPlayerName(id);
 
-    modalTitle.innerHTML = `${displayName}'s Party <span class="own-party-title-stats">${(opp.party || []).length} Heroes &middot; ${(opp.slainMonsters || []).length}/3 Slain</span>`;
+    modalTitle.innerHTML = `${displayName}'s Party <span class="own-party-title-stats">${(opp.party || []).length} Heroes &middot; ${calculateWinStats(opp).monsters}/4 Slain</span>`;
     modalContent.innerHTML = buildClassPartyGrid(opp, false);
 
 
@@ -2176,6 +2176,7 @@ function calculateWinStats(player) {
 // ---------------------------------------------------------------------------
 function buildBoardParts(data, ctx) {
     const { me, isMyTurn, myTargetMode, currentPendingAction } = ctx;
+    const myWinStats = calculateWinStats(me);
 
     // --- Opponents bar (chips) ---
     let oppHtml = '';
@@ -2250,7 +2251,7 @@ function buildBoardParts(data, ctx) {
                 <span class="party-dock-classes">${classChips || '<i>No classes yet</i>'}</span>
             </span>
             <span class="party-dock-preview">${previewCards}${hiddenHeroCount ? `<b class="party-dock-more">+${hiddenHeroCount}</b>` : ''}</span>
-            <span class="party-dock-slay"><strong>Slain</strong><b>${(me.slainMonsters || []).length}/3</b><i>${[0, 1, 2].map(i => `<em class="${i < (me.slainMonsters || []).length ? 'on' : ''}"></em>`).join('')}</i></span>
+            <span class="party-dock-slay"><strong>Slain</strong><b>${myWinStats.monsters}/4</b><i>${[0, 1, 2, 3].map(i => `<em class="${i < myWinStats.monsters ? 'on' : ''}"></em>`).join('')}</i></span>
         </button>`;
 
     // --- Local class tracker --- (slain progress already lives in the Party dock)
