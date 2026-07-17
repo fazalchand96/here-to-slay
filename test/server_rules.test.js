@@ -18,6 +18,17 @@ const {
     isValidItemEquipTarget,
     clearUntilNextTurnProtections,
     playerHasEffectiveClass,
+    getConnectedChallengeOpponentIds,
+    haveAllConnectedChallengeOpponentsPassed,
+    queueLightningLabrysPlayerChoice,
+    queueLightningLabrysSacrifice,
+    triggerPlayedCardMonsterPassives,
+    attackCostAllowedTypes,
+    eligibleEndTurnMonsterEffects,
+    restoreDragonWaspHero,
+    completeLumberingDrawStep,
+    resolveLumberingContinuation,
+    CHALLENGE_TIMEOUT_MS,
     loadCards,
     gameState
 } = require('../server');
@@ -30,6 +41,159 @@ const monster = (effect_id, name = effect_id) => ({ effect_id, name, type: 'Mons
 const heroOf = (cls, extra = {}) => ({ type: 'Hero Card', class: cls, name: cls, ...extra });
 const item = (effect_id, name = effect_id) => ({ effect_id, name, type: 'Item Card' });
 const pl = (extra = {}) => ({ leader: null, party: [], slainMonsters: [], ...extra });
+
+test('Lightning Labrys queues each player choice and lets the chosen player select the sacrifice', () => {
+    const state = {
+        state: 'PLAYING',
+        players: {
+            alice: pl({ id: 'alice', connected: true }),
+            bob: pl({ id: 'bob', connected: true, party: [heroOf('Bard', { id: 'bob-hero' })] })
+        },
+        pendingAction: null
+    };
+
+    assert.equal(queueLightningLabrysPlayerChoice(state, 'alice', 2), true);
+    assert.deepEqual(state.pendingAction, {
+        type: 'LIGHTNING_LABRYS_PLAYER', playerToChoose: 'alice', originalActor: 'alice',
+        remainingChoices: 2, allowSelf: true
+    });
+    assert.equal(queueLightningLabrysSacrifice(state, 'bob'), true);
+    assert.deepEqual(state.pendingAction, {
+        type: 'LIGHTNING_LABRYS_SACRIFICE', playerToChoose: 'bob', originalActor: 'alice',
+        remainingChoices: 1
+    });
+});
+
+test('Lightning Labrys consumes a choice without stalling when the selected player has no Hero', () => {
+    const state = {
+        state: 'WAITING_FOR_SKILL_TARGET',
+        players: {
+            alice: pl({ id: 'alice', connected: true }),
+            bob: pl({ id: 'bob', connected: true })
+        },
+        pendingAction: {
+            type: 'LIGHTNING_LABRYS_PLAYER', playerToChoose: 'alice', originalActor: 'alice',
+            remainingChoices: 1, allowSelf: true
+        }
+    };
+
+    assert.equal(queueLightningLabrysSacrifice(state, 'bob'), 'NO_HERO');
+    assert.equal(state.state, 'PLAYING');
+    assert.equal(state.pendingAction, null);
+});
+
+test('Dragon Wasp restoration returns the exact Hero and both original Item slots', () => {
+    const hero = { id: 'hero', name: 'Hero', type: 'Hero Card', equippedItem: null, equippedItem2: null };
+    const itemOne = { id: 'item-one', type: 'Item Card' };
+    const itemTwo = { id: 'item-two', type: 'Cursed Item Card' };
+    gameState.players = {
+        owner: { id: 'owner', hand: [], party: [], slainMonsters: [] },
+        thief: { id: 'thief', hand: [itemOne], party: [], slainMonsters: [] }
+    };
+    gameState.discardPile = [hero, itemTwo, { id: 'unrelated' }];
+
+    assert.equal(restoreDragonWaspHero({
+        playerId: 'owner', hero,
+        removedItems: [
+            { slot: 'equippedItem', card: itemOne },
+            { slot: 'equippedItem2', card: itemTwo }
+        ]
+    }), true);
+    assert.deepEqual(gameState.players.owner.party, [hero]);
+    assert.equal(hero.equippedItem, itemOne);
+    assert.equal(hero.equippedItem2, itemTwo);
+    assert.deepEqual(gameState.players.thief.hand, []);
+    assert.deepEqual(gameState.discardPile, [{ id: 'unrelated' }]);
+});
+
+test('Lumbering Demon completes one replacement before applying Quick Draw continuation', () => {
+    const itemCard = { id: 'drawn-item', type: 'Item Card' };
+    const otherCard = { id: 'drawn-other', type: 'Challenge Card' };
+    gameState.players = {
+        owner: { id: 'owner', hand: [itemCard, otherCard], party: [], slainMonsters: [] }
+    };
+    gameState.pendingDeferredDrawPassives = [];
+    gameState.state = 'PLAYING';
+    gameState.pendingAction = null;
+    const sequence = {
+        playerId: 'owner', remaining: 1, source: 'Quick Draw',
+        drawnCardIds: [], drawnCards: [],
+        continuation: { type: 'QUICK_DRAW', playerId: 'owner' }
+    };
+
+    completeLumberingDrawStep(sequence, [itemCard, otherCard]);
+    assert.equal(sequence.remaining, 0);
+    assert.deepEqual(sequence.drawnCardIds, ['drawn-item', 'drawn-other']);
+    resolveLumberingContinuation(sequence);
+    assert.equal(gameState.state, 'WAITING_FOR_HAND_SELECTION');
+    assert.deepEqual(gameState.pendingAction.allowedCardIds, ['drawn-item']);
+    assert.equal(gameState.pendingAction.optional, true);
+});
+
+test('Lumbering Demon preserves Pan Chucks Challenge detection across both replacement draws', () => {
+    gameState.players = {
+        owner: { id: 'owner', hand: [], party: [], slainMonsters: [] },
+        target: { id: 'target', hand: [], party: [{ id: 'target-hero', type: 'Hero Card' }], slainMonsters: [] }
+    };
+    gameState.state = 'PLAYING';
+    gameState.pendingAction = null;
+    resolveLumberingContinuation({
+        playerId: 'owner',
+        drawnCards: [{ id: 'ordinary', type: 'Magic Card' }, { id: 'challenge', type: 'Challenge Card' }],
+        continuation: { type: 'PAN_CHUCKS', playerId: 'owner' }
+    });
+    assert.equal(gameState.pendingAction.type, 'DESTROY');
+    assert.equal(gameState.pendingAction.optional, true);
+});
+
+test('Monster play triggers queue one draw for Challenge, Magic, and Item cards', () => {
+    const previousPlayers = gameState.players;
+    const previousQueue = gameState.pendingPassiveDraws;
+    gameState.players = {
+        owner: pl({
+            id: 'owner',
+            slainMonsters: [
+                monster('MONSTER_POSSESSED_PLUSH'),
+                monster('MONSTER_VOLTCLAW_LION'),
+                monster('MONSTER_WICKED_SEA_SERPENT')
+            ]
+        })
+    };
+    gameState.pendingPassiveDraws = [];
+    triggerPlayedCardMonsterPassives('owner', { id: 'challenge', type: 'Challenge Card' });
+    triggerPlayedCardMonsterPassives('owner', { id: 'magic', type: 'Magic Card' });
+    triggerPlayedCardMonsterPassives('owner', { id: 'curse', type: 'Cursed Item Card' });
+    assert.deepEqual(gameState.pendingPassiveDraws.map(entry => entry.source), [
+        'Possessed Plush', 'Voltclaw Lion', 'Wicked Sea Serpent'
+    ]);
+    gameState.players = previousPlayers;
+    gameState.pendingPassiveDraws = previousQueue;
+});
+
+test('Monster attack costs accept the exact printed discard categories', () => {
+    assert.equal(attackCostAllowedTypes({ discard: 'ANY', count: 2 }), null);
+    assert.deepEqual(attackCostAllowedTypes({ discard: 'Challenge Card', count: 1 }), ['Challenge Card']);
+    assert.deepEqual(attackCostAllowedTypes({ discard: 'Magic Card', count: 1 }), ['Magic Card']);
+    assert.deepEqual(attackCostAllowedTypes({ discard: 'Item Card', count: 1, include_cursed: true }), [
+        'Item Card', 'Cursed Item Card'
+    ]);
+});
+
+test('empty-hand end-turn Monster effects are queued in deterministic order', () => {
+    const player = pl({
+        hand: [],
+        slainMonsters: [
+            monster('MONSTER_SCAVENGER_GRIFFIN'),
+            monster('MONSTER_GORETELODONT'),
+            monster('MONSTER_CLAWED_NIGHTMARE')
+        ]
+    });
+    assert.deepEqual(eligibleEndTurnMonsterEffects(player), [
+        'CLAWED_NIGHTMARE_PULL', 'GORETELODONT_DRAW', 'SCAVENGER_GRIFFIN_STEAL'
+    ]);
+    player.hand.push({ id: 'card' });
+    assert.deepEqual(eligibleEndTurnMonsterEffects(player), []);
+});
 
 test('Calming Voice and Mighty Blade protections expire at the start of the owner next turn', () => {
     const player = pl({ cannotBeStolen: true, cannotBeDestroyed: true });
@@ -56,6 +220,50 @@ test('class-gated Challenges accept leaders and Heroes wearing the matching Mask
     assert.equal(playerHasEffectiveClass(pl({ leader: leader('LEADER_DRUID', 'Druid') }), 'Druid'), true);
     assert.equal(playerHasEffectiveClass(pl({ party: [heroOf('Wizard', { equippedItem: { ...item('ITEM_MASK', 'Warrior Mask'), class: 'Warrior' } })] }), 'Warrior'), true);
     assert.equal(playerHasEffectiveClass(pl({ party: [heroOf('Wizard')] }), 'Druid'), false);
+    assert.equal(playerHasEffectiveClass(pl({ leader: leader('LEADER_NECROMANCER', 'Necromancer') }), 'Necromancer'), true);
+    assert.equal(playerHasEffectiveClass(pl({ party: [heroOf('Bard', { equippedItem: { ...item('ITEM_MASK', 'Berserker Mask'), class: 'Berserker' } })] }), 'Berserker'), true);
+});
+
+test('challenge quorum ignores opponents who are temporarily disconnected', () => {
+    const state = {
+        players: {
+            demi: { connected: true },
+            observer: { connected: true },
+            jimi: { connected: false },
+        },
+        pendingChallenge: {
+            rollerId: 'demi',
+            card: { id: 'slippery-paws', name: 'Slippery Paws' },
+            passedPlayers: ['observer'],
+        },
+    };
+
+    assert.deepEqual(getConnectedChallengeOpponentIds(state, ['demi', 'observer']), ['observer']);
+    assert.equal(haveAllConnectedChallengeOpponentsPassed(state, ['demi', 'observer']), true);
+});
+
+test('challenge quorum keeps waiting for every connected opponent', () => {
+    const state = {
+        players: {
+            demi: { connected: true },
+            observer: { connected: true },
+            jimi: { connected: true },
+        },
+        pendingChallenge: {
+            rollerId: 'demi',
+            card: { id: 'slippery-paws', name: 'Slippery Paws' },
+            passedPlayers: ['observer'],
+        },
+    };
+
+    assert.deepEqual(
+        getConnectedChallengeOpponentIds(state, ['demi', 'observer', 'jimi']),
+        ['observer', 'jimi']
+    );
+    assert.equal(haveAllConnectedChallengeOpponentsPassed(state, ['demi', 'observer', 'jimi']), false);
+    state.pendingChallenge.passedPlayers.push('jimi');
+    assert.equal(haveAllConnectedChallengeOpponentsPassed(state, ['demi', 'observer', 'jimi']), true);
+    assert.equal(CHALLENGE_TIMEOUT_MS, 15_000);
 });
 
 // ===========================================================================
@@ -131,6 +339,31 @@ test('MONSTER_TITAN_WYVERN gives +1 on a challenge only', () => {
     const p = pl({ slainMonsters: [monster('MONSTER_TITAN_WYVERN')] });
     assert.equal(calculateRollDetails(p, 4, 'CHALLENGE').total, 5);
     assert.equal(calculateRollDetails(p, 4, 'HERO_SKILL').total, 4);
+});
+
+test('new slain monsters apply their printed attack bonuses only to attacks', () => {
+    const p = pl({
+        slainMonsters: [
+            monster('MONSTER_ANCIENT_MEGASHARK', 'Ancient Megashark'),
+            monster('MONSTER_REPTILIAN_RIPPER', 'Reptilian Ripper')
+        ]
+    });
+    const attack = calculateRollDetails(p, 6, 'ATTACK');
+    assert.equal(attack.total, 9);
+    assert.deepEqual(attack.breakdown.slice(-2), [
+        { source: 'Ancient Megashark', value: 1 },
+        { source: 'Reptilian Ripper', value: 2 }
+    ]);
+    assert.equal(calculateRollDetails(p, 6, 'HERO_SKILL').total, 6);
+});
+
+test('Saffyre Phoenix and Wandering Behemoth add bonuses for additional Heroes', () => {
+    const p = pl({ party: [heroOf('Fighter'), heroOf('Bard'), heroOf('Wizard')] });
+    const phoenix = { name: 'Saffyre Phoenix', attack_bonus_per_additional_hero: 2 };
+    const behemoth = { name: 'Wandering Behemoth', attack_bonus_per_additional_hero: 1 };
+    assert.equal(calculateRollDetails(p, 4, 'ATTACK', phoenix).total, 8);
+    assert.equal(calculateRollDetails(p, 4, 'ATTACK', behemoth).total, 6);
+    assert.equal(calculateRollDetails(p, 4, 'HERO_SKILL', phoenix).total, 4);
 });
 
 test('magicRollBonus is added to the roll', () => {
@@ -243,6 +476,16 @@ test('no winner when nobody has met a condition', () => {
 
 test('slaying 3 monsters wins', () => {
     setBoard([{ slainMonsters: [monster('M1'), monster('M2'), monster('M3')] }]);
+    const res = checkWinCondition();
+    assert.equal(res.winnerId, 'p0');
+    assert.match(res.reason, /3 monsters/);
+});
+
+test('Venomous Gemini counts as two slain Monsters', () => {
+    setBoard([{ slainMonsters: [
+        { ...monster('MONSTER_VENOMOUS_GEMINI'), slain_value: 2 },
+        monster('M2')
+    ] }]);
     const res = checkWinCondition();
     assert.equal(res.winnerId, 'p0');
     assert.match(res.reason, /3 monsters/);

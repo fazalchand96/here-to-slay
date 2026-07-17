@@ -83,7 +83,7 @@ function resolveRexMajorChoice(gameState, io, playerId, choiceId, reveal) {
         card
     });
     io.emit('message', `${getPlayerName(gameState, playerId)} revealed ${card.name} due to Rex Major and draws another card!`);
-    const drawn = drawCardsWithPassives(gameState, io, 1, player);
+    const drawResult = drawCardsForEffect(gameState, io, 1, player, null, 'Rex Major');
 
     const holdTimer = setTimeout(() => {
         rexRevealHolds.delete(playerId);
@@ -92,7 +92,7 @@ function resolveRexMajorChoice(gameState, io, playerId, choiceId, reveal) {
     }, 2600);
     holdTimer.unref?.();
     rexRevealTimers.set(playerId, holdTimer);
-    return { ok: true, revealed: true, card, drawn };
+    return { ok: true, revealed: true, card, drawn: drawResult.drawn, lumberingQueued: drawResult.queued };
 }
 
 function clearRexMajorChoices(gameState) {
@@ -121,6 +121,34 @@ function effectiveHeroClass(hero) {
 
 function equippedItems(hero) {
     return [hero && hero.equippedItem, hero && hero.equippedItem2].filter(Boolean);
+}
+
+function partyCardCount(player) {
+    return (player?.party || []).reduce((count, hero) => count + 1 + equippedItems(hero).length, 0);
+}
+
+function hasPartySacrificeTarget(player, allowedTarget = 'ANY_PARTY_CARD') {
+    const heroes = player?.party || [];
+    if (allowedTarget === 'HERO_ONLY') return heroes.some(card => card.type === 'Hero Card');
+    if (allowedTarget === 'ITEM_ONLY') return heroes.some(hero => equippedItems(hero).length > 0);
+    return partyCardCount(player) > 0;
+}
+
+function startSequentialPartySacrifice(gameState, io, initiatorId, playerIds, options = {}) {
+    const allowedTarget = options.allowedTarget || 'ANY_PARTY_CARD';
+    const queue = (playerIds || []).filter(id => hasPartySacrificeTarget(gameState.players?.[id], allowedTarget));
+    if (queue.length === 0) return false;
+    gameState.state = 'WAITING_FOR_GLOBAL_ACTION';
+    gameState.pendingGlobalAction = {
+        type: 'SEQUENTIAL_PARTY_SACRIFICE',
+        initiatorId,
+        pendingPlayerIds: [queue[0]],
+        remainingPlayerIds: queue.slice(1),
+        allowedTarget,
+        afterResolution: options.afterResolution || null
+    };
+    io.emit('global_action_requested', gameState.pendingGlobalAction);
+    return true;
 }
 
 function hasEquippedEffect(hero, effectId) {
@@ -167,63 +195,185 @@ function triggerSoulTethers(gameState, owner) {
             hero.equippedItem2 = null;
             owner.hand.push(hero, ...items);
         } else {
+            const removedItems = ['equippedItem', 'equippedItem2']
+                .filter(slot => hero[slot])
+                .map(slot => ({ slot, card: hero[slot] }));
             discardHeroWithItems(gameState, hero);
+            recordSacrificeEvent(gameState, owner, hero, { isHero: true, removedItems });
         }
         sacrificed.push(hero);
     }
     return sacrificed;
 }
 
+function queueMonsterTrigger(gameState, trigger) {
+    if (!gameState.pendingMonsterTriggers) gameState.pendingMonsterTriggers = [];
+    gameState.pendingMonsterTriggers.push(trigger);
+}
+
+function queueCommittedHeroRemovalTriggers(gameState, owner, card, {
+    eventType,
+    isHero = false,
+    initiatorId = null
+} = {}) {
+    if (!owner || !card) return;
+    const slain = owner.slainMonsters || [];
+    if (isHero) {
+        triggerSoulTethers(gameState, owner);
+        if (initiatorId && gameState.players?.[initiatorId]?.silentShieldActive) {
+            gameState.pendingSilentShieldActorId = initiatorId;
+        }
+        if (eventType === 'DESTROY'
+            && slain.some(monster => monster.effect_id === 'MONSTER_DRACOS')) {
+            drawCardsForEffect(gameState, null, 1, owner, null, 'Dracos');
+        }
+    }
+    if (eventType === 'SACRIFICE') {
+        Object.values(gameState.players || {}).forEach(feralOwner => {
+            if ((feralOwner.slainMonsters || []).some(monster => monster.effect_id === 'MONSTER_FERAL_DRAGON')) {
+                queueMonsterTrigger(gameState, {
+                    type: 'FERAL_DRAGON_DRAW', playerId: feralOwner.id,
+                    sacrificingPlayerId: owner.id, sourceCardId: card.id
+                });
+            }
+        });
+        if (slain.some(monster => monster.effect_id === 'MONSTER_DOOMBRINGER')) {
+            queueMonsterTrigger(gameState, { type: 'DOOMBRINGER_RETRIEVE', playerId: owner.id, sourceCardId: card.id });
+        }
+        if (isHero && slain.some(monster => monster.effect_id === 'MONSTER_WANDERING_BEHEMOTH')) {
+            queueMonsterTrigger(gameState, { type: 'WANDERING_BEHEMOTH_DRAW', playerId: owner.id, sourceCardId: card.id });
+        }
+    }
+    if (isHero && slain.some(monster => monster.effect_id === 'MONSTER_SAFFYRE_PHOENIX')) {
+        queueMonsterTrigger(gameState, { type: 'SAFFYRE_PHOENIX_PLAY', playerId: owner.id, sourceCardId: card.id });
+    }
+}
+
+function queueHeroRemovalEvent(gameState, owner, hero, {
+    eventType,
+    removedItems = [],
+    initiatorId = null
+} = {}) {
+    if (!owner || !hero) return false;
+    const hasDragonWasp = (owner.slainMonsters || [])
+        .some(monster => monster.effect_id === 'MONSTER_DRAGON_WASP');
+    if (hasDragonWasp && (owner.hand || []).length >= 2) {
+        queueMonsterTrigger(gameState, {
+            type: 'DRAGON_WASP_REPLACEMENT', playerId: owner.id,
+            sourceCardId: hero.id, hero, removedItems, eventType, initiatorId
+        });
+        return true;
+    }
+    queueCommittedHeroRemovalTriggers(gameState, owner, hero, {
+        eventType, isHero: true, initiatorId
+    });
+    return false;
+}
+
+function recordSacrificeEvent(gameState, owner, card, {
+    isHero = false,
+    removedItems = [],
+    initiatorId = null
+} = {}) {
+    if (!owner || !card) return false;
+    if (isHero) {
+        return queueHeroRemovalEvent(gameState, owner, card, {
+            eventType: 'SACRIFICE', removedItems, initiatorId
+        });
+    }
+    queueCommittedHeroRemovalTriggers(gameState, owner, card, {
+        eventType: 'SACRIFICE', isHero: false, initiatorId
+    });
+    return false;
+}
+
+function recordDestroyEvent(gameState, owner, hero, options = {}) {
+    return queueHeroRemovalEvent(gameState, owner, hero, {
+        eventType: 'DESTROY', ...options
+    });
+}
+
+function recordFailedSkillEvent(gameState, owner, hero) {
+    if (!owner || !hero) return;
+    if ((owner.slainMonsters || []).some(monster => monster.effect_id === 'MONSTER_REEF_RIPPER')) {
+        queueMonsterTrigger(gameState, { type: 'REEF_RIPPER_DRAW', playerId: owner.id, sourceCardId: hero.id });
+    }
+}
+
+function rebuildMainDeckIfNeeded(gameState, io) {
+    if (gameState.mainDeck.length > 0 || gameState.discardPile.length === 0) return;
+    gameState.mainDeck.push(...gameState.discardPile.splice(0));
+    for (let i = gameState.mainDeck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [gameState.mainDeck[i], gameState.mainDeck[j]] = [gameState.mainDeck[j], gameState.mainDeck[i]];
+    }
+    if (io?.emit) io.emit('message', 'The main deck was empty, so the discard pile was shuffled into a fresh deck.');
+}
+
+function drawCardsWithoutPassives(gameState, io, count, player) {
+    const drawn = [];
+    for (let i = 0; i < count; i++) {
+        rebuildMainDeckIfNeeded(gameState, io);
+        if (gameState.mainDeck.length === 0) break;
+        const card = gameState.mainDeck.pop();
+        player.hand.push(card);
+        drawn.push(card);
+    }
+    return drawn;
+}
+
+function applyDrawnCardPassives(gameState, io, player, card) {
+    if (!player || !card) return;
+    const hasRex = (player.slainMonsters || []).some(m => m.effect_id === 'MONSTER_REX_MAJOR');
+    const hasOrthus = (player.slainMonsters || []).some(m => m.effect_id === 'MONSTER_ORTHUS');
+    if (hasOrthus && card.type === 'Magic Card' && !gameState.pendingCard) {
+        const handIndex = player.hand.findIndex(candidate => candidate.id === card.id);
+        if (handIndex !== -1) player.hand.splice(handIndex, 1);
+        const discardIndex = gameState.discardPile.findIndex(candidate => candidate.id === card.id);
+        if (discardIndex !== -1) gameState.discardPile.splice(discardIndex, 1);
+        gameState.state = 'WAITING_FOR_IMMEDIATE_PLAY';
+        gameState.pendingCard = card;
+        gameState.pendingAction = {
+            playerToChoose: player.id,
+            type: 'IMMEDIATE_PLAY',
+            originalActor: player.id,
+            source: 'MONSTER_ORTHUS'
+        };
+    }
+    if (hasRex && card.type === 'Modifier Card') queueRexMajorChoice(gameState, io, player, card);
+}
+
 // Put cards drawn by an effect through the slain-monster draw passives. This is
 // shared by Hero skills, Magic effects, and the server's normal draw action so
 // Orthus/Rex Major do not depend on which code path produced the draw.
 function drawCardsWithPassives(gameState, io, count, player) {
-    const drawn = [];
-    const hasRex = (player.slainMonsters || []).some(m => m.effect_id === 'MONSTER_REX_MAJOR');
-    const hasOrthus = (player.slainMonsters || []).some(m => m.effect_id === 'MONSTER_ORTHUS');
-
-    const receive = (card) => {
-        if (!card) return;
-        if (hasOrthus && card.type === 'Magic Card' && !gameState.pendingCard) {
-            gameState.state = 'WAITING_FOR_IMMEDIATE_PLAY';
-            gameState.pendingCard = card;
-            gameState.pendingAction = {
-                playerToChoose: player.id,
-                type: 'IMMEDIATE_PLAY',
-                originalActor: player.id,
-                source: 'MONSTER_ORTHUS'
-            };
-        } else {
-            player.hand.push(card);
-        }
-    };
-
-    const drawOne = () => {
-        if (gameState.mainDeck.length === 0 && gameState.discardPile.length > 0) {
-            gameState.mainDeck.push(...gameState.discardPile.splice(0));
-            for (let i = gameState.mainDeck.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [gameState.mainDeck[i], gameState.mainDeck[j]] = [gameState.mainDeck[j], gameState.mainDeck[i]];
-            }
-            if (io?.emit) io.emit('message', 'The main deck was empty, so the discard pile was shuffled into a fresh deck.');
-        }
-        if (gameState.mainDeck.length === 0) return;
-        const card = gameState.mainDeck.pop();
-        drawn.push(card);
-        receive(card);
-        if (hasRex && card.type === 'Modifier Card') queueRexMajorChoice(gameState, io, player, card);
-    };
-
-    for (let i = 0; i < count; i++) {
-        drawOne();
-    }
+    const drawn = drawCardsWithoutPassives(gameState, io, count, player);
+    drawn.forEach(card => applyDrawnCardPassives(gameState, io, player, card));
     return drawn;
+}
+
+function queueLumberingDrawSequence(gameState, player, count, continuation = null, source = 'card effect') {
+    if (!player || count <= 0 || !(player.slainMonsters || [])
+        .some(monster => monster.effect_id === 'MONSTER_LUMBERING_DEMON')) return false;
+    if (!gameState.pendingLumberingDraws) gameState.pendingLumberingDraws = [];
+    gameState.pendingLumberingDraws.push({
+        playerId: player.id, remaining: count, continuation, source,
+        drawnCardIds: [], drawnCards: []
+    });
+    return true;
+}
+
+function drawCardsForEffect(gameState, io, count, player, continuation = null, source = 'card effect') {
+    if (queueLumberingDrawSequence(gameState, player, count, continuation, source)) {
+        return { queued: true, drawn: [] };
+    }
+    return { queued: false, drawn: drawCardsWithPassives(gameState, io, count, player) };
 }
 
 function triggerCrownedSerpent(gameState, io) {
     Object.values(gameState.players || {}).forEach(player => {
         if ((player.slainMonsters || []).some(m => m.effect_id === 'MONSTER_CROWNED_SERPENT') && gameState.mainDeck.length > 0) {
-            drawCardsWithPassives(gameState, io, 1, player);
+            drawCardsForEffect(gameState, io, 1, player, null, 'Crowned Serpent');
         }
     });
 }
@@ -312,7 +462,7 @@ function getTargetingSkillPlan(gameState, actorId, skillId) {
         return null;
     }
 
-    const stealSkills = ['STEAL_HERO', 'SKILL_TIPSY_TOOTIE', 'SKILL_WIGGLES'];
+    const stealSkills = ['STEAL_HERO', 'SKILL_TIPSY_TOOTIE', 'SKILL_WIGGLES', 'SKILL_PERFECT_VESSEL'];
     const targetAction = stealSkills.includes(skillId) ? 'STEAL' : 'DESTROY';
     return hasOpponentHeroTarget(gameState, actorId, targetAction)
         ? { type: 'SKILL_TARGET_HERO', targetAction }
@@ -357,7 +507,10 @@ function resolveDestroyAction(gameState, initiatorId, targetPlayerId, targetHero
         actionMessage = `Corrupted Sabretooth turned a Destroy into a Steal! ${getPlayerName(gameState, initiatorId)} STOLE ${getPlayerName(gameState, targetPlayerId)}'s ${targetHero.name}!`;
     } else {
         let itemNote = '';
-        const items = equippedItems(targetHero);
+        const removedItems = ['equippedItem', 'equippedItem2']
+            .filter(slot => targetHero[slot])
+            .map(slot => ({ slot, card: targetHero[slot] }));
+        const items = removedItems.map(entry => entry.card);
         if (targetPlayer.maegistyActive) {
             targetPlayer.party.splice(tHeroIndex, 1);
             targetHero.equippedItem = null;
@@ -371,15 +524,11 @@ function resolveDestroyAction(gameState, initiatorId, targetPlayerId, targetHero
         targetHero.equippedItem2 = null;
         targetPlayer.party.splice(tHeroIndex, 1);
         gameState.discardPile.push(targetHero);
-        if (initiator.silentShieldActive) gameState.pendingSilentShieldActorId = initiatorId;
-        triggerSoulTethers(gameState, targetPlayer);
+        recordDestroyEvent(gameState, targetPlayer, targetHero, {
+            removedItems,
+            initiatorId: initiator.silentShieldActive ? initiatorId : null
+        });
         actionMessage = `${getPlayerName(gameState, initiatorId)} DESTROYED ${getPlayerName(gameState, targetPlayerId)}'s ${targetHero.name}!${itemNote}`;
-
-        const hasDracos = targetPlayer.slainMonsters && targetPlayer.slainMonsters.some(m => m.effect_id === 'MONSTER_DRACOS');
-        if (hasDracos) {
-            actionMessage += ` However, ${getPlayerName(gameState, targetPlayerId)} drew a card due to Dracos!`;
-            if (gameState.mainDeck.length > 0) targetPlayer.hand.push(gameState.mainDeck.pop());
-        }
     }
     return actionMessage;
 }
@@ -404,12 +553,19 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
 
     // Helper to draw cards securely
     const drawCards = (num, p) => drawCardsWithPassives(gameState, io, num, p);
+    const drawEffect = (num, p, continuation, source = heroName) =>
+        drawCardsForEffect(gameState, io, num, p, continuation, source);
 
     switch(skillId) {
         // --- WARRIOR & DRUID EXPANSION ---
         case 'SKILL_BIG_BUCKLEY':
             gameState.state = 'PLAYING';
-            gameState.pendingAction = { type: 'FREE_ATTACK', playerToChoose: rollerId, originalActor: rollerId };
+            gameState.pendingAction = {
+                type: 'FREE_ATTACK',
+                playerToChoose: rollerId,
+                originalActor: rollerId,
+                optional: true
+            };
             actionMessage = `${getPlayerName(gameState, player.id)} may attack a Monster for free with Big Buckley.`;
             break;
         case 'SKILL_BUCK_OMENS': {
@@ -476,13 +632,13 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
             break;
         case 'SKILL_HARDENED_HUNTER': {
             const amount = Object.entries(gameState.players).reduce((sum, [id, other]) => sum + (id === rollerId ? 0 : (other.slainMonsters || []).length), 0);
-            drawCards(amount, player);
+            drawEffect(amount, player, null);
             actionMessage = `${getPlayerName(gameState, player.id)} drew ${amount} card(s), one for each opponent's slain Monster.`;
             break;
         }
         case 'SKILL_LOOTING_LUPO': {
             const amount = (player.party || []).reduce((sum, partyHero) => sum + equippedItems(partyHero).length, 0);
-            drawCards(amount, player);
+            drawEffect(amount, player, null);
             actionMessage = `${getPlayerName(gameState, player.id)} drew ${amount} card(s), one for each equipped Item in their party.`;
             break;
         }
@@ -593,7 +749,12 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
             // "DRAW 2 cards. If at least one is a Challenge card, you MAY reveal it,
             // then DESTROY a Hero." The destroy is OPTIONAL (skippable) and only
             // offered when a Challenge was drawn AND a destroyable Hero exists.
-            const drawn = drawCards(2, player);
+            const drawResult = drawEffect(2, player, { type: 'PAN_CHUCKS', playerId: rollerId });
+            if (drawResult.queued) {
+                actionMessage = `${getPlayerName(gameState, player.id)} is resolving Pan Chucks one draw at a time with Lumbering Demon.`;
+                break;
+            }
+            const drawn = drawResult.drawn;
             const drewChallenge = drawn.some(c => c.type === 'Challenge Card');
             let canDestroy = false;
             for (const pid in gameState.players) {
@@ -674,9 +835,10 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
         // --- 1. No Target / Self Buffs ---
         
         case 'SKILL_WILDSHOT':
-            drawCards(3, player);
-            gameState.state = 'PLAYING';
-            gameState.pendingAction = { type: 'DISCARD', playerToChoose: rollerId, amount: 1, originalActor: rollerId };
+            if (!drawEffect(3, player, { type: 'DISCARD_ONE', playerId: rollerId }, heroName).queued) {
+                gameState.state = 'PLAYING';
+                gameState.pendingAction = { type: 'DISCARD', playerToChoose: rollerId, amount: 1, originalActor: rollerId };
+            }
             actionMessage = `${getPlayerName(gameState, player.id)} drew 3 cards and must discard 1!`;
             break;
         case 'SKILL_GREEDY_CHEEKS':
@@ -689,7 +851,10 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
             } else { actionMessage = `Opponents have no cards!`; }
             break;
         case 'SKILL_FUZZY_CHEEKS':
-            drawCards(1, player);
+            if (drawEffect(1, player, { type: 'FUZZY_CHEEKS', playerId: rollerId }, heroName).queued) {
+                actionMessage = `${getPlayerName(gameState, player.id)} is resolving Fuzzy Cheeks with Lumbering Demon.`;
+                break;
+            }
             if (player.hand.some(card => card.type === 'Hero Card')) {
                 gameState.state = 'WAITING_FOR_HAND_SELECTION';
                 gameState.pendingAction = { type: 'PLAY_FROM_HAND', allowedTypes: ['Hero Card'], playerToChoose: rollerId, originalActor: rollerId };
@@ -704,7 +869,7 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
                 gameState.pendingAction = { type: 'PLAY_FROM_HAND', allowedTypes: ['Item Card', 'Cursed Item Card'], playerToChoose: rollerId, originalActor: rollerId, thenDraw: 1 };
                 actionMessage = `${getPlayerName(gameState, player.id)} must play an Item from hand, then draw a card!`;
             } else {
-                drawCards(1, player);
+                drawEffect(1, player, null, heroName);
                 actionMessage = `${getPlayerName(gameState, player.id)} had no Item to play with Hook, so they drew a card.`;
             }
             break;
@@ -712,7 +877,12 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
             // "DRAW 2 cards. If at least one of those cards is an item card, you may
             // play one of them immediately." The play option is conditional on one of
             // the TWO DRAWN cards being an Item — not on Items already in hand.
-            const qdDrawn = drawCards(2, player);
+            const drawResult = drawEffect(2, player, { type: 'QUICK_DRAW', playerId: rollerId }, heroName);
+            if (drawResult.queued) {
+                actionMessage = `${getPlayerName(gameState, player.id)} is resolving Quick Draw with Lumbering Demon.`;
+                break;
+            }
+            const qdDrawn = drawResult.drawn;
             const drawnItems = qdDrawn.filter(c => ['Item Card', 'Cursed Item Card'].includes(c.type));
             if (drawnItems.length > 0) {
                 gameState.state = 'WAITING_FOR_HAND_SELECTION';
@@ -735,7 +905,12 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
             // DRAW a second card." The offer is conditional on the DRAWN card being
             // Magic — not on any Magic already in hand.
             if (gameState.mainDeck.length > 0) {
-                const snowballCard = drawCards(1, player)[0];
+                const drawResult = drawEffect(1, player, { type: 'SNOWBALL', playerId: rollerId }, heroName);
+                if (drawResult.queued) {
+                    actionMessage = `${getPlayerName(gameState, player.id)} is resolving Snowball with Lumbering Demon.`;
+                    break;
+                }
+                const snowballCard = drawResult.drawn[0];
                 if (snowballCard.type === 'Magic Card') {
                     const heldIndex = player.hand.findIndex(c => c.id === snowballCard.id);
                     if (heldIndex !== -1) player.hand.splice(heldIndex, 1);
@@ -751,16 +926,21 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
             }
             break;
 case 'DRAW_CARD':
-            drawCards(1, player);
+            drawEffect(1, player, null, heroName);
             actionMessage = `${getPlayerName(gameState, player.id)} used ${heroName}'s skill to draw a card.`;
             break;
         case 'DRAW_2_CARDS':
-            drawCards(2, player);
+            drawEffect(2, player, null, heroName);
             actionMessage = `${getPlayerName(gameState, player.id)} used ${heroName}'s skill to draw 2 cards.`;
             break;
         case 'DRAW_AND_PLAY':
             if (gameState.mainDeck.length > 0) {
-                const drawnCard = drawCards(1, player)[0];
+                const drawResult = drawEffect(1, player, { type: 'DRAW_AND_PLAY', playerId: rollerId }, heroName);
+                if (drawResult.queued) {
+                    actionMessage = `${getPlayerName(gameState, player.id)} is resolving ${heroName} with Lumbering Demon.`;
+                    break;
+                }
+                const drawnCard = drawResult.drawn[0];
                 if (drawnCard.type === 'Hero Card') {
                     const heldIndex = player.hand.findIndex(c => c.id === drawnCard.id);
                     if (heldIndex !== -1) player.hand.splice(heldIndex, 1);
@@ -799,15 +979,166 @@ case 'DRAW_CARD':
             (player.rollBonusSources = player.rollBonusSources || []).push({ source: 'Vibrant Glow', value: 5 });
             actionMessage = `${getPlayerName(gameState, player.id)} gained +5 to all rolls this turn!`;
             break;
+        case 'SKILL_BARK_HEXER': {
+            if (player.hand.length === 0) {
+                actionMessage = `${getPlayerName(gameState, player.id)} cannot pay Bark Hexer's discard cost.`;
+                break;
+            }
+            const targets = (gameState.playerOrder || Object.keys(gameState.players))
+                .filter(id => id !== rollerId && gameState.players[id]?.hand?.length > 0);
+            gameState.pendingAction = {
+                type: 'DISCARD', playerToChoose: rollerId, originalActor: rollerId,
+                amount: 1,
+                nextAction: { type: 'START_SEQUENTIAL_DISCARD', targets, amount: 2, originalActor: rollerId }
+            };
+            actionMessage = `${getPlayerName(gameState, player.id)} must discard a card to activate Bark Hexer.`;
+            break;
+        }
+        case 'SKILL_SHADOW_SAINT': {
+            if (!player.hand.some(card => card.type === 'Modifier Card')) {
+                actionMessage = `${getPlayerName(gameState, player.id)} has no Modifier to discard for Shadow Saint.`;
+                break;
+            }
+            gameState.pendingAction = {
+                type: 'DISCARD', playerToChoose: rollerId, originalActor: rollerId,
+                amount: 1, allowedTypes: ['Modifier Card'],
+                nextAction: { type: 'APPLY_SHADOW_SAINT', originalActor: rollerId }
+            };
+            actionMessage = `${getPlayerName(gameState, player.id)} must discard a Modifier to activate Shadow Saint.`;
+            break;
+        }
+        case 'SKILL_MEOWNTAIN': {
+            if (startSequentialPartySacrifice(gameState, io, rollerId, [rollerId], {
+                afterResolution: { type: 'MEOWNTAIN_BONUS', playerId: rollerId }
+            })) {
+                actionMessage = `${getPlayerName(gameState, player.id)} must sacrifice a Party card to gain +5 to all rolls this turn.`;
+            } else {
+                actionMessage = `${getPlayerName(gameState, player.id)} has no Party card to sacrifice for Meowntain.`;
+            }
+            break;
+        }
+        case 'SKILL_GRIM_PUPPER': {
+            const targets = (gameState.playerOrder || Object.keys(gameState.players))
+                .filter(id => partyCardCount(gameState.players[id]) > 0);
+            if (startSequentialPartySacrifice(gameState, io, rollerId, targets)) {
+                actionMessage = `Grim Pupper makes every player sacrifice one Party card in seat order.`;
+            } else {
+                actionMessage = `No player has a Party card to sacrifice for Grim Pupper.`;
+            }
+            break;
+        }
+        case 'SKILL_BRAWLING_SPIRIT': {
+            const targets = (gameState.playerOrder || Object.keys(gameState.players))
+                .filter(id => partyCardCount(gameState.players[id]) > 3);
+            if (startSequentialPartySacrifice(gameState, io, rollerId, targets)) {
+                actionMessage = `Brawling Spirit makes each player with more than 3 Party cards sacrifice one in seat order.`;
+            } else {
+                actionMessage = `No player has more than 3 Party cards for Brawling Spirit.`;
+            }
+            break;
+        }
+        case 'SKILL_BEHOLDEN_RETRIEVER': {
+            if (targetData?.targetCardId) {
+                const index = gameState.discardPile.findIndex(card => card.id === targetData.targetCardId
+                    && ['Hero Card', 'Item Card'].includes(card.type));
+                if (index === -1) {
+                    actionMessage = `The selected card is not a Hero or Item for Beholden Retriever.`;
+                    break;
+                }
+                const card = gameState.discardPile.splice(index, 1)[0];
+                player.hand.push(card);
+                gameState.state = 'WAITING_FOR_HAND_SELECTION';
+                gameState.pendingAction = {
+                    type: 'PLAY_FROM_HAND', allowedTypes: [card.type], allowedCardIds: [card.id],
+                    playerToChoose: rollerId, originalActor: rollerId,
+                    optional: false, expansionFreePlay: true
+                };
+                actionMessage = `${getPlayerName(gameState, player.id)} retrieved ${card.name} with Beholden Retriever and must play it immediately for 0 AP.`;
+            } else if (startSequentialPartySacrifice(gameState, io, rollerId, [rollerId], {
+                allowedTarget: 'HERO_ONLY',
+                afterResolution: { type: 'DISCARD_RETRIEVAL', playerId: rollerId, skillId: 'SKILL_BEHOLDEN_RETRIEVER', allowedTypes: ['Hero Card', 'Item Card'] }
+            })) {
+                actionMessage = `${getPlayerName(gameState, player.id)} must sacrifice a Hero for Beholden Retriever.`;
+            } else {
+                actionMessage = `${getPlayerName(gameState, player.id)} has no Hero to sacrifice for Beholden Retriever.`;
+            }
+            break;
+        }
+        case 'SKILL_BONE_COLLECTOR': {
+            if (targetData?.targetCardId) {
+                const index = gameState.discardPile.findIndex(card => card.id === targetData.targetCardId && card.type === 'Hero Card');
+                if (index === -1) {
+                    actionMessage = `The selected card is not a Hero for Bone Collector.`;
+                    break;
+                }
+                const card = gameState.discardPile.splice(index, 1)[0];
+                player.hand.push(card);
+                gameState.state = 'WAITING_FOR_HAND_SELECTION';
+                gameState.pendingAction = {
+                    type: 'PLAY_FROM_HAND', allowedTypes: ['Hero Card'], allowedCardIds: [card.id],
+                    playerToChoose: rollerId, originalActor: rollerId,
+                    optional: false, expansionFreePlay: true
+                };
+                actionMessage = `${getPlayerName(gameState, player.id)} retrieved ${card.name} with Bone Collector and must play it immediately for 0 AP.`;
+            } else if (startSequentialPartySacrifice(gameState, io, rollerId, [rollerId], {
+                allowedTarget: 'ITEM_ONLY',
+                afterResolution: { type: 'DISCARD_RETRIEVAL', playerId: rollerId, skillId: 'SKILL_BONE_COLLECTOR', allowedTypes: ['Hero Card'] }
+            })) {
+                actionMessage = `${getPlayerName(gameState, player.id)} must sacrifice an equipped Item for Bone Collector.`;
+            } else {
+                actionMessage = `${getPlayerName(gameState, player.id)} has no equipped Item to sacrifice for Bone Collector.`;
+            }
+            break;
+        }
+        case 'SKILL_ROARYAL_GUARD':
+            gameState.state = 'WAITING_FOR_CLASS_SELECTION';
+            gameState.pendingAction = {
+                type: 'ROARYAL_GUARD_CLASS', playerToChoose: rollerId, originalActor: rollerId
+            };
+            actionMessage = `${getPlayerName(gameState, player.id)} must choose a class for Roaryal Guard.`;
+            break;
+        case 'SKILL_VICIOUS_WILDCAT':
+            if ((gameState.activeMonsters || []).length > 0) {
+                gameState.state = 'PLAYING';
+                gameState.pendingAction = {
+                    type: 'FREE_SLAY', playerToChoose: rollerId, originalActor: rollerId
+                };
+                actionMessage = `${getPlayerName(gameState, player.id)} may choose any face-up Monster to slay with Vicious Wildcat.`;
+            } else {
+                actionMessage = `There is no face-up Monster for Vicious Wildcat to slay.`;
+            }
+            break;
+        case 'SKILL_GRUESOME_GLADIATOR': {
+            const targets = (gameState.playerOrder || Object.keys(gameState.players))
+                .filter(id => id !== rollerId && gameState.players[id]?.hand?.length > 0);
+            if (targets.length > 0) {
+                gameState.state = 'WAITING_FOR_SKILL_TARGET';
+                gameState.pendingAction = {
+                    type: 'GRUESOME_GLADIATOR_HAND', playerToChoose: rollerId, originalActor: rollerId,
+                    targetPlayerId: targets[0], remainingPlayerIds: targets.slice(1)
+                };
+                actionMessage = `${getPlayerName(gameState, player.id)} is choosing one card from each other player's hand in seat order.`;
+            } else {
+                actionMessage = `No opponent has a card for Gruesome Gladiator to take.`;
+            }
+            break;
+        }
+        case 'SKILL_RABID_BEAST':
+            gameState.state = 'WAITING_FOR_GLOBAL_ACTION';
+            gameState.pendingGlobalAction = {
+                type: 'VARIABLE_PARTY_SACRIFICE', initiatorId: rollerId,
+                pendingPlayerIds: [rollerId], sacrificedCount: 0
+            };
+            io.emit('global_action_requested', gameState.pendingGlobalAction);
+            actionMessage = `${getPlayerName(gameState, player.id)} may sacrifice any number of Party cards with Rabid Beast.`;
+            break;
         case 'SKILL_WISE_SHIELD':
             player.rollBonus = (player.rollBonus || 0) + 3;
             (player.rollBonusSources = player.rollBonusSources || []).push({ source: 'Wise Shield', value: 3 });
             actionMessage = `${getPlayerName(gameState, player.id)} gained +3 to all rolls this turn!`;
             break;
         case 'SKILL_WILY_RED':
-            while(player.hand.length < 7 && gameState.mainDeck.length > 0) {
-                drawCards(1, player);
-            }
+            drawEffect(Math.max(0, 7 - player.hand.length), player, null, heroName);
             actionMessage = `${getPlayerName(gameState, player.id)} drew cards until they had 7 in their hand!`;
             break;
         case 'SKILL_SPOOKY':
@@ -941,7 +1272,7 @@ case 'DRAW_CARD':
             } else {
                 actionMessage = `${getPlayerName(gameState, player.id)} used Serious Grey, but there was no Hero to DESTROY.`;
             }
-            drawCards(1, player);
+            drawEffect(1, player, null, heroName);
             actionMessage += ` Serious Grey still drew a card.`;
             break;
         case 'SKILL_WIGGLES':
@@ -1033,6 +1364,40 @@ case 'DESTROY_HERO':
                 }
             }
             break;
+        case 'SKILL_PERFECT_VESSEL':
+            if (targetData?.targetPlayerId && targetData?.targetHeroId) {
+                const vesselIndex = player.party.findIndex(card => card.id === heroId);
+                const tp = gameState.players[targetData.targetPlayerId];
+                const targetIndex = tp && !tp.cannotBeStolen
+                    ? tp.party.findIndex(card => card.id === targetData.targetHeroId)
+                    : -1;
+                if (vesselIndex !== -1 && targetIndex !== -1) {
+                    const vessel = player.party.splice(vesselIndex, 1)[0];
+                    const removedItems = ['equippedItem', 'equippedItem2']
+                        .filter(slot => vessel[slot])
+                        .map(slot => ({ slot, card: vessel[slot] }));
+                    discardHeroWithItems(gameState, vessel);
+                    recordSacrificeEvent(gameState, player, vessel, { isHero: true, removedItems });
+                    const stolen = tp.party.splice(targetIndex, 1)[0];
+                    stolen.usedSkillThisTurn = false;
+                    player.party.push(stolen);
+                    triggerCursedGlove(gameState, tp, player);
+                    actionMessage = `${getPlayerName(gameState, player.id)} sacrificed Perfect Vessel and stole ${stolen.name}.`;
+                }
+            }
+            break;
+        case 'SKILL_UNBRIDLED_FURY':
+            if (targetData?.targetPlayerId && targetData?.targetHeroId) {
+                const tp = gameState.players[targetData.targetPlayerId];
+                const targetHero = (tp?.party || []).find(card => card.id === targetData.targetHeroId);
+                const wasBerserker = effectiveHeroClass(targetHero) === 'Berserker';
+                actionMessage = resolveDestroyAction(gameState, rollerId, targetData.targetPlayerId, targetData.targetHeroId);
+                if (wasBerserker && actionMessage.includes('DESTROYED')) {
+                    player.ap += 1;
+                    actionMessage += ` ${getPlayerName(gameState, player.id)} gained 1 extra action point.`;
+                }
+            }
+            break;
 
         // --- 3. Opponent Player Target ---
         case 'PULL_CARD':
@@ -1103,6 +1468,43 @@ case 'DESTROY_HERO':
                     actionMessage = `${getPlayerName(gameState, player.id)} is looking at ${getPlayerName(gameState, tp.id)}'s hand to take a card!`;
                 } else if (tp) {
                     actionMessage = `${getPlayerName(gameState, tp.id)} has no cards for ${getPlayerName(gameState, player.id)} to take!`;
+                }
+            }
+            break;
+        case 'SKILL_HOLLOW_HUSK':
+            if (targetData && targetData.targetPlayerId) {
+                const tp = gameState.players[targetData.targetPlayerId];
+                const magicCards = (tp?.hand || []).filter(card => card.type === 'Magic Card');
+                if (tp && magicCards.length > 0) {
+                    gameState.pendingPeek = {
+                        rollerId,
+                        targetPlayerId: tp.id,
+                        skillId: 'SKILL_HOLLOW_HUSK',
+                        allowedCardIds: magicCards.map(card => card.id)
+                    };
+                    io.to(rollerId).emit('peek_cards', {
+                        cards: magicCards,
+                        skillId: 'SKILL_HOLLOW_HUSK',
+                        title: `Choose a Magic card from ${getPlayerName(gameState, tp.id)}'s hand`,
+                        actionLabel: 'Take Magic'
+                    });
+                    actionMessage = `${getPlayerName(gameState, player.id)} is choosing a Magic card with Hollow Husk.`;
+                } else if (tp) {
+                    actionMessage = `${getPlayerName(gameState, tp.id)} has no Magic cards for Hollow Husk.`;
+                }
+            }
+            break;
+        case 'SKILL_BOSTON_TERROR':
+            if (targetData?.targetPlayerId && targetData.targetPlayerId !== rollerId) {
+                const target = gameState.players[targetData.targetPlayerId];
+                if (target) {
+                    gameState.state = 'WAITING_FOR_GLOBAL_ACTION';
+                    gameState.pendingGlobalAction = {
+                        type: 'BOSTON_TERROR_GIVE', initiatorId: rollerId,
+                        pendingPlayerIds: [target.id]
+                    };
+                    io.emit('global_action_requested', gameState.pendingGlobalAction);
+                    actionMessage = `${getPlayerName(gameState, target.id)} may give a card to ${getPlayerName(gameState, player.id)} for Boston Terror.`;
                 }
             }
             break;
@@ -1183,6 +1585,8 @@ case 'DESTROY_HERO':
         case 'SKILL_RADIANT_HORN':
         case 'SKILL_LOOKIE_ROOKIE':
         case 'SKILL_BUN_BUN':
+        case 'SKILL_ANNIHILATOR':
+        case 'LEADER_NECROMANCER':
             if (targetData && targetData.targetCardId) {
                 const cardIndex = gameState.discardPile.findIndex(c => c.id === targetData.targetCardId);
                 if (cardIndex !== -1) {
@@ -1191,7 +1595,9 @@ case 'DESTROY_HERO':
                         SKILL_GUIDING_LIGHT: ['Hero Card'],
                         SKILL_RADIANT_HORN: ['Modifier Card'],
                         SKILL_LOOKIE_ROOKIE: ['Item Card', 'Cursed Item Card'],
-                        SKILL_BUN_BUN: ['Magic Card']
+                        SKILL_BUN_BUN: ['Magic Card'],
+                        SKILL_ANNIHILATOR: ['Challenge Card'],
+                        LEADER_NECROMANCER: ['Monster Card', 'Party Leader', 'Hero Card', 'Item Card', 'Cursed Item Card', 'Magic Card', 'Modifier Card', 'Challenge Card']
                     }[skillId];
                     if (validTypes.includes(card.type)) {
                         gameState.discardPile.splice(cardIndex, 1);
@@ -1318,8 +1724,28 @@ function executeMagic(gameState, io, effectId, playerId, targetData) {
     let actionMessage = `${getPlayerName(gameState, player.id)} successfully cast a spell!`;
 
     const drawCards = (num, p) => drawCardsWithPassives(gameState, io, num, p);
+    const drawEffect = (num, p, continuation, source = 'Magic card') =>
+        drawCardsForEffect(gameState, io, num, p, continuation, source);
 
     switch(effectId) {
+        case 'MAGIC_MASS_SACRIFICE': {
+            const discarded = player.hand.splice(0);
+            gameState.discardPile.push(...discarded);
+            drawEffect(5, player, null, 'Mass Sacrifice');
+            actionMessage = `${getPlayerName(gameState, player.id)} discarded their hand and drew 5 cards with Mass Sacrifice.`;
+            break;
+        }
+        case 'MAGIC_LIGHTNING_LABRYS':
+            gameState.state = 'WAITING_FOR_VARIABLE_DISCARD';
+            gameState.pendingAction = {
+                type: 'LIGHTNING_LABRYS_DISCARD',
+                playerToChoose: playerId,
+                originalActor: playerId,
+                maxAmount: Math.min(3, player.hand.length),
+                optional: true
+            };
+            actionMessage = `${getPlayerName(gameState, player.id)} may discard up to 3 cards for Lightning Labrys.`;
+            break;
         case 'MAGIC_BEAST_CALL': {
             const faceUp = gameState.activeMonsters.splice(0);
             gameState.monsterDeck.unshift(...faceUp);
@@ -1334,7 +1760,7 @@ function executeMagic(gameState, io, effectId, playerId, targetData) {
         case 'MAGIC_RAPID_REFRESH': {
             const discardedCount = player.hand.length;
             gameState.discardPile.push(...player.hand.splice(0));
-            drawCards(4, player);
+            drawEffect(4, player, null, 'Rapid Refresh');
             actionMessage = `${getPlayerName(gameState, player.id)} cast Rapid Refresh, discarded ${discardedCount} card(s), and drew 4 cards.`;
             break;
         }
@@ -1351,8 +1777,8 @@ function executeMagic(gameState, io, effectId, playerId, targetData) {
             break;
             
         case 'MAGIC_CRIT_BOOST':
-            drawCards(3, player);
-            if (player.hand.length > 0) {
+            const drawResult = drawEffect(3, player, { type: 'DISCARD_ONE', playerId }, 'Critical Boost');
+            if (!drawResult.queued && player.hand.length > 0) {
                 gameState.pendingAction = {
                     type: 'DISCARD',
                     playerToChoose: playerId,
@@ -1490,15 +1916,25 @@ module.exports = {
     getTargetingSkillPlan,
     effectiveHeroClass,
     drawCardsWithPassives,
+    drawCardsWithoutPassives,
+    applyDrawnCardPassives,
+    queueLumberingDrawSequence,
+    drawCardsForEffect,
     triggerCrownedSerpent,
     prepareImmediateItemPlay,
     markButtonsFreePlay,
     returnEquippedItemToOwner,
     equippedItems,
+    partyCardCount,
+    hasPartySacrificeTarget,
     hasEquippedEffect,
     refundTemporalHourglass,
     triggerCursedGlove,
     triggerSoulTethers,
+    queueCommittedHeroRemovalTriggers,
+    recordSacrificeEvent,
+    recordDestroyEvent,
+    recordFailedSkillEvent,
     resolveRexMajorChoice,
     clearRexMajorChoices
 };

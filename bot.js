@@ -16,6 +16,38 @@ let hasDecidedReroll = false;
 let hasStartedGame = false;
 let latestData = null; // last full gameStateUpdate, used by the self-recovery tick below
 
+const ALL_CLASSES = [
+    'Fighter', 'Bard', 'Guardian', 'Ranger', 'Thief',
+    'Wizard', 'Druid', 'Warrior', 'Necromancer', 'Berserker'
+];
+
+function equippedItems(hero) {
+    return [hero && hero.equippedItem, hero && hero.equippedItem2].filter(Boolean);
+}
+
+function effectiveHeroClass(hero) {
+    const mask = equippedItems(hero).find(card => card.effect_id === 'ITEM_MASK');
+    if (!mask) return hero && hero.class;
+    if (mask.class) return mask.class;
+    const match = /^(\w+)\s+Mask$/.exec(mask.name || '');
+    return match ? match[1] : hero.class;
+}
+
+function firstPartyCardId(player, allowedTarget = 'ANY_PARTY_CARD') {
+    if (!player) return null;
+    if (allowedTarget !== 'ITEM_ONLY') {
+        const hero = (player.party || []).find(card => card.type === 'Hero Card');
+        if (hero) return hero.id;
+    }
+    if (allowedTarget !== 'HERO_ONLY') {
+        for (const hero of player.party || []) {
+            const item = equippedItems(hero)[0];
+            if (item) return item.id;
+        }
+    }
+    return null;
+}
+
 // Helper to determine if a player meets a monster's class/hero requirements
 function meetsMonsterRequirements(playerData, reqString) {
     if (!reqString || reqString === 'None' || reqString === '') return true;
@@ -30,7 +62,8 @@ function meetsMonsterRequirements(playerData, reqString) {
         playerData.party.forEach(card => {
             if (card.type === 'Hero Card') {
                 heroCount++;
-                if (card.class) availableClasses.push(card.class);
+                const heroClass = effectiveHeroClass(card);
+                if (heroClass) availableClasses.push(heroClass);
             }
         });
     }
@@ -115,7 +148,9 @@ function selectTargetForPendingAction(data) {
 // Executes a turn action randomly: 40% attack, 30% play Hero/Magic card, 30% draw card
 function executeTurnAction(data, player) {
     const attackableMonsters = (data.activeMonsters || []).filter(m => meetsMonsterRequirements(player, m.requirement));
-    const playableCards = (player.hand || []).filter(c => c.type === 'Hero Card' || c.type === 'Magic Card');
+    const playableCards = (player.hand || []).filter(c => [
+        'Hero Card', 'Magic Card', 'Item Card', 'Cursed Item Card'
+    ].includes(c.type));
 
     console.log(`[${botName}] Hand: ${player.hand ? player.hand.length : 0} cards, AP: ${player.ap}`);
     console.log(`[${botName}] Available attackable monsters: ${attackableMonsters.length}, Playable cards: ${playableCards.length}`);
@@ -132,8 +167,25 @@ function executeTurnAction(data, player) {
     else if (r < 0.7 && player.ap >= 1 && playableCards.length > 0) {
         const targetCard = playableCards[Math.floor(Math.random() * playableCards.length)];
         console.log(`[${botName}] Turn: Playing card '${targetCard.name}'...`);
-        socket.emit('playCard', targetCard.id);
-        socket.emit('playCard', { cardId: targetCard.id, isFree: false });
+        if (['Item Card', 'Cursed Item Card'].includes(targetCard.type)) {
+            const owners = data.playerOrder
+                .map(id => data.players[id])
+                .filter(Boolean);
+            const targets = owners.flatMap(owner => (owner.party || []).map(hero => ({ owner, hero })))
+                .filter(({ hero }) => equippedItems(hero).length < (hero.itemSlots || 1));
+            if (targets.length > 0) {
+                const target = targets[Math.floor(Math.random() * targets.length)];
+                socket.emit('play_item_action', {
+                    cardId: targetCard.id,
+                    targetPlayerId: target.owner.id,
+                    targetHeroId: target.hero.id
+                });
+            } else {
+                socket.emit('draw_card_action');
+            }
+        } else {
+            socket.emit('playCard', { cardId: targetCard.id, isFree: false });
+        }
     }
     // 30% chance to draw card (costs 1 AP) or fallback
     else if (player.ap >= 1) {
@@ -146,7 +198,6 @@ function executeTurnAction(data, player) {
         if (playableCards.length > 0 && player.ap >= 1) {
             const targetCard = playableCards[Math.floor(Math.random() * playableCards.length)];
             console.log(`[${botName}] Fallback: Playing card '${targetCard.name}'...`);
-            socket.emit('playCard', targetCard.id);
             socket.emit('playCard', { cardId: targetCard.id, isFree: false });
         } else if (player.ap >= 1) {
             console.log(`[${botName}] Fallback: Drawing a card...`);
@@ -250,6 +301,9 @@ function handleGameState(data) {
                     if (targetId) {
                         console.log(`[${botName}] Pending Action (${data.pendingAction.type}): Selecting target '${targetId}'...`);
                         socket.emit('target_selected', targetId);
+                    } else if (data.pendingAction.optional) {
+                        console.log(`[${botName}] Pending Action (${data.pendingAction.type}): No valid target; skipping optional effect.`);
+                        socket.emit('skip_optional_action');
                     } else {
                         console.log(`[${botName}] Pending Action (${data.pendingAction.type}): No valid target found.`);
                     }
@@ -342,12 +396,27 @@ function handleGameState(data) {
                 isThinking = true;
                 setTimeout(() => {
                     const allowedTypes = data.pendingAction.allowedTypes || [];
-                    const validCards = (player.hand || []).filter(c => allowedTypes.includes(c.type));
+                    const allowedCardIds = data.pendingAction.allowedCardIds;
+                    const validCards = (player.hand || []).filter(c => allowedTypes.includes(c.type)
+                        && (!allowedCardIds || allowedCardIds.includes(c.id)));
                     
                     if (validCards.length > 0) {
                         const chosenCard = validCards[Math.floor(Math.random() * validCards.length)];
                         console.log(`[${botName}] WAITING_FOR_HAND_SELECTION: Playing card '${chosenCard.name}'...`);
-                        socket.emit('play_from_hand', { cardId: chosenCard.id });
+                        if (['Item Card', 'Cursed Item Card'].includes(chosenCard.type)) {
+                            const hero = (player.party || []).find(card => equippedItems(card).length < (card.itemSlots || 1));
+                            if (hero) {
+                                socket.emit('play_from_hand', {
+                                    cardId: chosenCard.id,
+                                    targetPlayerId: myId,
+                                    targetHeroId: hero.id
+                                });
+                            } else {
+                                socket.emit('play_from_hand', { cancel: true });
+                            }
+                        } else {
+                            socket.emit('play_from_hand', { cardId: chosenCard.id });
+                        }
                     } else {
                         console.log(`[${botName}] WAITING_FOR_HAND_SELECTION: No valid cards of type ${allowedTypes.join(', ')}. Canceling.`);
                         socket.emit('play_from_hand', { cancel: true });
@@ -472,6 +541,68 @@ function handleGameState(data) {
         return;
     }
 
+    if (data.state === 'WAITING_FOR_CLASS_SELECTION'
+        && data.pendingAction?.playerToChoose === myId && !isThinking) {
+        isThinking = true;
+        setTimeout(() => {
+            socket.emit('choose_roaryal_guard_class', {
+                className: ALL_CLASSES[Math.floor(Math.random() * ALL_CLASSES.length)]
+            });
+            isThinking = false;
+        }, delay);
+        return;
+    }
+
+    if (data.state === 'WAITING_FOR_DRAGON_WASP_CHOICE'
+        && data.pendingAction?.playerToChoose === myId && !isThinking) {
+        isThinking = true;
+        setTimeout(() => {
+            socket.emit('resolve_dragon_wasp_choice', { use: (player.hand || []).length >= 2 });
+            isThinking = false;
+        }, delay);
+        return;
+    }
+
+    if (data.state === 'WAITING_FOR_LUMBERING_DEMON_CHOICE'
+        && data.pendingAction?.playerToChoose === myId && !isThinking) {
+        isThinking = true;
+        setTimeout(() => {
+            socket.emit('resolve_lumbering_demon_draw', { use: true });
+            isThinking = false;
+        }, delay);
+        return;
+    }
+
+    if (data.state === 'WAITING_FOR_GOBLET_REROLL'
+        && data.pendingAction?.playerToChoose === myId && !isThinking) {
+        isThinking = true;
+        setTimeout(() => {
+            socket.emit('resolve_goblet_reroll', { use: Math.random() < 0.5 });
+            isThinking = false;
+        }, delay);
+        return;
+    }
+
+    if (data.state === 'WAITING_FOR_MONSTER_TRIGGER_CHOICE'
+        && data.pendingAction?.playerToChoose === myId && !isThinking) {
+        isThinking = true;
+        setTimeout(() => {
+            socket.emit('resolve_wandering_behemoth_draw', { use: true });
+            isThinking = false;
+        }, delay);
+        return;
+    }
+
+    if (data.state === 'WAITING_FOR_END_TURN_CHOICE'
+        && data.pendingAction?.playerToChoose === myId && !isThinking) {
+        isThinking = true;
+        setTimeout(() => {
+            socket.emit('resolve_end_turn_monster_effect', { use: true });
+            isThinking = false;
+        }, delay);
+        return;
+    }
+
     // 6. Draw/Play Immediate Choice
     if (data.state === 'WAITING_FOR_IMMEDIATE_PLAY') {
         if (data.pendingAction && data.pendingAction.playerToChoose === myId) {
@@ -494,7 +625,7 @@ function handleGameState(data) {
             if (!isThinking) {
                 isThinking = true;
                 setTimeout(() => {
-                    if (ga.type === 'MULTI_DISCARD' || ga.type === 'MULTI_DISCARD_AND_CHOOSE' || ga.type === 'MULTI_GIVE') {
+                    if (['MULTI_DISCARD', 'MULTI_DISCARD_AND_CHOOSE', 'MULTI_GIVE', 'SEQUENTIAL_DISCARD'].includes(ga.type)) {
                         if (player.hand && player.hand.length > 0) {
                             const chosenCard = player.hand[0];
                             console.log(`[${botName}] Global Action: Submitting card '${chosenCard.name}'...`);
@@ -505,6 +636,27 @@ function handleGameState(data) {
                             const chosenHero = player.party[0];
                             console.log(`[${botName}] Global Action: Sacrificing hero '${chosenHero.name}'...`);
                             socket.emit('submit_global_action', { targetHeroId: chosenHero.id });
+                        }
+                    } else if (['SEQUENTIAL_PARTY_SACRIFICE', 'VARIABLE_PARTY_SACRIFICE'].includes(ga.type)) {
+                        const targetPartyCardId = firstPartyCardId(player, ga.allowedTarget);
+                        if (targetPartyCardId) {
+                            socket.emit('submit_global_action', { targetPartyCardId });
+                        } else if (ga.type === 'VARIABLE_PARTY_SACRIFICE') {
+                            socket.emit('submit_global_action', { done: true });
+                        }
+                    } else if (ga.type === 'SEQUENTIAL_PARTY_DESTROY') {
+                        let targetPartyCardId = null;
+                        for (const id of data.playerOrder) {
+                            if (id === ga.initiatorId) continue;
+                            targetPartyCardId = firstPartyCardId(data.players[id]);
+                            if (targetPartyCardId) break;
+                        }
+                        if (targetPartyCardId) socket.emit('submit_global_action', { targetPartyCardId });
+                    } else if (ga.type === 'BOSTON_TERROR_GIVE') {
+                        if ((player.hand || []).length > 0) {
+                            socket.emit('submit_global_action', { cardId: player.hand[0].id });
+                        } else {
+                            socket.emit('submit_global_action', { decline: true });
                         }
                     }
                     isThinking = false;

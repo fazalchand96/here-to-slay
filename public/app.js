@@ -730,7 +730,7 @@ function updateWaitingOverlay(data) {
     if (detail) detail.textContent = stateDetails[data.state] || 'The next action is being resolved.';
 }
 
-const PARTY_CLASS_ORDER = ['Fighter', 'Bard', 'Guardian', 'Ranger', 'Thief', 'Wizard', 'Druid', 'Warrior'];
+const PARTY_CLASS_ORDER = ['Fighter', 'Bard', 'Guardian', 'Ranger', 'Thief', 'Wizard', 'Druid', 'Warrior', 'Necromancer', 'Berserker'];
 
 function buildClassPartyGrid(player, isOwn) {
     const isMyTurn = latestGameState?.activePlayerSocketId === myId;
@@ -976,6 +976,7 @@ function hideModifierDecisionControls() {
     const instruction = document.getElementById('modifier-instruction-text');
     if (instruction) instruction.style.display = 'none';
     document.getElementById('noble-shaman-controls')?.remove();
+    document.getElementById('biggest-ring-controls')?.remove();
 }
 
 function hasPassedModifierPhase(state = latestGameState) {
@@ -997,6 +998,7 @@ function syncModifierDecisionControls(state = latestGameState) {
     passButton.innerText = passed ? 'WAITING FOR OTHERS...' : 'NO MODIFIERS TO PLAY';
 
     document.getElementById('noble-shaman-controls')?.remove();
+    document.getElementById('biggest-ring-controls')?.remove();
     const me = state.players && state.players[myId];
     if (me && me.leader && me.leader.effect_id === 'LEADER_DRUID' && !me.usedNobleShamanThisTurn) {
         const controls = document.createElement('div');
@@ -1008,6 +1010,20 @@ function syncModifierDecisionControls(state = latestGameState) {
             controls.innerHTML = `<button class="action-btn" onclick="socket.emit('use_noble_shaman')">USE NOBLE SHAMAN (-1)</button>`;
         }
         passButton.insertAdjacentElement('beforebegin', controls);
+    }
+
+    if (!passed && me && state.pendingRoll?.type === 'HERO_SKILL'
+        && state.pendingRoll.rollerId === myId && !state.pendingRoll.biggestRingUsed) {
+        const hero = (me.party || []).find(card => card.id === state.pendingRoll.targetHeroId);
+        const hasBiggestRing = [hero?.equippedItem, hero?.equippedItem2]
+            .some(item => item?.effect_id === 'ITEM_BIGGEST_RING');
+        if (hasBiggestRing) {
+            const controls = document.createElement('div');
+            controls.id = 'biggest-ring-controls';
+            controls.className = 'noble-shaman-controls';
+            controls.innerHTML = `<button class="action-btn" onclick="socket.emit('use_biggest_ring_ever')">USE BIGGEST RING EVER</button>`;
+            passButton.insertAdjacentElement('beforebegin', controls);
+        }
     }
 }
 
@@ -1207,7 +1223,8 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
 
     if (isTargetMode) {
 
-        if (myTargetMode && inHand && isMine && currentPendingAction.type === 'DISCARD') {
+        if (myTargetMode && inHand && isMine && currentPendingAction.type === 'DISCARD'
+            && (!currentPendingAction.allowedTypes || currentPendingAction.allowedTypes.includes(card.type))) {
 
             glowClass += ' valid-target valid-target-equip';
 
@@ -1250,7 +1267,7 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
             // their harmful intent, and the regular equip glow for normal items.
             glowClass += isCurseEquip() ? ' valid-target valid-target-steal' : ' valid-target valid-target-equip';
 
-        } else if (myTargetMode && !inHand && isMine && ['PENALTY', 'DRUID_SKILL_SACRIFICE'].includes(currentPendingAction.type) && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE' && card.type === 'Hero Card') {
+        } else if (myTargetMode && !inHand && isMine && ['PENALTY', 'DRUID_SKILL_SACRIFICE', 'LIGHTNING_LABRYS_SACRIFICE', 'DRAGONS_BILE_SACRIFICE'].includes(currentPendingAction.type) && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE' && card.type === 'Hero Card') {
 
             glowClass += ' valid-target valid-target-steal';
 
@@ -1282,8 +1299,8 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
 
     }
 
-    if (isMonster && myTargetMode && currentPendingAction?.type === 'FREE_ATTACK'
-        && meetsMonsterRequirements(latestGameState.players[myId], card.requirement)) {
+    if (isMonster && myTargetMode && ['FREE_ATTACK', 'FREE_SLAY'].includes(currentPendingAction?.type)
+        && (currentPendingAction.type === 'FREE_SLAY' || meetsMonsterRequirements(latestGameState.players[myId], card.requirement))) {
         glowClass += ' attackable-monster valid-target';
     }
 
@@ -1312,7 +1329,7 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
         ? `<div class="board-card-name" title="${card.name || ''}">${card.name || 'Unknown'}</div>`
         : '';
     // Per-class / per-type accent that tints the frame border + type ribbon (--cc).
-    const CLASS_TINT = { Fighter: 'var(--class-fighter)', Bard: 'var(--class-bard)', Guardian: 'var(--class-guardian)', Ranger: 'var(--class-ranger)', Thief: 'var(--class-thief)', Wizard: 'var(--class-wizard)', Druid: 'var(--class-druid)', Warrior: 'var(--class-warrior)' };
+    const CLASS_TINT = { Fighter: 'var(--class-fighter)', Bard: 'var(--class-bard)', Guardian: 'var(--class-guardian)', Ranger: 'var(--class-ranger)', Thief: 'var(--class-thief)', Wizard: 'var(--class-wizard)', Druid: 'var(--class-druid)', Warrior: 'var(--class-warrior)', Necromancer: 'var(--class-necromancer)', Berserker: 'var(--class-berserker)' };
     const TYPE_TINT = { 'Item Card': 'var(--gold)', 'Cursed Item Card': 'var(--class-wizard)', 'Magic Card': 'var(--class-wizard)', 'Modifier Card': '#5aa8b8', 'Challenge Card': '#e07a4a' };
     let cardTint, variantClass = '';
     if (card.type === 'Party Leader') { cardTint = 'var(--leader-pink)'; variantClass = ' card-leader'; }
@@ -1390,6 +1407,11 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
 
 
 window.openOwnPartyModal = function() {
+    if (isPlayerTargeting && latestGameState?.pendingAction?.allowSelf) {
+        socket.emit('submit_skill_target', { targetPlayerId: myId });
+        cancelSkillTargeting();
+        return;
+    }
     const me = latestGameState?.players?.[myId];
     const modal = document.getElementById('opponent-modal');
     const modalTitle = document.getElementById('opponent-modal-title');
@@ -2107,7 +2129,7 @@ function calculateWinStats(player) {
 
     if (!player) return { monsters: 0, uniqueClasses: 0 };
 
-    const monsters = player.slainMonsters ? player.slainMonsters.length : 0;
+    const monsters = (player.slainMonsters || []).reduce((sum, monster) => sum + (monster.slain_value || 1), 0);
 
     const classes = new Set();
 
@@ -2351,24 +2373,28 @@ function renderBoard(data) {
         'WAITING_FOR_SACRIFICE',
         'WAITING_FOR_DISCARD_PENALTY',
         'WAITING_FOR_MULTIPLE_DISCARDS',
-        'WAITING_FOR_VARIABLE_DISCARD'
+        'WAITING_FOR_VARIABLE_DISCARD',
+        'WAITING_FOR_CLASS_SELECTION',
+        'WAITING_FOR_DRAGON_WASP_CHOICE',
+        'WAITING_FOR_LUMBERING_DEMON_CHOICE',
+        'WAITING_FOR_GOBLET_REROLL',
+        'WAITING_FOR_MONSTER_TRIGGER_CHOICE',
+        'WAITING_FOR_END_TURN_CHOICE'
     ];
     isTargetMode = currentPendingAction !== null && !dedicatedStates.includes(data.state);
 
 
 
-    // IMPORTANT: Explicitly hide the challenge modal if we are no longer in challenge phase!
-
-    if (data.state !== 'WAITING_FOR_CHALLENGES') {
-
-        if (challengeModal) {
-
-            challengeModal.classList.add('hidden');
-
-            challengeModal.style.display = 'none';
-
-        }
-
+    // Rebuild the challenge prompt from authoritative state as well as from the
+    // one-shot socket event. A mobile browser can briefly suspend or reconnect
+    // and miss `challenge_pending`; the synchronized pendingChallenge must still
+    // give that player a working Challenge/Pass decision.
+    if (data.state === 'WAITING_FOR_CHALLENGES' && data.pendingChallenge) {
+        syncChallengePromptFromState(data);
+    } else if (challengeModal) {
+        challengePromptSignature = '';
+        challengeModal.classList.add('hidden');
+        challengeModal.style.display = 'none';
     }
 
 
@@ -2413,7 +2439,7 @@ function renderBoard(data) {
     // isSkillTargeting too, but it never coincides with one of these pending actions
     // being assigned to us, so this is safe.)
     if (myTargetMode && currentPendingAction
-        && ['DESTROY', 'STEAL', 'EXCHANGE_STEP_1', 'EXCHANGE_STEP_2', 'RETURN_ITEM'].includes(currentPendingAction.type)) {
+        && ['DESTROY', 'STEAL', 'EXCHANGE_STEP_1', 'EXCHANGE_STEP_2', 'RETURN_ITEM', 'FREE_ATTACK', 'FREE_SLAY'].includes(currentPendingAction.type)) {
         isSkillTargeting = false;
         isPlayerTargeting = false;
         isSelfItemTargeting = false;
@@ -2853,13 +2879,29 @@ function renderBoard(data) {
 
                 targetBannerText.innerHTML += ` <button onclick="submitMultiTargets()" style="margin-left: 10px; padding: 5px 10px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer;">Submit Targets</button>`;
 
-            } else if (data.pendingAction.type === 'SKILL_TARGET_PLAYER') {
+            } else if (data.pendingAction.type === 'GRUESOME_GLADIATOR_HAND') {
+
+                myTargetMode = false;
+                document.body?.classList.remove('target-mode-active');
+                targetBannerText.innerText = `Choose one card from ${data.privatePendingTargetName || 'the opponent'}'s hand.`;
+                const modal = document.getElementById('discard-search-modal');
+                if (modal?.classList.contains('hidden')) {
+                    openGruesomeGladiatorChoice(data.privatePendingCards || [], data.privatePendingTargetName);
+                }
+
+            } else if (data.pendingAction.type === 'SKILL_TARGET_PLAYER'
+                || data.pendingAction.type === 'LIGHTNING_LABRYS_PLAYER'
+                || data.pendingAction.type === 'END_CLAWED_NIGHTMARE_PLAYER') {
 
                 myTargetMode = true; // or isPlayerTargeting
 
                 isPlayerTargeting = true;
 
-                targetBannerText.innerText = "Select an opponent's player board to target.";
+                targetBannerText.innerText = data.pendingAction.type === 'END_CLAWED_NIGHTMARE_PLAYER'
+                    ? `Select another player with cards for Clawed Nightmare.`
+                    : data.pendingAction.allowSelf
+                    ? `Select any player board, including your own. (${data.pendingAction.remainingChoices} choice${data.pendingAction.remainingChoices === 1 ? '' : 's'} remaining)`
+                    : "Select an opponent's player board to target.";
 
             } else if (data.pendingAction.type === 'SKILL_TARGET_SELF_ITEM') {
 
@@ -2953,7 +2995,11 @@ function renderBoard(data) {
 
             targetBannerText.innerText = data.pendingAction.type === 'DRUID_SKILL_SACRIFICE'
                 ? `SELECT ONE OF YOUR HEROES TO SACRIFICE`
-                : `SELECT ONE OF YOUR HEROES TO SACRIFICE AS A PENALTY`;
+                : data.pendingAction.type === 'LIGHTNING_LABRYS_SACRIFICE'
+                    ? `SELECT ONE OF YOUR HEROES TO SACRIFICE FOR LIGHTNING LABRYS`
+                    : data.pendingAction.type === 'DRAGONS_BILE_SACRIFICE'
+                        ? `SELECT ONE OF YOUR HEROES TO SACRIFICE FOR DRAGON'S BILE`
+                    : `SELECT ONE OF YOUR HEROES TO SACRIFICE AS A PENALTY`;
 
         } else {
 
@@ -2981,6 +3027,110 @@ function renderBoard(data) {
         } else {
             waitingOverlay?.classList.remove('hidden');
             targetBannerText.innerText = 'WAITING FOR THE MAJESTELK CHOICE...';
+        }
+
+    } else if (data.state === 'WAITING_FOR_CLASS_SELECTION') {
+
+        endTurnBtn.disabled = true;
+        drawCardBtn.disabled = true;
+        discardDrawBtn.disabled = true;
+        targetBanner?.classList.remove('hidden');
+
+        if (data.pendingAction?.playerToChoose === myId) {
+            waitingOverlay?.classList.add('hidden');
+            targetBannerText.innerHTML = `CHOOSE A CLASS FOR ROARYAL GUARD<br>${PARTY_CLASS_ORDER.map(className =>
+                `<button class="action-btn inline" onclick="socket.emit('choose_roaryal_guard_class', { className: '${className}' })">${className}</button>`
+            ).join(' ')}`;
+        } else {
+            waitingOverlay?.classList.remove('hidden');
+            targetBannerText.innerText = 'WAITING FOR THE ROARYAL GUARD CLASS CHOICE...';
+        }
+
+    } else if (data.state === 'WAITING_FOR_DRAGON_WASP_CHOICE') {
+
+        endTurnBtn.disabled = true;
+        drawCardBtn.disabled = true;
+        discardDrawBtn.disabled = true;
+        targetBanner?.classList.remove('hidden');
+        if (data.pendingAction?.playerToChoose === myId) {
+            waitingOverlay?.classList.add('hidden');
+            const heroName = data.pendingAction.trigger?.hero?.name || 'YOUR HERO';
+            targetBannerText.innerHTML = `DISCARD 2 CARDS WITH DRAGON WASP TO SAVE ${String(heroName).toUpperCase()}?
+                <button class="action-btn inline" onclick="socket.emit('resolve_dragon_wasp_choice', { use: true })">DISCARD 2</button>
+                <button class="action-btn inline attack" onclick="socket.emit('resolve_dragon_wasp_choice', { use: false })">LET IT GO</button>`;
+        } else {
+            waitingOverlay?.classList.remove('hidden');
+            targetBannerText.innerText = 'WAITING FOR THE DRAGON WASP CHOICE...';
+        }
+
+    } else if (data.state === 'WAITING_FOR_LUMBERING_DEMON_CHOICE') {
+
+        endTurnBtn.disabled = true;
+        drawCardBtn.disabled = true;
+        discardDrawBtn.disabled = true;
+        targetBanner?.classList.remove('hidden');
+        if (data.pendingAction?.playerToChoose === myId) {
+            waitingOverlay?.classList.add('hidden');
+            targetBannerText.innerHTML = `USE LUMBERING DEMON FOR THIS DRAW?<br>DRAW 2, THEN DISCARD 1
+                <button class="action-btn inline" onclick="socket.emit('resolve_lumbering_demon_draw', { use: true })">USE EFFECT</button>
+                <button class="action-btn inline attack" onclick="socket.emit('resolve_lumbering_demon_draw', { use: false })">DRAW 1</button>`;
+        } else {
+            waitingOverlay?.classList.remove('hidden');
+            targetBannerText.innerText = 'WAITING FOR THE LUMBERING DEMON CHOICE...';
+        }
+
+    } else if (data.state === 'WAITING_FOR_GOBLET_REROLL') {
+
+        endTurnBtn.disabled = true;
+        drawCardBtn.disabled = true;
+        discardDrawBtn.disabled = true;
+        targetBanner?.classList.remove('hidden');
+        if (data.pendingAction?.playerToChoose === myId) {
+            waitingOverlay?.classList.add('hidden');
+            targetBannerText.innerHTML = `SACRIFICE GOBLET OF CAFFEINATION TO REROLL FOR 0 AP?
+                <button class="action-btn inline" onclick="socket.emit('resolve_goblet_reroll', { use: true })">REROLL</button>
+                <button class="action-btn inline" onclick="socket.emit('resolve_goblet_reroll', { use: false })">DECLINE</button>`;
+        } else {
+            waitingOverlay?.classList.remove('hidden');
+            targetBannerText.innerText = 'WAITING FOR THE GOBLET OF CAFFEINATION CHOICE...';
+        }
+
+    } else if (data.state === 'WAITING_FOR_MONSTER_TRIGGER_CHOICE') {
+
+        endTurnBtn.disabled = true;
+        drawCardBtn.disabled = true;
+        discardDrawBtn.disabled = true;
+        targetBanner?.classList.remove('hidden');
+        if (data.pendingAction?.playerToChoose === myId
+            && data.pendingAction.type === 'MONSTER_OPTIONAL_DRAW') {
+            waitingOverlay?.classList.add('hidden');
+            targetBannerText.innerHTML = `DRAW A CARD WITH ${String(data.pendingAction.source || 'MONSTER EFFECT').toUpperCase()}?
+                <button class="action-btn inline" onclick="socket.emit('resolve_wandering_behemoth_draw', { use: true })">DRAW</button>
+                <button class="action-btn inline" onclick="socket.emit('resolve_wandering_behemoth_draw', { use: false })">SKIP</button>`;
+        } else {
+            waitingOverlay?.classList.remove('hidden');
+            targetBannerText.innerText = 'WAITING FOR A MONSTER EFFECT CHOICE...';
+        }
+
+    } else if (data.state === 'WAITING_FOR_END_TURN_CHOICE') {
+
+        endTurnBtn.disabled = true;
+        drawCardBtn.disabled = true;
+        discardDrawBtn.disabled = true;
+        targetBanner?.classList.remove('hidden');
+        if (data.pendingAction?.playerToChoose === myId) {
+            const labels = {
+                CLAWED_NIGHTMARE_PULL: 'PULL 2 CARDS WITH CLAWED NIGHTMARE?',
+                GORETELODONT_DRAW: 'DRAW 3 CARDS WITH GORETELODONT?',
+                SCAVENGER_GRIFFIN_STEAL: 'STEAL A HERO WITH SCAVENGER GRIFFIN?'
+            };
+            waitingOverlay?.classList.add('hidden');
+            targetBannerText.innerHTML = `${labels[data.pendingAction.effect] || 'USE END-OF-TURN MONSTER EFFECT?'}
+                <button class="action-btn inline" onclick="socket.emit('resolve_end_turn_monster_effect', { use: true })">USE EFFECT</button>
+                <button class="action-btn inline" onclick="socket.emit('resolve_end_turn_monster_effect', { use: false })">SKIP</button>`;
+        } else {
+            waitingOverlay?.classList.remove('hidden');
+            targetBannerText.innerText = 'WAITING FOR AN END-OF-TURN MONSTER EFFECT...';
         }
 
     } else if (data.state === 'WAITING_FOR_DISCARD_PENALTY' || data.state === 'WAITING_FOR_MULTIPLE_DISCARDS' || data.state === 'WAITING_FOR_VARIABLE_DISCARD') {
@@ -3709,45 +3859,41 @@ socket.on('rollResult', (data) => {
 
 
 
-socket.on('challenge_pending', (data) => {
+let challengePromptSignature = '';
 
-    playSound('challenge');
-
-    triggerHaptic([20, 40, 20]);
-
+function renderChallengePrompt(data, announce = false) {
+    const pending = data.pendingChallenge || {
+        rollerId: data.rollerId,
+        card: data.card,
+        passedPlayers: []
+    };
+    if (!pending?.rollerId || !pending?.card) return;
     const challengeModalElement = document.getElementById('challenge-modal');
+    if (!challengeModalElement) return;
 
-    if (!challengeModalElement) {
-
-        
-
-        return;
-
+    if (announce) {
+        playSound('challenge');
+        triggerHaptic([20, 40, 20]);
     }
 
-
-
-    // AGGRESSIVE RESET: Ensure the modal is visible and on top
-
     challengeModalElement.style.display = 'flex';
-
     challengeModalElement.classList.remove('hidden', 'fade-out');
-
     challengeModalElement.style.zIndex = '9999';
 
-
-
-    // Hide the redundant title
     const challengeTitle = document.getElementById('challenge-title');
     if (challengeTitle) challengeTitle.style.display = 'none';
 
-    // Simplify the text
-    challengeText.innerText = `${data.rollerName} is playing:`;
-    challengeCardDisplay.innerHTML = renderCard(data.card, false, false, false, false);
+    const roller = data.players?.[pending.rollerId];
+    const rollerName = data.rollerName || roller?.name || getPlayerName(pending.rollerId);
+    const passedPlayers = pending.passedPlayers || [];
+    const hasPassed = passedPlayers.includes(myId);
+    challengeText.innerText = `${rollerName} is playing:`;
+    challengeCardDisplay.innerHTML = renderCard(pending.card, false, false, false, false);
 
-    // Only render buttons, NO duplicate cards
-    if (data.rollerId === myId) {
+    if (pending.rollerId === myId) {
         challengeActionArea.innerHTML = `<div style="text-align:center; padding: 15px; font-size:1.1rem; color: var(--text-muted);">Waiting for opponents...</div>`;
+    } else if (hasPassed) {
+        challengeActionArea.innerHTML = `<div style="text-align:center; padding: 15px; font-size:1.1rem; color: var(--text-muted);">You passed. Waiting for others...</div>`;
     } else {
         const hand = latestGameState && latestGameState.players[myId] ? latestGameState.players[myId].hand : [];
         const hasChallengeCard = hand.some(c => c.type === 'Challenge Card');
@@ -3759,7 +3905,6 @@ socket.on('challenge_pending', (data) => {
             </div>
         `;
 
-        // Reattach listeners
         const cPassBtn = document.getElementById('challenge-pass-btn');
         const cPlayBtn = document.getElementById('challenge-play-btn');
         
@@ -3783,7 +3928,45 @@ socket.on('challenge_pending', (data) => {
             });
         }
     }
+}
 
+function getChallengePromptSignature(data) {
+    const pending = data?.pendingChallenge;
+    if (!pending) return '';
+    const hand = data.players?.[myId]?.hand || [];
+    const hasChallengeCard = hand.some(card => card.type === 'Challenge Card');
+    const hasPassed = (pending.passedPlayers || []).includes(myId);
+    return [
+        pending.rollerId,
+        pending.card?.id,
+        hasPassed ? 'passed' : 'open',
+        hasChallengeCard ? 'challenge' : 'no-challenge'
+    ].join(':');
+}
+
+function syncChallengePromptFromState(data) {
+    const signature = getChallengePromptSignature(data);
+    const modalMissing = challengeModal?.classList.contains('hidden') || challengeModal?.style.display === 'none';
+    if (!signature || (signature === challengePromptSignature && !modalMissing)) return;
+    challengePromptSignature = signature;
+    renderChallengePrompt(data, false);
+}
+
+socket.on('challenge_pending', (data) => {
+    const pending = {
+        rollerId: data.rollerId,
+        card: data.card,
+        passedPlayers: []
+    };
+    challengePromptSignature = [
+        pending.rollerId,
+        pending.card?.id,
+        'open',
+        (latestGameState?.players?.[myId]?.hand || []).some(card => card.type === 'Challenge Card')
+            ? 'challenge'
+            : 'no-challenge'
+    ].join(':');
+    renderChallengePrompt({ ...data, pendingChallenge: pending }, true);
 });
 
 
@@ -3791,6 +3974,7 @@ socket.on('challenge_pending', (data) => {
 socket.on('challenge_resolved', (data) => {
 
     showNotification(data.message);
+    challengePromptSignature = '';
 
     if (challengeModal) {
         challengeModal.classList.add('hidden');
@@ -4247,15 +4431,86 @@ function renderGlobalActionPrompt(action) {
         const openModal = document.getElementById('mandatory-discard-modal');
         if (openModal && !openModal.classList.contains('hidden')) return;
 
-        if (action.type === 'MULTI_DISCARD_AND_CHOOSE' || action.type === 'MULTI_DISCARD' || action.type === 'MULTI_GIVE') {
+        if (action.type === 'VARIABLE_PARTY_SACRIFICE') {
+            const modal = document.getElementById('mandatory-discard-modal');
+            const container = document.getElementById('mandatory-discard-cards');
+            document.getElementById('mandatory-discard-title').innerText = 'Rabid Beast';
+            document.getElementById('mandatory-discard-message').innerText = `Sacrifice any number of Party cards (${action.sacrificedCount} selected so far), then destroy the same number.`;
+            container.innerHTML = '';
+            (latestGameState.players[myId].party || []).forEach(hero => {
+                const heroWrap = document.createElement('div');
+                heroWrap.className = 'peek-card-wrap';
+                heroWrap.innerHTML = pickerCardWrapHtml(hero, `<button class="action-btn peek-select-btn attack" onclick="socket.emit('submit_global_action', { targetPartyCardId: '${hero.id}' }); document.getElementById('mandatory-discard-modal').classList.add('hidden');">Sacrifice Hero</button>`);
+                container.appendChild(heroWrap);
+                [hero.equippedItem, hero.equippedItem2].filter(Boolean).forEach(item => {
+                    const itemWrap = document.createElement('div');
+                    itemWrap.className = 'peek-card-wrap';
+                    itemWrap.innerHTML = pickerCardWrapHtml(item, `<button class="action-btn peek-select-btn attack" onclick="socket.emit('submit_global_action', { targetPartyCardId: '${item.id}' }); document.getElementById('mandatory-discard-modal').classList.add('hidden');">Sacrifice Item</button>`);
+                    container.appendChild(itemWrap);
+                });
+            });
+            const done = document.createElement('button');
+            done.className = 'action-btn';
+            done.innerText = `DONE (${action.sacrificedCount})`;
+            done.onclick = () => {
+                socket.emit('submit_global_action', { done: true });
+                modal.classList.add('hidden');
+            };
+            container.appendChild(done);
+            modal?.classList.remove('hidden');
+            document.getElementById('waiting-overlay')?.classList.add('hidden');
+            return;
+        }
+
+        if (action.type === 'SEQUENTIAL_PARTY_DESTROY') {
+            const modal = document.getElementById('mandatory-discard-modal');
+            const container = document.getElementById('mandatory-discard-cards');
+            document.getElementById('mandatory-discard-title').innerText = 'Rabid Beast';
+            document.getElementById('mandatory-discard-message').innerText = `Destroy ${action.remainingDestroys} more opponent Party card${action.remainingDestroys === 1 ? '' : 's'}.`;
+            container.innerHTML = '';
+            Object.entries(latestGameState.players).forEach(([playerId, owner]) => {
+                if (playerId === myId) return;
+                (owner.party || []).forEach(hero => {
+                    const protectedHero = owner.cannotBeDestroyed
+                        || (owner.slainMonsters || []).some(monster => monster.effect_id === 'MONSTER_TERRATUGA');
+                    if (!protectedHero) {
+                        const heroWrap = document.createElement('div');
+                        heroWrap.className = 'peek-card-wrap';
+                        heroWrap.innerHTML = pickerCardWrapHtml(hero, `<button class="action-btn peek-select-btn attack" onclick="socket.emit('submit_global_action', { targetPartyCardId: '${hero.id}' }); document.getElementById('mandatory-discard-modal').classList.add('hidden');">Destroy Hero</button>`);
+                        container.appendChild(heroWrap);
+                    }
+                    [hero.equippedItem, hero.equippedItem2].filter(Boolean).forEach(item => {
+                        const itemWrap = document.createElement('div');
+                        itemWrap.className = 'peek-card-wrap';
+                        itemWrap.innerHTML = pickerCardWrapHtml(item, `<button class="action-btn peek-select-btn attack" onclick="socket.emit('submit_global_action', { targetPartyCardId: '${item.id}' }); document.getElementById('mandatory-discard-modal').classList.add('hidden');">Destroy Item</button>`);
+                        container.appendChild(itemWrap);
+                    });
+                });
+            });
+            modal?.classList.remove('hidden');
+            document.getElementById('waiting-overlay')?.classList.add('hidden');
+            return;
+        }
+
+        if (action.type === 'MULTI_DISCARD_AND_CHOOSE' || action.type === 'MULTI_DISCARD'
+            || action.type === 'MULTI_GIVE' || action.type === 'SEQUENTIAL_DISCARD'
+            || action.type === 'BOSTON_TERROR_GIVE') {
 
             const modal = document.getElementById('mandatory-discard-modal');
 
             const container = document.getElementById('mandatory-discard-cards');
 
-            document.getElementById('mandatory-discard-title').innerText = "Mandatory Discard";
+            document.getElementById('mandatory-discard-title').innerText = action.type === 'BOSTON_TERROR_GIVE'
+                ? "Boston Terror"
+                : "Mandatory Discard";
 
-            document.getElementById('mandatory-discard-message').innerText = action.type === 'MULTI_GIVE' ? "You must give a card to the player." : "You must discard a card.";
+            document.getElementById('mandatory-discard-message').innerText = action.type === 'BOSTON_TERROR_GIVE'
+                ? "You may give one card, or decline so the other player may retrieve up to two cards."
+                : action.type === 'MULTI_GIVE'
+                ? "You must give a card to the player."
+                : action.type === 'SEQUENTIAL_DISCARD'
+                    ? `You must discard ${action.remainingForCurrent} more card${action.remainingForCurrent === 1 ? '' : 's'}.`
+                    : "You must discard a card.";
 
             container.innerHTML = '';
 
@@ -4269,11 +4524,22 @@ function renderGlobalActionPrompt(action) {
 
                 wrap.className = 'peek-card-wrap';
 
-                wrap.innerHTML = pickerCardWrapHtml(c, `<button class="action-btn peek-select-btn attack" onclick="submitGlobalAction('${c.id}')">${action.type === 'MULTI_GIVE' ? 'Give' : 'Discard'}</button>`);
+                wrap.innerHTML = pickerCardWrapHtml(c, `<button class="action-btn peek-select-btn attack" onclick="submitGlobalAction('${c.id}')">${['MULTI_GIVE', 'BOSTON_TERROR_GIVE'].includes(action.type) ? 'Give' : 'Discard'}</button>`);
 
                 container.appendChild(wrap);
 
             });
+
+            if (action.type === 'BOSTON_TERROR_GIVE') {
+                const decline = document.createElement('button');
+                decline.className = 'action-btn';
+                decline.innerText = 'DECLINE';
+                decline.onclick = () => {
+                    socket.emit('submit_global_action', { decline: true });
+                    document.getElementById('mandatory-discard-modal').classList.add('hidden');
+                };
+                container.appendChild(decline);
+            }
 
             
 
@@ -4281,7 +4547,7 @@ function renderGlobalActionPrompt(action) {
 
             document.getElementById('waiting-overlay')?.classList.add('hidden');
 
-        } else if (action.type === 'MULTI_SACRIFICE') {
+        } else if (action.type === 'MULTI_SACRIFICE' || action.type === 'SEQUENTIAL_PARTY_SACRIFICE') {
 
             const modal = document.getElementById('mandatory-discard-modal');
 
@@ -4289,7 +4555,11 @@ function renderGlobalActionPrompt(action) {
 
             document.getElementById('mandatory-discard-title').innerText = "Mandatory Sacrifice";
 
-            document.getElementById('mandatory-discard-message').innerText = "You must sacrifice a Hero.";
+            document.getElementById('mandatory-discard-message').innerText = (action.type === 'MULTI_SACRIFICE' || action.allowedTarget === 'HERO_ONLY')
+                ? "You must sacrifice a Hero."
+                : action.allowedTarget === 'ITEM_ONLY'
+                    ? "You must sacrifice an equipped Item."
+                    : "You must sacrifice a Hero or equipped Item.";
 
             container.innerHTML = '';
 
@@ -4299,13 +4569,35 @@ function renderGlobalActionPrompt(action) {
 
             myParty.forEach(c => {
 
+                if (action.allowedTarget === 'ITEM_ONLY') {
+                    [c.equippedItem, c.equippedItem2].filter(Boolean).forEach(item => {
+                        const itemWrap = document.createElement('div');
+                        itemWrap.className = 'peek-card-wrap';
+                        itemWrap.innerHTML = pickerCardWrapHtml(item, `<button class="action-btn peek-select-btn attack" onclick="socket.emit('submit_global_action', { targetPartyCardId: '${item.id}' }); document.getElementById('mandatory-discard-modal').classList.add('hidden');">Sacrifice Item</button>`);
+                        container.appendChild(itemWrap);
+                    });
+                    return;
+                }
+
                 const wrap = document.createElement('div');
 
                 wrap.className = 'peek-card-wrap';
 
-                wrap.innerHTML = pickerCardWrapHtml(c, `<button class="action-btn peek-select-btn attack" onclick="socket.emit('submit_global_action', { targetHeroId: '${c.id}' }); document.getElementById('mandatory-discard-modal').classList.add('hidden');">Sacrifice</button>`);
+                const eventData = action.type === 'SEQUENTIAL_PARTY_SACRIFICE'
+                    ? `{ targetPartyCardId: '${c.id}' }`
+                    : `{ targetHeroId: '${c.id}' }`;
+                wrap.innerHTML = pickerCardWrapHtml(c, `<button class="action-btn peek-select-btn attack" onclick="socket.emit('submit_global_action', ${eventData}); document.getElementById('mandatory-discard-modal').classList.add('hidden');">Sacrifice</button>`);
 
                 container.appendChild(wrap);
+
+                if (action.type === 'SEQUENTIAL_PARTY_SACRIFICE' && action.allowedTarget !== 'HERO_ONLY') {
+                    [c.equippedItem, c.equippedItem2].filter(Boolean).forEach(item => {
+                        const itemWrap = document.createElement('div');
+                        itemWrap.className = 'peek-card-wrap';
+                        itemWrap.innerHTML = pickerCardWrapHtml(item, `<button class="action-btn peek-select-btn attack" onclick="socket.emit('submit_global_action', { targetPartyCardId: '${item.id}' }); document.getElementById('mandatory-discard-modal').classList.add('hidden');">Sacrifice Item</button>`);
+                        container.appendChild(itemWrap);
+                    });
+                }
 
             });
 
@@ -4861,6 +5153,13 @@ function openDiscardSearch(skillId) {
 
     if (skillId === 'SKILL_BUN_BUN') condition = c => c.type === 'Magic Card';
 
+    if (skillId === 'SKILL_ANNIHILATOR') condition = c => c.type === 'Challenge Card';
+
+    const pendingAllowedTypes = latestGameState?.pendingAction?.allowedTypes;
+    if (Array.isArray(pendingAllowedTypes) && pendingAllowedTypes.length > 0) {
+        condition = c => pendingAllowedTypes.includes(c.type);
+    }
+
 
 
     const validCards = latestGameState.discardPile.filter(condition);
@@ -4887,6 +5186,18 @@ function openDiscardSearch(skillId) {
 
         });
 
+    }
+
+    if (latestGameState?.pendingAction?.optional
+        && latestGameState.pendingAction.playerToChoose === myId) {
+        const skip = document.createElement('button');
+        skip.className = 'action-btn';
+        skip.innerText = 'DONE';
+        skip.onclick = () => {
+            socket.emit('skip_optional_action');
+            modal?.classList.add('hidden');
+        };
+        container.appendChild(skip);
     }
 
     
@@ -5388,6 +5699,22 @@ function passModifierPhase() {
 
 }
 
+function openGruesomeGladiatorChoice(cards, targetName) {
+    const modal = document.getElementById('discard-search-modal');
+    const container = document.getElementById('discard-search-cards');
+    const title = document.getElementById('discard-search-title');
+    if (!modal || !container || !title) return;
+    title.innerText = `Choose from ${targetName || 'opponent'}`;
+    container.innerHTML = '';
+    (cards || []).forEach(card => {
+        const wrap = document.createElement('div');
+        wrap.className = 'peek-card-wrap';
+        wrap.innerHTML = pickerCardWrapHtml(card, `<button class="action-btn peek-select-btn attack" onclick="socket.emit('select_gruesome_gladiator_card', { cardId: '${card.id}' }); document.getElementById('discard-search-modal').classList.add('hidden');">Take Card</button>`);
+        container.appendChild(wrap);
+    });
+    modal.classList.remove('hidden');
+}
+
 function chooseMajestelkModifier(value) {
     socket.emit('choose_majestelk_modifier', { value });
 }
@@ -5847,11 +6174,22 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
     }
 
+    if (context.owner === myId && context.location === 'leader' && card.type === 'Party Leader'
+        && card.effect_id === 'LEADER_NECROMANCER' && !isTargetMode && isMyTurn && isPlayingState) {
+        const player = latestGameState.players[myId];
+        const btn = document.createElement('button');
+        btn.className = 'action-btn';
+        btn.innerText = player.usedLeaderSkillThisTurn ? 'Leader Skill Used' : 'Search Discard (2 AP)';
+        btn.disabled = Boolean(player.usedLeaderSkillThisTurn || (player.ap || 0) < 2 || latestGameState.discardPile.length === 0);
+        btn.onclick = () => { socket.emit('use_leader_skill'); closeInspectorModal(); };
+        modalActions.appendChild(btn);
+    }
+
 
 
     // 4. Attack Monster
 
-    if (context.location === 'monsters' && myTargetMode && currentPendingAction?.type === 'FREE_ATTACK') {
+    if (context.location === 'monsters' && myTargetMode && ['FREE_ATTACK', 'FREE_SLAY'].includes(currentPendingAction?.type)) {
         const btn = document.createElement('button');
         btn.className = 'action-btn attack';
         btn.innerText = 'ATTACK FOR FREE';
@@ -5936,7 +6274,8 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
             const type = currentPendingAction.type;
 
-            if (type === 'DISCARD' && inHand && isMine) isValid = true;
+            if (type === 'DISCARD' && inHand && isMine
+                && (!currentPendingAction.allowedTypes || currentPendingAction.allowedTypes.includes(card.type))) isValid = true;
 
             else if (type === 'EQUIP' && !inHand && isMine && card.type === 'Hero Card') isValid = true;
 
@@ -5946,9 +6285,10 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
             else if (type === 'RETURN_ITEM' && !inHand && card.type === 'Hero Card' && card.equippedItem) isValid = true;
 
-            else if (['PENALTY', 'DRUID_SKILL_SACRIFICE'].includes(type) && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE' && !inHand && isMine && card.type === 'Hero Card') isValid = true;
+            else if (['PENALTY', 'DRUID_SKILL_SACRIFICE', 'LIGHTNING_LABRYS_SACRIFICE', 'DRAGONS_BILE_SACRIFICE'].includes(type) && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE' && !inHand && isMine && card.type === 'Hero Card') isValid = true;
 
             else if (type === 'FREE_ATTACK' && context.location === 'monsters') isValid = meetsMonsterRequirements(latestGameState.players[myId], card.requirement);
+            else if (type === 'FREE_SLAY' && context.location === 'monsters') isValid = true;
 
         } else if (isLocalTargeting) {
 
@@ -6009,7 +6349,7 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
             btn.onclick = () => {
 
-                if (myTargetMode && ['PENALTY', 'DRUID_SKILL_SACRIFICE'].includes(currentPendingAction.type) && window.latestGameState?.state === 'WAITING_FOR_SACRIFICE') {
+                if (myTargetMode && ['PENALTY', 'DRUID_SKILL_SACRIFICE', 'LIGHTNING_LABRYS_SACRIFICE', 'DRAGONS_BILE_SACRIFICE'].includes(currentPendingAction.type) && window.latestGameState?.state === 'WAITING_FOR_SACRIFICE') {
 
                     socket.emit('submit_penalty_sacrifice', { targetHeroId: card.id });
 
@@ -6234,7 +6574,8 @@ function handleTargetingClick(cardEl, cardId) {
 
             
 
-            if (type === 'DISCARD' && inHand && isMine) isValid = true;
+            if (type === 'DISCARD' && inHand && isMine
+                && (!currentPendingAction.allowedTypes || currentPendingAction.allowedTypes.includes(card.type))) isValid = true;
 
             else if (type === 'EQUIP' && !inHand && isMine && card.type === 'Hero Card') isValid = true;
 
@@ -6244,15 +6585,16 @@ function handleTargetingClick(cardEl, cardId) {
 
             else if (type === 'RETURN_ITEM' && !inHand && card.type === 'Hero Card' && card.equippedItem) isValid = true;
 
-            else if (['PENALTY', 'DRUID_SKILL_SACRIFICE'].includes(type) && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE' && !inHand && isMine && card.type === 'Hero Card') isValid = true;
+            else if (['PENALTY', 'DRUID_SKILL_SACRIFICE', 'LIGHTNING_LABRYS_SACRIFICE', 'DRAGONS_BILE_SACRIFICE'].includes(type) && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE' && !inHand && isMine && card.type === 'Hero Card') isValid = true;
 
             else if (type === 'FREE_ATTACK' && context.location === 'monsters') isValid = meetsMonsterRequirements(latestGameState.players[myId], card.requirement);
+            else if (type === 'FREE_SLAY' && context.location === 'monsters') isValid = true;
 
             
 
             if (isValid) {
 
-                if (['PENALTY', 'DRUID_SKILL_SACRIFICE'].includes(type) && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE') {
+                if (['PENALTY', 'DRUID_SKILL_SACRIFICE', 'LIGHTNING_LABRYS_SACRIFICE', 'DRAGONS_BILE_SACRIFICE'].includes(type) && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE') {
 
                     socket.emit('submit_penalty_sacrifice', { targetHeroId: cardId });
 

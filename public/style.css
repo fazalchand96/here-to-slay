@@ -36,7 +36,7 @@
     --gold: #e8b84a;             /* brass/gold frame (mockup gold) */
     --gold-deep: #a87818;
 
-    /* Per-class colors; Warrior and Druid join the six base classes. */
+    /* Per-class colors for the base game and all class expansions. */
     --class-fighter: #e05a4a;
     --class-bard: #e89a3a;
     --class-guardian: #e8c84a;
@@ -45,6 +45,8 @@
     --class-wizard: #9a5ad9;
     --class-druid: #4f9b77;
     --class-warrior: #9b5962;
+    --class-necromancer: #75509d;
+    --class-berserker: #b84845;
 
     /* Radii */
     --r-card: 8px;
@@ -7652,7 +7654,7 @@ body.landscape #player-win-tracker {
 }
 .party-class-grid {
     display: grid;
-    grid-template-columns: repeat(8, minmax(78px, 1fr));
+    grid-template-columns: repeat(10, minmax(64px, 1fr));
     align-items: start;
     gap: 7px;
     width: 100%;
@@ -7735,7 +7737,7 @@ body.landscape #player-win-tracker {
 @media (max-width: 760px) {
     #party-dock { grid-template-columns: minmax(120px, 1fr) minmax(110px, 1.1fr) 62px 24px; padding: 7px 8px; }
     .party-dock-copy small { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
-    .party-class-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 3px; }
+    .party-class-grid { grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; }
     .party-class-column { padding-inline: 1px; }
     .party-class-column > header { gap: 2px; font-size: clamp(.38rem, 1.45vw, .5rem); }
     .party-class-leader { padding-inline: 1px; font-size: clamp(.36rem, 1.25vw, .46rem); }
@@ -7906,7 +7908,7 @@ body.landscape #player-hand.cards-many::after { display: none !important; }
 .party-dock-slay { min-width: 58px; justify-self: stretch; }
 .party-dock-open { display: none !important; }
 
-/* Keep the eight class columns and the complete slain-Monster row visible in
+/* Keep all ten class columns and the complete slain-Monster row visible in
    one composition. Only an unusually tall same-class stack may scroll. */
 #opponent-modal.own-party-view #opponent-modal-content {
     overflow: hidden !important;
@@ -7920,7 +7922,7 @@ body.landscape #player-hand.cards-many::after { display: none !important; }
 #opponent-modal.own-party-view .party-class-grid {
     flex: 1 1 auto;
     min-height: 0;
-    grid-template-columns: repeat(8, minmax(0, 1fr));
+    grid-template-columns: repeat(10, minmax(0, 1fr));
     overflow: hidden;
 }
 #opponent-modal.own-party-view .party-class-column {
@@ -7971,12 +7973,18 @@ body.landscape #player-hand.cards-many::after { display: none !important; }
         padding-right: clamp(26px, 5vw, 38px) !important;
     }
     #opponent-modal.own-party-view .party-class-grid {
-        grid-template-columns: repeat(8, minmax(0, 1fr)) !important;
+        grid-template-columns: repeat(10, minmax(0, 1fr)) !important;
         gap: 3px;
     }
     #opponent-modal.own-party-view .party-class-stack .card {
-        height: clamp(68px, 13dvh, 86px) !important;
-        max-height: 86px !important;
+        height: clamp(60px, 12dvh, 80px) !important;
+        max-height: 80px !important;
+    }
+    #opponent-modal.own-party-view .party-class-column > header {
+        font-size: clamp(.31rem, 1.12vw, .43rem) !important;
+    }
+    #opponent-modal.own-party-view .party-class-leader {
+        font-size: clamp(.3rem, 1vw, .4rem) !important;
     }
     #opponent-modal.own-party-view .own-party-monsters {
         flex-basis: 92px;

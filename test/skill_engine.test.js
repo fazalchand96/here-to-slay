@@ -48,6 +48,7 @@ test('Druid expansion skills create their agreed follow-up actions and protectio
 
     executeSkill(state, io, 'SKILL_BIG_BUCKLEY', 'p1', 'buckley');
     assert.equal(state.pendingAction.type, 'FREE_ATTACK');
+    assert.equal(state.pendingAction.optional, true);
     executeSkill(state, io, 'SKILL_DOE_FALLOW', 'p1', 'doe');
     assert.equal(state.pendingAction.type, 'DRUID_SKILL_SACRIFICE');
     executeSkill(state, io, 'SKILL_GLOWING_ANTLER', 'p1', 'antler');

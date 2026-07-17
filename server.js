@@ -8,9 +8,11 @@ const { resolveSkill } = require('./card_effects');
 const { getPlayerName } = require('./player_utils');
 const {
     executeSkill, executeMagic, hasOpponentHeroTarget, getTargetingSkillPlan, drawCardsWithPassives,
+    drawCardsWithoutPassives, applyDrawnCardPassives, queueLumberingDrawSequence,
     triggerCrownedSerpent, prepareImmediateItemPlay, markButtonsFreePlay,
     returnEquippedItemToOwner, equippedItems, hasEquippedEffect, refundTemporalHourglass,
-    triggerCursedGlove, triggerSoulTethers, resolveRexMajorChoice, clearRexMajorChoices
+    triggerCursedGlove, triggerSoulTethers, recordSacrificeEvent, recordDestroyEvent, recordFailedSkillEvent,
+    queueCommittedHeroRemovalTriggers, resolveRexMajorChoice, clearRexMajorChoices
 } = require('./skill_engine');
 const ALL_CARDS = require('./cards.json');
 
@@ -45,6 +47,8 @@ let gameState = {
 };
 
 let modifierTimer = null;
+let challengeTimer = null;
+const CHALLENGE_TIMEOUT_MS = 15_000;
 
 // Test-only: when set, the next skill/attack roll uses these dice instead of
 // random ones, so e2e tests asserting on success/failure are deterministic.
@@ -80,6 +84,59 @@ function hasStealOrDestroyTarget(actorId, type) {
     return false;
 }
 
+function clearChallengeTimer() {
+    if (!challengeTimer) return;
+    clearTimeout(challengeTimer);
+    challengeTimer = null;
+}
+
+function getConnectedChallengeOpponentIds(state, connectedSocketIds = null) {
+    const pending = state && state.pendingChallenge;
+    if (!pending) return [];
+    const connectedSet = connectedSocketIds ? new Set(connectedSocketIds) : null;
+    return Object.keys(state.players || {}).filter(playerId => {
+        if (playerId === pending.rollerId) return false;
+        const player = state.players[playerId];
+        if (!player || player.connected === false) return false;
+        return !connectedSet || connectedSet.has(playerId);
+    });
+}
+
+function haveAllConnectedChallengeOpponentsPassed(state, connectedSocketIds = null) {
+    const pending = state && state.pendingChallenge;
+    if (!pending) return false;
+    const passedPlayers = new Set(pending.passedPlayers || []);
+    return getConnectedChallengeOpponentIds(state, connectedSocketIds)
+        .every(playerId => passedPlayers.has(playerId));
+}
+
+function settleUnchallengedCardIfComplete(message) {
+    if (gameState.state !== 'WAITING_FOR_CHALLENGES' || !gameState.pendingChallenge) return false;
+    const connectedSocketIds = Array.from(io.sockets.sockets.keys());
+    if (!haveAllConnectedChallengeOpponentsPassed(gameState, connectedSocketIds)) return false;
+
+    clearChallengeTimer();
+    io.emit('challenge_resolved', {
+        message: message || `${gameState.pendingChallenge.card.name} was not challenged and resolves normally.`
+    });
+    resolvePendingCard();
+    return true;
+}
+
+function ensureChallengeTimer() {
+    if (challengeTimer || gameState.state !== 'WAITING_FOR_CHALLENGES' || !gameState.pendingChallenge) return;
+    gameState.pendingChallenge.expiresAt = Date.now() + CHALLENGE_TIMEOUT_MS;
+    const pendingAtStart = gameState.pendingChallenge;
+    challengeTimer = setTimeout(() => {
+        challengeTimer = null;
+        if (gameState.state !== 'WAITING_FOR_CHALLENGES' || gameState.pendingChallenge !== pendingAtStart) return;
+        io.emit('challenge_resolved', {
+            message: `Challenge window expired. ${pendingAtStart.card.name} resolves normally.`
+        });
+        resolvePendingCard();
+    }, CHALLENGE_TIMEOUT_MS);
+}
+
 function clearUntilNextTurnProtections(player) {
     if (!player) return;
     player.cannotBeStolen = false;
@@ -99,26 +156,74 @@ function pendingActionForTargetingPlan(plan, rollerId, skillId, heroId) {
     return { type: plan.type, originalActor: rollerId, skillId, heroId };
 }
 
-const CLASSES = ['Fighter', 'Bard', 'Guardian', 'Ranger', 'Thief', 'Wizard', 'Druid', 'Warrior'];
+function queueLightningLabrysPlayerChoice(state, originalActor, remainingChoices) {
+    if (!state.players?.[originalActor] || remainingChoices <= 0) {
+        state.state = 'PLAYING';
+        state.pendingAction = null;
+        return false;
+    }
+    state.state = 'WAITING_FOR_SKILL_TARGET';
+    state.pendingAction = {
+        type: 'LIGHTNING_LABRYS_PLAYER',
+        playerToChoose: originalActor,
+        originalActor,
+        remainingChoices,
+        allowSelf: true
+    };
+    return true;
+}
 
-const TARGETING_SKILLS = ['DESTROY_HERO', 'STEAL_HERO', 'MAGIC_DESTRUCTIVE', 'SKILL_MEOWZIO', 'SKILL_SHURIKITTY', 'SKILL_TIPSY_TOOTIE', 'SKILL_WHISKERS', 'SKILL_WIGGLES', 'SKILL_SERIOUS_GREY'];
+function queueLightningLabrysSacrifice(state, targetPlayerId) {
+    const action = state.pendingAction;
+    if (!action || action.type !== 'LIGHTNING_LABRYS_PLAYER') return false;
+    const target = state.players?.[targetPlayerId];
+    if (!target || target.connected === false) return false;
+
+    const remainingChoices = Math.max(0, action.remainingChoices - 1);
+    if (!(target.party || []).some(card => card.type === 'Hero Card')) {
+        queueLightningLabrysPlayerChoice(state, action.originalActor, remainingChoices);
+        return 'NO_HERO';
+    }
+
+    state.state = 'WAITING_FOR_SACRIFICE';
+    state.pendingAction = {
+        type: 'LIGHTNING_LABRYS_SACRIFICE',
+        playerToChoose: targetPlayerId,
+        originalActor: action.originalActor,
+        remainingChoices
+    };
+    return true;
+}
+
+const CLASSES = ['Fighter', 'Bard', 'Guardian', 'Ranger', 'Thief', 'Wizard', 'Druid', 'Warrior', 'Necromancer', 'Berserker'];
+
+const TARGETING_SKILLS = ['DESTROY_HERO', 'STEAL_HERO', 'MAGIC_DESTRUCTIVE', 'SKILL_MEOWZIO', 'SKILL_SHURIKITTY', 'SKILL_TIPSY_TOOTIE', 'SKILL_WHISKERS', 'SKILL_WIGGLES', 'SKILL_SERIOUS_GREY', 'SKILL_PERFECT_VESSEL', 'SKILL_UNBRIDLED_FURY'];
 // Skills whose executeSkill consumes targetData and resolves immediately (single
 // player pick). Buttons/Plundering Puma/Sly Pickings/Lucky Bucky are NOT here:
 // their executeSkill sets up its own pull-targeting (LOOK_AND_PULL/PUMA_PULL/
 // CONDITIONAL_PULL), so listing them here caused a double player-selection that
 // soft-locked (you picked once, then had no clickable opponent for the pull).
-const PLAYER_TARGETING_SKILLS = ['PULL_CARD', 'SKILL_HEAVY_BEAR', 'TRADE_HANDS', 'SKILL_SHARP_FOX', 'SKILL_SILENT_SHADOW', 'SKILL_SLIPPERY_PAWS', 'SKILL_HOPPER', 'SKILL_BUCK_OMENS', 'SKILL_BLINDING_BLADE'];
-const DISCARD_TARGETING_SKILLS = ['SKILL_GUIDING_LIGHT', 'SKILL_RADIANT_HORN', 'SKILL_LOOKIE_ROOKIE', 'SKILL_BUN_BUN', 'SKILL_MAGUS_MOOSE', 'MAGIC_CALL_FALLEN'];
+const PLAYER_TARGETING_SKILLS = ['PULL_CARD', 'SKILL_HEAVY_BEAR', 'TRADE_HANDS', 'SKILL_SHARP_FOX', 'SKILL_SILENT_SHADOW', 'SKILL_SLIPPERY_PAWS', 'SKILL_HOPPER', 'SKILL_BUCK_OMENS', 'SKILL_BLINDING_BLADE', 'SKILL_HOLLOW_HUSK', 'SKILL_BOSTON_TERROR'];
+const DISCARD_TARGETING_SKILLS = ['SKILL_GUIDING_LIGHT', 'SKILL_RADIANT_HORN', 'SKILL_LOOKIE_ROOKIE', 'SKILL_BUN_BUN', 'SKILL_MAGUS_MOOSE', 'SKILL_ANNIHILATOR', 'MAGIC_CALL_FALLEN'];
 const SELF_ITEM_TARGETING_SKILLS = ['SKILL_HOLY_CURSELIFTER'];
 const MULTI_TARGETING_SKILLS = ['SKILL_FLUFFY', 'SKILL_TENACIOUS_TIMBER'];
 
 let PARTY_LEADERS = [];
 let trackedCardsPlayed = [];
+let trackableCardTotal = 0;
+
+const TRACKABLE_CARD_TYPES = new Set([
+    'Hero Card',
+    'Item Card',
+    'Cursed Item Card',
+    'Modifier Card',
+    'Magic Card',
+    'Challenge Card'
+]);
 
 function registerCardPlayed(card) {
     if (!card) return;
-    const playableTypes = ['Hero Card', 'Item Card', 'Cursed Item Card', 'Modifier Card', 'Magic Card', 'Challenge Card'];
-    if (!playableTypes.includes(card.type)) return;
+    if (!TRACKABLE_CARD_TYPES.has(card.type)) return;
     if (card.id && !trackedCardsPlayed.includes(card.id)) {
         trackedCardsPlayed.push(card.id);
     }
@@ -224,6 +329,8 @@ function loadCards() {
         }
     });
 
+    trackableCardTotal = gameState.mainDeck.filter(card => TRACKABLE_CARD_TYPES.has(card.type)).length;
+
     shuffle(gameState.mainDeck);
     shuffle(gameState.monsterDeck);
 }
@@ -235,8 +342,9 @@ function shuffle(array) {
     }
 }
 
-function dealCards(count, playerSocketId) {
+function dealCards(count, playerSocketId, source = 'draw', continuation = null) {
     const player = gameState.players[playerSocketId];
+    if (queueLumberingDrawSequence(gameState, player, count, continuation, source)) return [];
     if (count === 1 && gameState.state === 'PLAYING') {
         if (gameState.mainDeck.length === 0) {
             drawCardsWithPassives(gameState, io, 1, player);
@@ -290,6 +398,54 @@ function effectiveHeroClass(hero) {
     return [hero.equippedItem, hero.equippedItem2].map(maskClass).find(Boolean) || hero.class;
 }
 
+function attackCostAllowedTypes(attackCost) {
+    if (!attackCost?.discard || attackCost.discard === 'ANY') return null;
+    if (attackCost.discard === 'Item Card' && attackCost.include_cursed) {
+        return ['Item Card', 'Cursed Item Card'];
+    }
+    return [attackCost.discard];
+}
+
+function startMonsterAttackRoll(playerId, monsterId) {
+    const player = gameState.players[playerId];
+    const monster = gameState.activeMonsters.find(card => card.id === monsterId);
+    if (!player || !monster || player.ap < 2 || !meetsMonsterRequirements(player, monster.requirement)) return false;
+    player.ap -= 2;
+    gameState.state = 'WAITING_TO_ROLL';
+    gameState.pendingAction = null;
+    gameState.pendingRoll = {
+        type: 'ATTACK', rollerId: playerId, targetId: monster.id,
+        roll1: 0, roll2: 0, passiveBonus: 0, modifierTotal: 0,
+        baseRoll: 0, currentRoll: 0, passedPlayers: []
+    };
+    return true;
+}
+
+function slayFaceUpMonster(playerId, monsterId, source = 'attack') {
+    const player = gameState.players[playerId];
+    const monsterIndex = gameState.activeMonsters.findIndex(monster => monster.id === monsterId);
+    if (!player || monsterIndex === -1) return null;
+    const monster = gameState.activeMonsters.splice(monsterIndex, 1)[0];
+    player.slainMonsters.push(monster);
+    spawnMonsters();
+
+    if (monster.effect_id === 'MONSTER_MEGA_SLIME') {
+        player.ap += 1;
+        io.emit('message', `${getPlayerName(gameState, player.id)} gained +1 AP from defeating Mega Slime!`);
+    }
+    if (player.leader?.effect_id === 'LEADER_BERSERKER') {
+        dealCards(2, player.id, 'The Raging Manticore');
+        io.emit('message', `${getPlayerName(gameState, player.id)} drew 2 cards from The Raging Manticore after slaying ${monster.name}.`);
+    }
+    if (monster.rewardAction === 'DRAW_1') dealCards(1, playerId);
+    if (monster.rewardAction === 'DRAW_2') dealCards(2, playerId);
+    if (monster.rewardAction && monster.rewardAction !== 'NONE') {
+        io.emit('message', `${getPlayerName(gameState, player.id)} slew ${monster.name} and triggered reward: ${monster.rewardAction}`);
+    }
+    io.emit('message', `${getPlayerName(gameState, player.id)} slew ${monster.name}${source === 'SKILL_VICIOUS_WILDCAT' ? ' with Vicious Wildcat' : ''}!`);
+    return monster;
+}
+
 // Decoy Doll (ITEM_DECOY): sacrifice the Doll to save the Hero from sacrifice/destroy.
 // Auto-applied (always the better choice). Returns true if it absorbed the effect.
 function consumeDecoyDoll(targetHero, action = 'DESTROY') {
@@ -308,7 +464,8 @@ function checkWinCondition() {
         const p = gameState.players[socketId];
 
         // Condition 1: Slay 3 Monsters
-        if (p.slainMonsters.length >= 3) {
+        const slainValue = (p.slainMonsters || []).reduce((sum, monster) => sum + (monster.slain_value || 1), 0);
+        if (slainValue >= 3) {
             return { winnerId: p.id, reason: 'slayed 3 monsters' };
         }
 
@@ -336,7 +493,7 @@ function handleGameOver(winResult) {
     const winnerName = gameState.players[winResult.winnerId] ? getPlayerName(gameState, winResult.winnerId) : 'Unknown';
     io.emit('game_over', { winnerName, reason: winResult.reason });
 
-    console.log(`\n[SIMULATION PROGRESS] Unique cards tested so far: ${trackedCardsPlayed.length} out of 115.`);
+    console.log(`\n[SIMULATION PROGRESS] Unique cards tested so far: ${trackedCardsPlayed.length} out of ${trackableCardTotal}.`);
     console.log(`[SIMULATION] Game over! Winner: ${winnerName} (${winResult.reason}). Automatically resetting game in 5 seconds...\n`);
 
     setTimeout(() => {
@@ -351,8 +508,14 @@ function resetGameForNextMatch() {
     gameState.pendingAction = null;
     gameState.pendingRoll = null;
     gameState.pendingChallenge = null;
+    gameState.pendingPassiveDraws = [];
+    gameState.pendingMonsterTriggers = [];
+    gameState.pendingLumberingDraws = [];
+    gameState.pendingDeferredDrawPassives = [];
+    gameState.pendingEndTurnEffects = null;
     gameState.activePlayerSocketId = null;
     gameState.winner = null;
+    clearChallengeTimer();
     clearRexMajorChoices(gameState);
 
     // Reset individual player stats but keep connections and order
@@ -382,12 +545,400 @@ function resetGameForNextMatch() {
 }
 
 function resetToPlayingState() {
+    clearChallengeTimer();
     gameState.state = 'PLAYING';
     gameState.pendingAction = null;
     gameState.pendingCard = null;
     gameState.challengePhase = false;
     gameState.modifierPhase = false;
     gameState.pendingChallenge = null;
+}
+
+function queuePassiveDraw(playerId, count, source) {
+    if (!gameState.players[playerId] || count <= 0) return;
+    if (!gameState.pendingPassiveDraws) gameState.pendingPassiveDraws = [];
+    gameState.pendingPassiveDraws.push({ playerId, count, source });
+}
+
+function triggerPlayedCardMonsterPassives(playerId, card) {
+    const player = gameState.players[playerId];
+    if (!player || !card) return;
+    const slain = player.slainMonsters || [];
+    if (card.type === 'Challenge Card' && slain.some(monster => monster.effect_id === 'MONSTER_POSSESSED_PLUSH')) {
+        queuePassiveDraw(playerId, 1, 'Possessed Plush');
+    }
+    if (card.type === 'Magic Card' && slain.some(monster => monster.effect_id === 'MONSTER_VOLTCLAW_LION')) {
+        queuePassiveDraw(playerId, 1, 'Voltclaw Lion');
+    }
+    if (['Item Card', 'Cursed Item Card'].includes(card.type)
+        && slain.some(monster => monster.effect_id === 'MONSTER_WICKED_SEA_SERPENT')) {
+        queuePassiveDraw(playerId, 1, 'Wicked Sea Serpent');
+    }
+}
+
+function advanceTurn(currentPlayerId) {
+    const currentIndex = gameState.playerOrder.indexOf(currentPlayerId);
+    if (currentIndex === -1 || gameState.playerOrder.length === 0) return false;
+    const nextIndex = (currentIndex + 1) % gameState.playerOrder.length;
+    gameState.activePlayerSocketId = gameState.playerOrder[nextIndex];
+
+    resetToPlayingState();
+    gameState.pendingRoll = null;
+    gameState.pendingChallenge = null;
+    gameState.pendingGlobalAction = null;
+    gameState.pendingAction = null;
+    gameState.waitingForInput = false;
+    gameState.forcedEndTurnPlayerId = null;
+    if (modifierTimer) clearTimeout(modifierTimer);
+
+    const currentPlayer = gameState.players[currentPlayerId];
+    if (currentPlayer) {
+        currentPlayer.magicRollBonus = 0;
+        currentPlayer.rollBonus = 0;
+        currentPlayer.rollBonusSources = [];
+        currentPlayer.attackRollBonus = 0;
+        currentPlayer.stagguardActive = false;
+        currentPlayer.blocksOpponentModifiersThisTurn = false;
+        currentPlayer.silentShieldActive = false;
+        currentPlayer.cannotBeChallenged = false;
+        currentPlayer.usedLeaderSkillThisTurn = false;
+    }
+
+    const nextPlayer = gameState.players[gameState.activePlayerSocketId];
+    if (nextPlayer) {
+        clearUntilNextTurnProtections(nextPlayer);
+        nextPlayer.usedLeaderSkillThisTurn = false;
+        nextPlayer.ap = (nextPlayer.slainMonsters || []).some(monster => monster.effect_id === 'MONSTER_MEGA_SLIME') ? 4 : 3;
+    }
+
+    Object.values(gameState.players).forEach(player => {
+        player.usedNobleShamanThisTurn = false;
+        player.usedMuscipulaRexThisTurn = false;
+        (player.party || []).forEach(card => {
+            if (card.type === 'Hero Card') card.usedSkillThisTurn = false;
+        });
+    });
+    return true;
+}
+
+function eligibleEndTurnMonsterEffects(player) {
+    if (!player || player.hand.length !== 0) return [];
+    const slain = player.slainMonsters || [];
+    return [
+        ['MONSTER_CLAWED_NIGHTMARE', 'CLAWED_NIGHTMARE_PULL'],
+        ['MONSTER_GORETELODONT', 'GORETELODONT_DRAW'],
+        ['MONSTER_SCAVENGER_GRIFFIN', 'SCAVENGER_GRIFFIN_STEAL']
+    ].filter(([monsterId]) => slain.some(monster => monster.effect_id === monsterId))
+        .map(([, effect]) => effect);
+}
+
+function advanceEndTurnMonsterEffect() {
+    const sequence = gameState.pendingEndTurnEffects;
+    if (!sequence) return false;
+    const player = gameState.players[sequence.playerId];
+    if (!player) {
+        gameState.pendingEndTurnEffects = null;
+        return false;
+    }
+    const effect = sequence.effects.shift();
+    if (!effect) {
+        const playerId = sequence.playerId;
+        gameState.pendingEndTurnEffects = null;
+        advanceTurn(playerId);
+        return true;
+    }
+    gameState.state = 'WAITING_FOR_END_TURN_CHOICE';
+    gameState.pendingAction = {
+        type: 'END_TURN_MONSTER_CHOICE', effect,
+        playerToChoose: player.id, originalActor: player.id, optional: true
+    };
+    return true;
+}
+
+function beginEndTurn(playerId) {
+    const player = gameState.players[playerId];
+    const effects = eligibleEndTurnMonsterEffects(player);
+    if (effects.length === 0) return advanceTurn(playerId);
+    gameState.pendingEndTurnEffects = { playerId, effects };
+    return advanceEndTurnMonsterEffect();
+}
+
+function sacrificePartyCard(player, targetCardId, allowedTarget = 'ANY_PARTY_CARD') {
+    if (!player || !targetCardId) return null;
+
+    for (const hero of player.party || []) {
+        for (const slot of ['equippedItem', 'equippedItem2']) {
+            const item = hero[slot];
+            if (!item || item.id !== targetCardId || allowedTarget === 'HERO_ONLY') continue;
+            hero[slot] = null;
+            gameState.discardPile.push(item);
+            recordSacrificeEvent(gameState, player, item, { isHero: false });
+            return { card: item, didSacrifice: true, kind: 'ITEM' };
+        }
+    }
+
+    const heroIndex = (player.party || []).findIndex(card => card.id === targetCardId && card.type === 'Hero Card');
+    if (heroIndex === -1 || allowedTarget === 'ITEM_ONLY') return null;
+    const hero = player.party[heroIndex];
+    const decoy = equippedItems(hero).find(item => item.effect_id === 'ITEM_DECOY');
+    if (consumeDecoyDoll(hero, 'SACRIFICE')) {
+        if (decoy) recordSacrificeEvent(gameState, player, decoy, { isHero: false });
+        return { card: decoy || hero, didSacrifice: true, kind: 'DECOY' };
+    }
+    if (player.maegistyActive) {
+        const removedItems = ['equippedItem', 'equippedItem2']
+            .filter(slot => hero[slot])
+            .map(slot => ({ slot, card: hero[slot] }));
+        const items = removedItems.map(entry => entry.card);
+        player.party.splice(heroIndex, 1);
+        hero.equippedItem = null;
+        hero.equippedItem2 = null;
+        player.hand.push(hero, ...items);
+        return { card: hero, didSacrifice: false, kind: 'RETURNED' };
+    }
+
+    player.party.splice(heroIndex, 1);
+    const removedItems = ['equippedItem', 'equippedItem2']
+        .filter(slot => hero[slot])
+        .map(slot => ({ slot, card: hero[slot] }));
+    removedItems.forEach(entry => gameState.discardPile.push(entry.card));
+    hero.equippedItem = null;
+    hero.equippedItem2 = null;
+    gameState.discardPile.push(hero);
+    recordSacrificeEvent(gameState, player, hero, {
+        isHero: true, removedItems,
+        initiatorId: player.silentShieldActive ? player.id : null
+    });
+    return { card: hero, didSacrifice: true, kind: 'HERO' };
+}
+
+function destroyOpponentPartyCard(actorId, targetCardId) {
+    for (const owner of Object.values(gameState.players)) {
+        if (!owner || owner.id === actorId) continue;
+        for (const hero of owner.party || []) {
+            for (const slot of ['equippedItem', 'equippedItem2']) {
+                const item = hero[slot];
+                if (!item || item.id !== targetCardId) continue;
+                hero[slot] = null;
+                gameState.discardPile.push(item);
+                return { card: item, didDestroy: true, kind: 'ITEM' };
+            }
+        }
+
+        const heroIndex = (owner.party || []).findIndex(card => card.id === targetCardId && card.type === 'Hero Card');
+        if (heroIndex === -1) continue;
+        if (owner.cannotBeDestroyed || (owner.slainMonsters || []).some(monster => monster.effect_id === 'MONSTER_TERRATUGA')) {
+            return { card: owner.party[heroIndex], didDestroy: false, kind: 'PROTECTED' };
+        }
+        const hero = owner.party[heroIndex];
+        if (consumeDecoyDoll(hero, 'DESTROY')) return { card: hero, didDestroy: false, kind: 'DECOY' };
+        owner.party.splice(heroIndex, 1);
+        const removedItems = ['equippedItem', 'equippedItem2']
+            .filter(slot => hero[slot])
+            .map(slot => ({ slot, card: hero[slot] }));
+        const items = removedItems.map(entry => entry.card);
+        hero.equippedItem = null;
+        hero.equippedItem2 = null;
+        if (owner.maegistyActive) {
+            owner.hand.push(hero, ...items);
+            return { card: hero, didDestroy: false, kind: 'RETURNED' };
+        }
+        gameState.discardPile.push(hero, ...items);
+        const actor = gameState.players[actorId];
+        recordDestroyEvent(gameState, owner, hero, {
+            removedItems,
+            initiatorId: actor?.silentShieldActive ? actorId : null
+        });
+        return { card: hero, didDestroy: true, kind: 'HERO' };
+    }
+    return null;
+}
+
+function hasDestroyableOpponentPartyCard(actorId) {
+    return Object.values(gameState.players).some(owner => {
+        if (!owner || owner.id === actorId) return false;
+        return (owner.party || []).some(hero => equippedItems(hero).length > 0
+            || (!owner.cannotBeDestroyed
+                && !(owner.slainMonsters || []).some(monster => monster.effect_id === 'MONSTER_TERRATUGA')));
+    });
+}
+
+function finishSequentialGlobalAction(action) {
+    const after = action.afterResolution;
+    gameState.pendingGlobalAction = null;
+    resetToPlayingState();
+    if (after?.type === 'MEOWNTAIN_BONUS') {
+        const player = gameState.players[after.playerId];
+        if (player) {
+            player.rollBonus = (player.rollBonus || 0) + 5;
+            (player.rollBonusSources = player.rollBonusSources || []).push({ source: 'Meowntain', value: 5 });
+            io.emit('message', `${getPlayerName(gameState, player.id)} gains +5 to all rolls for the rest of the turn from Meowntain.`);
+        }
+    } else if (after?.type === 'DISCARD_RETRIEVAL') {
+        const hasEligibleCard = gameState.discardPile.some(card => after.allowedTypes.includes(card.type));
+        if (gameState.players[after.playerId] && hasEligibleCard) {
+            gameState.state = 'WAITING_FOR_SKILL_TARGET';
+            gameState.pendingAction = {
+                type: 'SKILL_TARGET_DISCARD', playerToChoose: after.playerId, originalActor: after.playerId,
+                skillId: after.skillId, heroId: null, allowedTypes: after.allowedTypes
+            };
+            io.emit('message', `${getPlayerName(gameState, after.playerId)} must choose a card from the discard pile.`);
+        } else {
+            io.emit('message', `No eligible card is available in the discard pile, so the retrieval ends.`);
+        }
+    }
+}
+
+function queueBostonTerrorRetrieval(playerId) {
+    if (!gameState.players[playerId] || gameState.discardPile.length === 0) {
+        resetToPlayingState();
+        gameState.pendingGlobalAction = null;
+        return false;
+    }
+    gameState.pendingGlobalAction = null;
+    gameState.state = 'WAITING_FOR_SKILL_TARGET';
+    gameState.pendingAction = {
+        type: 'SKILL_TARGET_DISCARD', playerToChoose: playerId, originalActor: playerId,
+        skillId: 'SKILL_BOSTON_TERROR_RETRIEVE', allowedTypes: [
+            'Hero Card', 'Item Card', 'Cursed Item Card', 'Magic Card', 'Modifier Card', 'Challenge Card'
+        ], remaining: Math.min(2, gameState.discardPile.length), optional: true
+    };
+    return true;
+}
+
+function queueGobletReroll(playerId, heroId) {
+    const player = gameState.players[playerId];
+    const hero = player?.party?.find(card => card.id === heroId);
+    if (!hero || !hasEquippedEffect(hero, 'ITEM_GOBLET_CAFFEINATION')) return false;
+    gameState.state = 'WAITING_FOR_GOBLET_REROLL';
+    gameState.pendingAction = {
+        type: 'GOBLET_REROLL', playerToChoose: playerId, originalActor: playerId, heroId
+    };
+    return true;
+}
+
+function restoreDragonWaspHero(trigger) {
+    const owner = gameState.players[trigger?.playerId];
+    const hero = trigger?.hero;
+    if (!owner || !hero) return false;
+    const restoredIds = new Set([hero.id, ...(trigger.removedItems || []).map(entry => entry.card?.id)]);
+    gameState.discardPile = gameState.discardPile.filter(card => !restoredIds.has(card.id));
+    Object.values(gameState.players).forEach(player => {
+        player.hand = (player.hand || []).filter(card => !restoredIds.has(card.id));
+    });
+    hero.equippedItem = null;
+    hero.equippedItem2 = null;
+    (trigger.removedItems || []).forEach(entry => {
+        if (entry?.slot && entry.card) hero[entry.slot] = entry.card;
+    });
+    if (!(owner.party || []).some(card => card.id === hero.id)) owner.party.push(hero);
+    return true;
+}
+
+function completeLumberingDrawStep(sequence, drawnCards) {
+    if (!sequence) return;
+    sequence.remaining = Math.max(0, sequence.remaining - 1);
+    sequence.drawnCardIds.push(...drawnCards.map(card => card.id));
+    sequence.drawnCards.push(...drawnCards);
+    if (!gameState.pendingDeferredDrawPassives) gameState.pendingDeferredDrawPassives = [];
+    drawnCards.forEach(card => gameState.pendingDeferredDrawPassives.push({
+        playerId: sequence.playerId, card
+    }));
+}
+
+function resolveLumberingContinuation(sequence) {
+    const continuation = sequence?.continuation;
+    if (!continuation) return;
+    const player = gameState.players[continuation.playerId || sequence.playerId];
+    if (!player) return;
+    if (continuation.type === 'ADVANCE_END_TURN_MONSTER_EFFECT') {
+        advanceEndTurnMonsterEffect();
+    } else if (continuation.type === 'DISCARD_ONE') {
+        if (player.hand.length > 0) {
+            gameState.state = 'PLAYING';
+            gameState.pendingAction = {
+                type: 'DISCARD', playerToChoose: player.id, amount: 1, originalActor: player.id
+            };
+        }
+    } else if (continuation.type === 'PAN_CHUCKS') {
+        const drewChallenge = sequence.drawnCards.some(card => card.type === 'Challenge Card');
+        if (drewChallenge && hasStealOrDestroyTarget(player.id, 'DESTROY')) {
+            gameState.state = 'PLAYING';
+            gameState.pendingAction = {
+                type: 'DESTROY', playerToChoose: player.id,
+                originalActor: player.id, optional: true
+            };
+        }
+    } else if (continuation.type === 'FUZZY_CHEEKS') {
+        if (player.hand.some(card => card.type === 'Hero Card')) {
+            gameState.state = 'WAITING_FOR_HAND_SELECTION';
+            gameState.pendingAction = {
+                type: 'PLAY_FROM_HAND', allowedTypes: ['Hero Card'],
+                playerToChoose: player.id, originalActor: player.id
+            };
+        }
+    } else if (continuation.type === 'QUICK_DRAW') {
+        const itemIds = sequence.drawnCards
+            .filter(card => ['Item Card', 'Cursed Item Card'].includes(card.type)
+                && player.hand.some(held => held.id === card.id))
+            .map(card => card.id);
+        if (itemIds.length > 0) {
+            gameState.state = 'WAITING_FOR_HAND_SELECTION';
+            gameState.pendingAction = {
+                type: 'PLAY_FROM_HAND', allowedTypes: ['Item Card', 'Cursed Item Card'],
+                allowedCardIds: itemIds, playerToChoose: player.id,
+                originalActor: player.id, optional: true
+            };
+        }
+    } else if (continuation.type === 'SNOWBALL') {
+        const magicCards = sequence.drawnCards.filter(card => card.type === 'Magic Card'
+            && player.hand.some(held => held.id === card.id));
+        if (magicCards.length === 1) {
+            const card = magicCards[0];
+            player.hand.splice(player.hand.findIndex(held => held.id === card.id), 1);
+            gameState.state = 'WAITING_FOR_IMMEDIATE_PLAY';
+            gameState.pendingCard = card;
+            gameState.pendingAction = {
+                type: 'IMMEDIATE_PLAY_CHOICE', playerToChoose: player.id,
+                originalActor: player.id, thenDraw: 1
+            };
+        } else if (magicCards.length > 1) {
+            gameState.state = 'WAITING_FOR_HAND_SELECTION';
+            gameState.pendingAction = {
+                type: 'PLAY_FROM_HAND', allowedTypes: ['Magic Card'],
+                allowedCardIds: magicCards.map(card => card.id), playerToChoose: player.id,
+                originalActor: player.id, optional: true, thenDraw: 1
+            };
+        }
+    } else if (continuation.type === 'DRAW_AND_PLAY') {
+        const heroIds = sequence.drawnCards
+            .filter(card => card.type === 'Hero Card' && player.hand.some(held => held.id === card.id))
+            .map(card => card.id);
+        if (heroIds.length > 0) {
+            gameState.state = 'WAITING_FOR_HAND_SELECTION';
+            gameState.pendingAction = {
+                type: 'PLAY_FROM_HAND', allowedTypes: ['Hero Card'], allowedCardIds: heroIds,
+                playerToChoose: player.id, originalActor: player.id, optional: true
+            };
+        }
+    } else if (continuation.type === 'START_CARD_CHALLENGE') {
+        gameState.pendingCard = continuation.card;
+        gameState.pendingChallenge = {
+            rollerId: player.id, card: continuation.card,
+            targetPlayerId: continuation.targetPlayerId,
+            targetHeroId: continuation.targetHeroId,
+            passedPlayers: []
+        };
+        if (player.cannotBeChallenged) {
+            resolvePendingCard();
+        } else {
+            gameState.state = 'WAITING_FOR_CHALLENGES';
+            io.emit('challenge_pending', {
+                rollerId: player.id, rollerName: getPlayerName(gameState, player.id),
+                card: continuation.card
+            });
+        }
+    }
 }
 
 function resumeExpansionChoices() {
@@ -406,25 +957,145 @@ function resumeExpansionChoices() {
         }
     }
 
-    const queue = gameState.freePlayQueue;
-    if (!queue) return;
-    const player = gameState.players[queue.playerId];
-    const eligible = (player?.hand || []).filter(card => queue.allowedTypes.includes(card.type)
-        && (!queue.allowedCardIds || queue.allowedCardIds.includes(card.id)));
-    if (queue.remaining <= 0 || eligible.length === 0) {
-        gameState.freePlayQueue = null;
+    while (gameState.pendingDeferredDrawPassives?.length > 0) {
+        const entry = gameState.pendingDeferredDrawPassives.shift();
+        const player = gameState.players[entry.playerId];
+        if (!player) continue;
+        applyDrawnCardPassives(gameState, io, player, entry.card);
+        if (gameState.state !== 'PLAYING' || gameState.pendingAction || gameState.pendingCard) return;
+    }
+
+    while (gameState.pendingLumberingDraws?.length > 0) {
+        const sequence = gameState.pendingLumberingDraws[0];
+        const player = gameState.players[sequence.playerId];
+        if (!player) {
+            gameState.pendingLumberingDraws.shift();
+            continue;
+        }
+        if (sequence.remaining <= 0) {
+            gameState.pendingLumberingDraws.shift();
+            resolveLumberingContinuation(sequence);
+            if (gameState.state !== 'PLAYING' || gameState.pendingAction || gameState.pendingCard) return;
+            continue;
+        }
+        gameState.state = 'WAITING_FOR_LUMBERING_DEMON_CHOICE';
+        gameState.pendingAction = {
+            type: 'LUMBERING_DEMON_DRAW', playerToChoose: player.id,
+            originalActor: player.id, source: sequence.source
+        };
         return;
     }
-    gameState.state = 'WAITING_FOR_HAND_SELECTION';
-    gameState.pendingAction = {
-        type: 'PLAY_FROM_HAND', allowedTypes: queue.allowedTypes, allowedCardIds: queue.allowedCardIds,
-        playerToChoose: queue.playerId, originalActor: queue.playerId,
-        optional: !queue.mandatory, expansionFreePlay: true
-    };
+
+    while (gameState.pendingPassiveDraws?.length > 0) {
+        const entry = gameState.pendingPassiveDraws[0];
+        const player = gameState.players[entry.playerId];
+        entry.count -= 1;
+        if (entry.count <= 0) gameState.pendingPassiveDraws.shift();
+        if (!player) continue;
+        dealCards(1, player.id, entry.source);
+        io.emit('message', `${getPlayerName(gameState, player.id)} drew a card from ${entry.source}.`);
+        if (gameState.pendingLumberingDraws?.length > 0) {
+            resumeExpansionChoices();
+            return;
+        }
+        if (gameState.state !== 'PLAYING' || gameState.pendingAction || gameState.pendingCard) return;
+    }
+
+    while (gameState.pendingMonsterTriggers?.length > 0) {
+        const trigger = gameState.pendingMonsterTriggers.shift();
+        const player = gameState.players[trigger.playerId];
+        if (!player) continue;
+        if (trigger.type === 'DRAGON_WASP_REPLACEMENT') {
+            if ((player.hand || []).length < 2) {
+                queueCommittedHeroRemovalTriggers(gameState, player, trigger.hero, { ...trigger, isHero: true });
+                continue;
+            }
+            gameState.state = 'WAITING_FOR_DRAGON_WASP_CHOICE';
+            gameState.pendingAction = {
+                type: 'DRAGON_WASP_REPLACEMENT', playerToChoose: player.id,
+                originalActor: player.id, trigger
+            };
+            return;
+        }
+        if (trigger.type === 'FERAL_DRAGON_DRAW') {
+            dealCards(1, player.id, 'Feral Dragon');
+            const message = `${getPlayerName(gameState, trigger.sacrificingPlayerId)} sacrificed a card, so ${getPlayerName(gameState, player.id)} draws a card.`;
+            io.emit('monster_effect_triggered', { monsterId: 'card_138', monsterName: 'Feral Dragon', ownerId: player.id, message });
+            io.emit('message', `Feral Dragon activated: ${message}`);
+            if (gameState.pendingLumberingDraws?.length > 0) {
+                resumeExpansionChoices();
+                return;
+            }
+            if (gameState.state !== 'PLAYING' || gameState.pendingAction || gameState.pendingCard) return;
+            continue;
+        }
+        if (trigger.type === 'DOOMBRINGER_RETRIEVE') {
+            if (gameState.discardPile.length === 0) continue;
+            gameState.state = 'WAITING_FOR_SKILL_TARGET';
+            gameState.pendingAction = {
+                type: 'SKILL_TARGET_DISCARD', playerToChoose: player.id, originalActor: player.id,
+                skillId: 'MONSTER_DOOMBRINGER_RETRIEVE', optional: true,
+                allowedTypes: ['Hero Card', 'Item Card', 'Cursed Item Card', 'Magic Card', 'Modifier Card', 'Challenge Card']
+            };
+            io.emit('message', `${getPlayerName(gameState, player.id)} may retrieve a card from the discard pile with Doombringer.`);
+            return;
+        }
+        if (['WANDERING_BEHEMOTH_DRAW', 'REEF_RIPPER_DRAW'].includes(trigger.type)) {
+            gameState.state = 'WAITING_FOR_MONSTER_TRIGGER_CHOICE';
+            gameState.pendingAction = {
+                type: 'MONSTER_OPTIONAL_DRAW', source: trigger.type === 'REEF_RIPPER_DRAW' ? 'Reef Ripper' : 'Wandering Behemoth',
+                playerToChoose: player.id, originalActor: player.id, optional: true
+            };
+            return;
+        }
+        if (trigger.type === 'SAFFYRE_PHOENIX_PLAY') {
+            if (!player.hand.some(card => card.type === 'Hero Card')) continue;
+            gameState.state = 'WAITING_FOR_HAND_SELECTION';
+            gameState.pendingAction = {
+                type: 'PLAY_FROM_HAND', allowedTypes: ['Hero Card'], playerToChoose: player.id,
+                originalActor: player.id, optional: true, expansionFreePlay: true,
+                source: 'Saffyre Phoenix'
+            };
+            io.emit('message', `${getPlayerName(gameState, player.id)} may immediately play a Hero for 0 AP with Saffyre Phoenix.`);
+            return;
+        }
+    }
+
+    const queue = gameState.freePlayQueue;
+    if (queue) {
+        const player = gameState.players[queue.playerId];
+        const eligible = (player?.hand || []).filter(card => queue.allowedTypes.includes(card.type)
+            && (!queue.allowedCardIds || queue.allowedCardIds.includes(card.id)));
+        if (queue.remaining > 0 && eligible.length > 0) {
+            gameState.state = 'WAITING_FOR_HAND_SELECTION';
+            gameState.pendingAction = {
+                type: 'PLAY_FROM_HAND', allowedTypes: queue.allowedTypes, allowedCardIds: queue.allowedCardIds,
+                playerToChoose: queue.playerId, originalActor: queue.playerId,
+                optional: !queue.mandatory, expansionFreePlay: true
+            };
+            return;
+        }
+        gameState.freePlayQueue = null;
+    }
+
+    if (gameState.forcedEndTurnPlayerId === gameState.activePlayerSocketId) {
+        const playerId = gameState.forcedEndTurnPlayerId;
+        gameState.forcedEndTurnPlayerId = null;
+        beginEndTurn(playerId);
+        return;
+    }
+    if (gameState.pendingEndTurnEffects) {
+        advanceEndTurnMonsterEffect();
+    }
 }
 
 function broadcastState() {
     resumeExpansionChoices();
+    if (gameState.state === 'WAITING_FOR_CHALLENGES' && gameState.pendingChallenge) {
+        ensureChallengeTimer();
+    } else {
+        clearChallengeTimer();
+    }
     // Hide hands of other players before sending
     const stateToSend = JSON.parse(JSON.stringify(gameState)); console.log(`[DEBUG] broadcastState: playerOrder=${gameState.playerOrder.join(", ")}, players:`, Object.keys(gameState.players).map(k => `${k} has ${gameState.players[k].hand.length} cards`));
     console.log(`[DEBUG] broadcastState -> state=${gameState.state}, mainDeck=${gameState.mainDeck.length}, monsterDeck=${gameState.monsterDeck.length}, activeMonsters=${gameState.activeMonsters.length}`);
@@ -446,6 +1117,14 @@ function broadcastState() {
         // the player making the choice — others just see "waiting".
         const pendingCardForSocket = (playerState.pendingAction && playerState.pendingAction.playerToChoose === socket.id)
             ? playerState.pendingCard : null;
+        let privatePendingCards = null;
+        let privatePendingTargetName = null;
+        if (gameState.pendingAction?.type === 'GRUESOME_GLADIATOR_HAND'
+            && gameState.pendingAction.playerToChoose === socket.id) {
+            const target = gameState.players[gameState.pendingAction.targetPlayerId];
+            privatePendingCards = target ? JSON.parse(JSON.stringify(target.hand)) : [];
+            privatePendingTargetName = target ? getPlayerName(gameState, target.id) : 'Opponent';
+        }
 
         socket.emit('gameStateUpdate', {
             state: playerState.state,
@@ -459,6 +1138,8 @@ function broadcastState() {
             activeMonsters: playerState.activeMonsters,
             discardPile: playerState.discardPile,
             pendingGlobalAction: playerState.pendingGlobalAction,
+            privatePendingCards,
+            privatePendingTargetName,
             winner: playerState.winner,
             me: socket.id,
             availableLeaders: (gameState.availableLeaders && gameState.availableLeaders.length > 0) ? gameState.availableLeaders : PARTY_LEADERS // Send for selection
@@ -469,6 +1150,7 @@ function broadcastState() {
 function resolvePendingCard() {
     try {
         if (!gameState.pendingChallenge) return;
+        clearChallengeTimer();
 
         const { rollerId, card } = gameState.pendingChallenge;
         registerCardPlayed(card);
@@ -580,7 +1262,24 @@ function calculateRollDetails(player, baseRoll, context, targetCard = null) {
                 total += 1;
                 breakdown.push({ source: monster.name, value: 1 });
             }
+            if (monster.effect_id === 'MONSTER_ANCIENT_MEGASHARK' && context === 'ATTACK') {
+                total += 1;
+                breakdown.push({ source: monster.name, value: 1 });
+            }
+            if (monster.effect_id === 'MONSTER_REPTILIAN_RIPPER' && context === 'ATTACK') {
+                total += 2;
+                breakdown.push({ source: monster.name, value: 2 });
+            }
         });
+    }
+
+    if (context === 'ATTACK' && targetCard?.attack_bonus_per_additional_hero) {
+        const heroCount = (player.party || []).filter(card => card.type === 'Hero Card').length;
+        const bonus = Math.max(0, heroCount - 1) * targetCard.attack_bonus_per_additional_hero;
+        if (bonus > 0) {
+            total += bonus;
+            breakdown.push({ source: `${targetCard.name} party bonus`, value: bonus });
+        }
     }
 
     // 3. Check Global Turn Modifiers (e.g., Enchanted Spell)
@@ -707,7 +1406,7 @@ function grantExpansionModifierDraws(pendingRoll, finalForEntry) {
         let count = entry.drawCount || 0;
         if (entry.effectId === 'MOD_PLUS_4_DRAW_ABOVE_12' && finalForEntry(entry) > 12) count = 1;
         if (count > 0) {
-            drawCardsWithPassives(gameState, io, count, player);
+            dealCards(count, player.id, 'Modifier effect');
             io.emit('message', `${getPlayerName(gameState, entry.playerId)} drew ${count} card${count === 1 ? '' : 's'} from a Modifier effect.`);
         }
     });
@@ -718,16 +1417,6 @@ function playerHasEffectiveClass(player, requiredClass) {
     if (!player || !requiredClass) return false;
     if (player.leader && player.leader.class === requiredClass) return true;
     return (player.party || []).some(hero => effectiveHeroClass(hero) === requiredClass);
-}
-
-function triggerFeralDragon(sacrificingPlayerId) {
-    Object.values(gameState.players).forEach(owner => {
-        if (!(owner.slainMonsters || []).some(monster => monster.effect_id === 'MONSTER_FERAL_DRAGON')) return;
-        const message = `${getPlayerName(gameState, sacrificingPlayerId)} sacrificed a card, so ${getPlayerName(gameState, owner.id)} draws a card.`;
-        io.emit('monster_effect_triggered', { monsterId: 'card_138', monsterName: 'Feral Dragon', ownerId: owner.id, message });
-        io.emit('message', `Feral Dragon activated: ${message}`);
-        drawCardsWithPassives(gameState, io, 1, owner);
-    });
 }
 
 function prepareMinusFourRetrievals(pendingRoll, finalForEntry) {
@@ -968,9 +1657,16 @@ function resolvePendingRoll() {
             } else {
                 const requirementText = hero.rollType === 'LOW_ROLL' ? `${hero.roll_requirement} or lower` : `${hero.roll_requirement} or higher`;
                 io.emit('message', `${getPlayerName(gameState, player.id)}'s skill roll for ${hero.name} failed! (Needed ${requirementText}, rolled ${finalRoll})`);
+                recordFailedSkillEvent(gameState, player, hero);
                 
                 if (refundTemporalHourglass(hero, player, gameState.pendingRoll.apSpent)) {
                     io.emit('message', `Temporal Hourglass returned the action point spent on ${hero.name}'s failed skill roll.`);
+                }
+
+                if (hasEquippedEffect(hero, 'ITEM_SILVER_LINING')) {
+                    player.rollBonus = (player.rollBonus || 0) + 2;
+                    (player.rollBonusSources = player.rollBonusSources || []).push({ source: 'Silver Lining', value: 2 });
+                    io.emit('message', `Silver Lining gives ${getPlayerName(gameState, player.id)} +2 to every roll for the rest of the turn.`);
                 }
 
                 // Check for Particularly Rusty Coin
@@ -980,6 +1676,25 @@ function resolvePendingRoll() {
                 }
 
                 io.emit('rollResult', { player: rollerId, roll: finalRoll, message: "Skill Roll Failed." });
+
+                const hasGoblet = hasEquippedEffect(hero, 'ITEM_GOBLET_CAFFEINATION');
+                if (hasEquippedEffect(hero, 'CURSE_DRAGONS_BILE') && player.party.length > 0) {
+                    gameState.state = 'WAITING_FOR_SACRIFICE';
+                    gameState.pendingAction = {
+                        type: 'DRAGONS_BILE_SACRIFICE', playerToChoose: rollerId, originalActor: rollerId,
+                        failedHeroId: hero.id,
+                        nextAction: hasGoblet ? { type: 'OFFER_GOBLET_REROLL', heroId: hero.id } : null
+                    };
+                    gameState.pendingRoll = null;
+                    io.emit('message', `${getPlayerName(gameState, player.id)} must sacrifice a Hero because ${hero.name} failed while equipped with Dragon's Bile.`);
+                    broadcastState();
+                    return;
+                }
+                if (hasGoblet && queueGobletReroll(rollerId, hero.id)) {
+                    gameState.pendingRoll = null;
+                    broadcastState();
+                    return;
+                }
                 resetToPlayingState();
                 broadcastState();
             }
@@ -1012,6 +1727,11 @@ function resolvePendingRoll() {
                     io.emit('message', `${getPlayerName(gameState, player.id)} gained +1 AP from defeating Mega Slime!`);
                 }
 
+                if (player.leader?.effect_id === 'LEADER_BERSERKER') {
+                    dealCards(2, player.id, 'The Raging Manticore');
+                    io.emit('message', `${getPlayerName(gameState, player.id)} drew 2 cards from The Raging Manticore after slaying ${monster.name}.`);
+                }
+
                 // Process Reward
                 if (monster.rewardAction === 'DRAW_1') {
                     dealCards(1, rollerId);
@@ -1025,7 +1745,29 @@ function resolvePendingRoll() {
             } else if (isPenalty) {
                 const penaltyAction = monster.penaltyAction || 'DISCARD_1';
                 
-                if (penaltyAction === 'SACRIFICE_HERO') {
+                if (penaltyAction === 'DISCARD_HAND') {
+                    const count = player.hand.length;
+                    gameState.discardPile.push(...player.hand.splice(0));
+                    resultMsg += `Suffer penalty! Discarded the entire hand (${count} card${count === 1 ? '' : 's'}).`;
+                } else if (penaltyAction === 'SACRIFICE_2_HEROES') {
+                    const count = Math.min(2, player.party.filter(card => card.type === 'Hero Card').length);
+                    if (count > 0) {
+                        gameState.state = 'WAITING_FOR_GLOBAL_ACTION';
+                        gameState.pendingGlobalAction = {
+                            type: 'SEQUENTIAL_PARTY_SACRIFICE', initiatorId: rollerId,
+                            pendingPlayerIds: [rollerId],
+                            remainingPlayerIds: Array(Math.max(0, count - 1)).fill(rollerId),
+                            allowedTarget: 'HERO_ONLY', afterResolution: null
+                        };
+                        io.emit('global_action_requested', gameState.pendingGlobalAction);
+                        resultMsg += `Suffer penalty! Sacrifice ${count} Hero${count === 1 ? '' : 'es'} one at a time.`;
+                        io.emit('rollResult', { player: rollerId, roll: finalRoll, message: resultMsg });
+                        gameState.pendingRoll = null;
+                        broadcastState();
+                        return;
+                    }
+                    resultMsg += 'No Heroes to sacrifice!';
+                } else if (penaltyAction === 'SACRIFICE_HERO') {
                     if (player.party.length > 0) {
                         gameState.state = 'WAITING_FOR_SACRIFICE';
                         gameState.pendingAction = {
@@ -1118,6 +1860,7 @@ function removePlayerAndResetMatch(socketId) {
         gameState.availableLeaders = [...PARTY_LEADERS];
         debugForcedRoll = null;
         if (modifierTimer) { clearTimeout(modifierTimer); modifierTimer = null; }
+        clearChallengeTimer();
     };
 
     if (gameState.playerOrder.length === 0) {
@@ -1155,7 +1898,7 @@ const reconnectManager = createReconnectManager({
     onPlayerExpired: removePlayerAndResetMatch,
     onPlayerAway: player => {
         io.emit('message', `${getPlayerName(gameState, player.id)} is away. Waiting up to ${RECONNECT_GRACE_MS / 1000} seconds for them to reconnect.`);
-        broadcastState();
+        if (!settleUnchallengedCardIfComplete()) broadcastState();
     },
     onPlayerRestored: player => {
         io.emit('message', `${getPlayerName(gameState, player.id)} reconnected.`);
@@ -1431,6 +2174,7 @@ io.on('connection', (socket) => {
 
         if (!isFree) player.ap -= 1;
         player.hand.splice(cardIndex, 1);
+        triggerPlayedCardMonsterPassives(socket.id, card);
         
         const hasOwlbear = player.slainMonsters && player.slainMonsters.some(m => m.effect_id === 'MONSTER_WARWORN_OWLBEAR');
         // Owlbear skips challenges for items; Iron Resolve skips challenges for any
@@ -1534,6 +2278,7 @@ io.on('connection', (socket) => {
             if (card.type === 'Hero Card' || card.type === 'Magic Card') {
                 if (!isFree) player.ap -= 1;
                 player.hand.splice(cardIndex, 1);
+                triggerPlayedCardMonsterPassives(socket.id, card);
                 
                 // Wizard passive check
                 if (card.type === 'Magic Card' && player.leader && player.leader.effect_id === 'LEADER_WIZARD') {
@@ -1602,10 +2347,11 @@ io.on('connection', (socket) => {
         }
 
         if (!isFree) {
-            if (player.ap < 1) {
+            const skillCost = hasEquippedEffect(hero, 'CURSE_SOULBOUND_GRIMOIRE') ? 2 : 1;
+            if (player.ap < skillCost) {
                 return;
             }
-            player.ap -= 1;
+            player.ap -= skillCost;
         }
 
         // Delay setting usedSkillThisTurn to true until the skill actually resolves
@@ -1626,7 +2372,7 @@ io.on('connection', (socket) => {
             baseRoll: 0,
             currentRoll: 0,
             passedPlayers: [],
-            apSpent: !isFree
+            apSpent: isFree ? 0 : (hasEquippedEffect(hero, 'CURSE_SOULBOUND_GRIMOIRE') ? 2 : 1)
         };
 
         broadcastState();
@@ -1636,6 +2382,67 @@ io.on('connection', (socket) => {
         if (gameState.state !== 'WAITING_FOR_SKILL_TARGET') return;
         if (socket.id !== gameState.activePlayerSocketId) return;
         if (!gameState.pendingAction) return;
+
+        if (gameState.pendingAction.type === 'LIGHTNING_LABRYS_PLAYER') {
+            if (socket.id !== gameState.pendingAction.playerToChoose) return;
+            const targetPlayerId = targetData?.targetPlayerId;
+            const result = queueLightningLabrysSacrifice(gameState, targetPlayerId);
+            if (!result) return;
+            if (result === 'NO_HERO') {
+                io.emit('message', `${getPlayerName(gameState, targetPlayerId)} has no Hero to sacrifice for Lightning Labrys.`);
+            } else {
+                io.emit('message', `${getPlayerName(gameState, targetPlayerId)} must choose a Hero to sacrifice for Lightning Labrys.`);
+            }
+            broadcastState();
+            return;
+        }
+
+        if (gameState.pendingAction.type === 'END_CLAWED_NIGHTMARE_PLAYER') {
+            const targetId = targetData?.targetPlayerId;
+            const target = gameState.players[targetId];
+            const actor = gameState.players[socket.id];
+            if (!target || targetId === socket.id || target.connected === false || target.hand.length === 0) return;
+            let pulled = 0;
+            while (pulled < 2 && target.hand.length > 0) {
+                const index = Math.floor(Math.random() * target.hand.length);
+                actor.hand.push(target.hand.splice(index, 1)[0]);
+                pulled += 1;
+            }
+            io.emit('message', `${getPlayerName(gameState, socket.id)} pulled ${pulled} card${pulled === 1 ? '' : 's'} from ${getPlayerName(gameState, targetId)} with Clawed Nightmare.`);
+            resetToPlayingState();
+            advanceEndTurnMonsterEffect();
+            broadcastState();
+            return;
+        }
+
+        if (gameState.pendingAction.skillId === 'SKILL_BOSTON_TERROR_RETRIEVE') {
+            const action = gameState.pendingAction;
+            if (socket.id !== action.playerToChoose) return;
+            const cardIndex = gameState.discardPile.findIndex(card => card.id === targetData?.targetCardId
+                && action.allowedTypes.includes(card.type));
+            if (cardIndex === -1) return;
+            const card = gameState.discardPile.splice(cardIndex, 1)[0];
+            gameState.players[socket.id].hand.push(card);
+            action.remaining -= 1;
+            io.emit('message', `${getPlayerName(gameState, socket.id)} retrieved ${card.name} with Boston Terror.`);
+            if (action.remaining <= 0 || gameState.discardPile.length === 0) resetToPlayingState();
+            broadcastState();
+            return;
+        }
+
+        if (gameState.pendingAction.skillId === 'MONSTER_DOOMBRINGER_RETRIEVE') {
+            const action = gameState.pendingAction;
+            if (socket.id !== action.playerToChoose) return;
+            const cardIndex = gameState.discardPile.findIndex(card => card.id === targetData?.targetCardId
+                && action.allowedTypes.includes(card.type));
+            if (cardIndex === -1) return;
+            const card = gameState.discardPile.splice(cardIndex, 1)[0];
+            gameState.players[socket.id].hand.push(card);
+            io.emit('message', `${getPlayerName(gameState, socket.id)} retrieved ${card.name} with Doombringer.`);
+            resetToPlayingState();
+            broadcastState();
+            return;
+        }
 
         // Player declined / had no valid target (e.g. Bun Bun with no Magic card in
         // the discard pile). Abort the deferred skill: clear the pending action and
@@ -1747,6 +2554,24 @@ io.on('connection', (socket) => {
                 io.emit('message', `${getPlayerName(gameState, player.id)} took a card from ${getPlayerName(gameState, tp.id)}'s hand using Silent Shadow!`);
                 broadcastState();
             }
+        } else if (skillId === 'SKILL_HOLLOW_HUSK') {
+            const peek = gameState.pendingPeek;
+            if (!peek || peek.skillId !== 'SKILL_HOLLOW_HUSK' || peek.rollerId !== socket.id
+                || !peek.allowedCardIds?.includes(cardId)) return;
+            const tp = gameState.players[peek.targetPlayerId];
+            gameState.pendingPeek = null;
+            if (!tp) return;
+            const cardIndex = tp.hand.findIndex(card => card.id === cardId && card.type === 'Magic Card');
+            if (cardIndex === -1) return;
+            const magic = tp.hand.splice(cardIndex, 1)[0];
+            player.hand.push(magic);
+            gameState.state = 'WAITING_FOR_HAND_SELECTION';
+            gameState.pendingAction = {
+                type: 'PLAY_FROM_HAND', allowedTypes: ['Magic Card'], allowedCardIds: [magic.id],
+                playerToChoose: socket.id, originalActor: socket.id, optional: true, expansionFreePlay: true
+            };
+            io.emit('message', `${getPlayerName(gameState, player.id)} took a Magic card with Hollow Husk and may play it immediately.`);
+            broadcastState();
         } else if (skillId === 'SKILL_SLIPPERY_PAWS') {
             // Slippery Paws: discard one of the two cards just pulled (now in the
             // roller's own hand). Validate the choice is one of those pulled cards.
@@ -1764,6 +2589,29 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('select_gruesome_gladiator_card', ({ cardId } = {}) => {
+        const action = gameState.pendingAction;
+        if (gameState.state !== 'WAITING_FOR_SKILL_TARGET' || action?.type !== 'GRUESOME_GLADIATOR_HAND'
+            || action.playerToChoose !== socket.id || socket.id !== gameState.activePlayerSocketId) return;
+        const actor = gameState.players[socket.id];
+        const target = gameState.players[action.targetPlayerId];
+        if (!actor || !target) return;
+        const cardIndex = target.hand.findIndex(card => card.id === cardId);
+        if (cardIndex === -1) return;
+        const card = target.hand.splice(cardIndex, 1)[0];
+        actor.hand.push(card);
+        io.emit('message', `${getPlayerName(gameState, actor.id)} took one card from ${getPlayerName(gameState, target.id)} with Gruesome Gladiator.`);
+
+        let nextId = action.remainingPlayerIds.shift();
+        while (nextId && !gameState.players[nextId]?.hand?.length) nextId = action.remainingPlayerIds.shift();
+        if (nextId) {
+            action.targetPlayerId = nextId;
+        } else {
+            resetToPlayingState();
+        }
+        broadcastState();
+    });
+
     socket.on('submit_global_action', (data) => {
         if (!gameState.pendingGlobalAction) return;
         const ga = gameState.pendingGlobalAction;
@@ -1771,23 +2619,136 @@ io.on('connection', (socket) => {
         
         if (!ga.pendingPlayerIds.includes(socket.id)) return;
 
+        if (ga.type === 'VARIABLE_PARTY_SACRIFICE') {
+            if (data.done === true) {
+                if (ga.sacrificedCount > 0 && hasDestroyableOpponentPartyCard(ga.initiatorId)) {
+                    ga.type = 'SEQUENTIAL_PARTY_DESTROY';
+                    ga.pendingPlayerIds = [ga.initiatorId];
+                    ga.remainingDestroys = ga.sacrificedCount;
+                    io.emit('global_action_requested', ga);
+                } else {
+                    gameState.pendingGlobalAction = null;
+                    resetToPlayingState();
+                    io.emit('message', ga.sacrificedCount > 0
+                        ? `Rabid Beast found no opponent Party card to destroy.`
+                        : `${getPlayerName(gameState, ga.initiatorId)} chose not to sacrifice any cards with Rabid Beast.`);
+                }
+            } else {
+                const result = sacrificePartyCard(player, data.targetPartyCardId);
+                if (!result) return;
+                if (result.didSacrifice) ga.sacrificedCount += 1;
+                io.emit('message', `${getPlayerName(gameState, player.id)} sacrificed ${result.card.name} with Rabid Beast (${ga.sacrificedCount} total).`);
+            }
+            broadcastState();
+            return;
+        }
+
+        if (ga.type === 'SEQUENTIAL_PARTY_DESTROY') {
+            const result = destroyOpponentPartyCard(ga.initiatorId, data.targetPartyCardId);
+            if (!result || result.kind === 'PROTECTED') return;
+            ga.remainingDestroys -= 1;
+            io.emit('message', result.didDestroy
+                ? `${getPlayerName(gameState, ga.initiatorId)} destroyed ${result.card.name} with Rabid Beast.`
+                : `${result.card.name} avoided destruction through ${result.kind === 'DECOY' ? 'Decoy Doll' : 'Maegisty'}.`);
+            if (ga.remainingDestroys <= 0 || !hasDestroyableOpponentPartyCard(ga.initiatorId)) {
+                gameState.pendingGlobalAction = null;
+                resetToPlayingState();
+            }
+            broadcastState();
+            return;
+        }
+
+        if (ga.type === 'BOSTON_TERROR_GIVE') {
+            const initiator = gameState.players[ga.initiatorId];
+            if (!initiator) return;
+            if (data.decline === true || player.hand.length === 0) {
+                io.emit('message', `${getPlayerName(gameState, player.id)} declined to give a card for Boston Terror.`);
+                queueBostonTerrorRetrieval(ga.initiatorId);
+            } else {
+                const cardIndex = player.hand.findIndex(card => card.id === data.cardId);
+                if (cardIndex === -1) return;
+                const card = player.hand.splice(cardIndex, 1)[0];
+                initiator.hand.push(card);
+                gameState.pendingGlobalAction = null;
+                resetToPlayingState();
+                io.emit('message', `${getPlayerName(gameState, player.id)} gave a card to ${getPlayerName(gameState, initiator.id)} for Boston Terror.`);
+            }
+            broadcastState();
+            return;
+        }
+
+        if (ga.type === 'SEQUENTIAL_PARTY_SACRIFICE') {
+            const result = sacrificePartyCard(player, data.targetPartyCardId, ga.allowedTarget);
+            if (!result) return;
+            if (result.kind === 'DECOY') {
+                io.emit('message', `${getPlayerName(gameState, player.id)} sacrificed Decoy Doll instead of ${result.card.name}.`);
+            } else if (result.kind === 'RETURNED') {
+                io.emit('message', `${result.card.name} returned to ${getPlayerName(gameState, player.id)}'s hand due to Maegisty.`);
+            } else {
+                io.emit('message', `${getPlayerName(gameState, player.id)} sacrificed ${result.card.name}.`);
+            }
+            const hasChoice = playerId => {
+                const target = gameState.players[playerId];
+                if (!target) return false;
+                if (ga.allowedTarget === 'HERO_ONLY') return target.party.some(card => card.type === 'Hero Card');
+                if (ga.allowedTarget === 'ITEM_ONLY') return target.party.some(hero => equippedItems(hero).length > 0);
+                return target.party.some(hero => hero.type === 'Hero Card' || equippedItems(hero).length > 0);
+            };
+            let nextId = ga.remainingPlayerIds.shift();
+            while (nextId && !hasChoice(nextId)) nextId = ga.remainingPlayerIds.shift();
+            if (nextId) {
+                ga.pendingPlayerIds = [nextId];
+                io.emit('global_action_requested', ga);
+            } else {
+                finishSequentialGlobalAction(ga);
+            }
+            broadcastState();
+            return;
+        }
+
+        if (ga.type === 'SEQUENTIAL_DISCARD') {
+            const cardIndex = player.hand.findIndex(card => card.id === data.cardId);
+            if (cardIndex === -1) return;
+            const card = player.hand.splice(cardIndex, 1)[0];
+            gameState.discardPile.push(card);
+            ga.remainingForCurrent -= 1;
+            io.emit('message', `${getPlayerName(gameState, player.id)} discarded a card.`);
+
+            if (ga.remainingForCurrent <= 0 || player.hand.length === 0) {
+                let nextId = ga.remainingPlayerIds.shift();
+                while (nextId && !gameState.players[nextId]?.hand?.length) nextId = ga.remainingPlayerIds.shift();
+                if (nextId) {
+                    ga.pendingPlayerIds = [nextId];
+                    ga.remainingForCurrent = Math.min(ga.amount, gameState.players[nextId].hand.length);
+                    io.emit('global_action_requested', ga);
+                } else {
+                    finishSequentialGlobalAction(ga);
+                }
+            }
+            broadcastState();
+            return;
+        }
+
         if (ga.type === 'MULTI_SACRIFICE') {
             const heroIndex = player.party.findIndex(h => h.id === data.targetHeroId);
             if (heroIndex === -1) return; // not a hero this player owns — ignore
             const sacrificed = player.party[heroIndex];
+            const decoy = equippedItems(sacrificed).find(item => item.effect_id === 'ITEM_DECOY');
             if (consumeDecoyDoll(sacrificed, 'SACRIFICE')) {
+                if (decoy) recordSacrificeEvent(gameState, player, decoy, { isHero: false });
                 io.emit('message', `${getPlayerName(gameState, player.id)} discarded Decoy Doll instead of sacrificing ${sacrificed.name}.`);
             } else {
                 player.party.splice(heroIndex, 1);
-                if (sacrificed.equippedItem) {
-                    gameState.discardPile.push(sacrificed.equippedItem);
-                    sacrificed.equippedItem = null;
-                }
+                const removedItems = ['equippedItem', 'equippedItem2']
+                    .filter(slot => sacrificed[slot])
+                    .map(slot => ({ slot, card: sacrificed[slot] }));
+                removedItems.forEach(entry => gameState.discardPile.push(entry.card));
+                sacrificed.equippedItem = null;
+                sacrificed.equippedItem2 = null;
                 gameState.discardPile.push(sacrificed);
-                triggerSoulTethers(gameState, player);
+                recordSacrificeEvent(gameState, player, sacrificed, { isHero: true, removedItems });
                 io.emit('message', `${getPlayerName(gameState, player.id)} sacrificed a Hero.`);
             }
-            triggerFeralDragon(socket.id);
             ga.pendingPlayerIds = ga.pendingPlayerIds.filter(id => id !== socket.id);
         } else {
             // Card-based global actions: MULTI_DISCARD, MULTI_DISCARD_AND_CHOOSE, MULTI_GIVE.
@@ -1870,21 +2831,25 @@ io.on('connection', (socket) => {
         
         if (!meetsMonsterRequirements(player, monster.requirement)) return socket.emit('error', 'Requirements not met');
         
-        player.ap -= 2;
+        const cost = monster.attack_cost;
+        if (cost?.count > 0) {
+            const allowedTypes = attackCostAllowedTypes(cost);
+            const eligible = player.hand.filter(card => !allowedTypes || allowedTypes.includes(card.type));
+            if (eligible.length < cost.count) {
+                io.to(socket.id).emit('message', `You need ${cost.count} ${cost.discard === 'ANY' ? '' : cost.discard + ' '}card${cost.count === 1 ? '' : 's'} to attack ${monster.name}.`);
+                return;
+            }
+            gameState.pendingAction = {
+                type: 'DISCARD', playerToChoose: socket.id, originalActor: socket.id,
+                amount: cost.count, allowedTypes,
+                nextAction: { type: 'START_MONSTER_ATTACK', monsterId: monster.id, playerId: socket.id }
+            };
+            io.emit('message', `${getPlayerName(gameState, socket.id)} must pay ${monster.name}'s discard cost before rolling.`);
+            broadcastState();
+            return;
+        }
 
-        gameState.state = 'WAITING_TO_ROLL';
-        gameState.pendingRoll = {
-            type: 'ATTACK',
-            rollerId: socket.id,
-            targetId: monster.id,
-            roll1: 0,
-            roll2: 0,
-            passiveBonus: 0,
-            modifierTotal: 0,
-            baseRoll: 0,
-            currentRoll: 0,
-            passedPlayers: []
-        };
+        startMonsterAttackRoll(socket.id, monster.id);
 
         broadcastState();
     });
@@ -1898,6 +2863,7 @@ io.on('connection', (socket) => {
             
             let targetCard = null;
             if (type === 'HERO_SKILL') targetCard = player.party.find(h => h.id === gameState.pendingRoll.targetHeroId);
+            if (type === 'ATTACK') targetCard = gameState.activeMonsters.find(monster => monster.id === gameState.pendingRoll.targetId);
 
             let roll1, roll2;
             if (debugForcedRoll) {
@@ -2073,6 +3039,25 @@ io.on('connection', (socket) => {
         broadcastState();
     });
 
+    socket.on('use_biggest_ring_ever', () => {
+        const roll = gameState.pendingRoll;
+        if (gameState.state !== 'WAITING_FOR_MODIFIERS' || !roll || roll.type !== 'HERO_SKILL'
+            || roll.rollerId !== socket.id || roll.biggestRingUsed
+            || (gameState.passedModifiers || []).includes(socket.id)) return;
+        const player = gameState.players[socket.id];
+        const hero = player?.party?.find(card => card.id === roll.targetHeroId);
+        if (!hero || !hasEquippedEffect(hero, 'ITEM_BIGGEST_RING')) return;
+        roll.biggestRingUsed = true;
+        if (modifierTimer) clearTimeout(modifierTimer);
+        gameState.state = 'WAITING_FOR_VARIABLE_DISCARD';
+        gameState.pendingAction = {
+            type: 'BIGGEST_RING_DISCARD', playerToChoose: socket.id, originalActor: socket.id,
+            maxAmount: Math.min(3, player.hand.length), optional: true
+        };
+        io.emit('message', `${getPlayerName(gameState, socket.id)} may discard up to 3 cards for Biggest Ring Ever.`);
+        broadcastState();
+    });
+
     socket.on('submit_modifier_action', (data, acknowledgement) => {
         const reply = payload => {
             if (typeof acknowledgement === 'function') acknowledgement(payload);
@@ -2089,6 +3074,11 @@ io.on('connection', (socket) => {
         const activeTurnPlayer = gameState.players[gameState.activePlayerSocketId];
         if (data.action === 'PLAY' && activeTurnPlayer?.stagguardActive && socket.id !== gameState.activePlayerSocketId) {
             reply({ ok: false, reason: 'Stagguard prevents other players from playing Modifiers this turn.' });
+            return;
+        }
+        if (data.action === 'PLAY' && activeTurnPlayer?.blocksOpponentModifiersThisTurn
+            && socket.id !== gameState.activePlayerSocketId) {
+            reply({ ok: false, reason: 'Shadow Saint prevents other players from playing Modifiers this turn.' });
             return;
         }
 
@@ -2109,7 +3099,9 @@ io.on('connection', (socket) => {
                 // can be played as +1 OR -3, on any roll — even a minus on your own).
                 // Validate the chosen value against the card's allowed values; fall
                 // back to the sole value for single-value cards (+4 / -4).
-                let allowed = Array.isArray(card.modifier_values) ? card.modifier_values : [];
+                let allowed = gameState.pendingRoll.type === 'ATTACK' && Array.isArray(card.attack_modifier_values)
+                    ? card.attack_modifier_values
+                    : (Array.isArray(card.modifier_values) ? card.modifier_values : []);
                 if (allowed.length === 0) {
                     const match = card.name.match(/([+-]?\d+)/g);
                     if (match) allowed = match.map(Number);
@@ -2128,6 +3120,10 @@ io.on('connection', (socket) => {
                     if (modValue > 0) modValue += 1; else if (modValue < 0) modValue -= 1;
                 }
                 player.hand.splice(cardIndex, 1);
+                if (card.discard_hand_on_play) {
+                    gameState.discardPile.push(...player.hand.splice(0));
+                    io.emit('message', `${getPlayerName(gameState, socket.id)} discarded their hand to play ${card.name}.`);
+                }
                 if (card.effect_id === 'MOD_MINUS_4_RETRIEVE_BELOW_2') {
                     if (!gameState.pendingRoll.heldMinusFourCards) gameState.pendingRoll.heldMinusFourCards = [];
                     gameState.pendingRoll.heldMinusFourCards.push(card);
@@ -2260,8 +3256,18 @@ io.on('connection', (socket) => {
                 }
                 gameState.pendingAction = null;
                 player.hand.splice(cardIndex, 1);
+                triggerPlayedCardMonsterPassives(socket.id, card);
                 gameState.pendingCard = card;
 
+                if (thenDraw && queueLumberingDrawSequence(gameState, player, thenDraw, {
+                    type: 'START_CARD_CHALLENGE', playerId: socket.id, card,
+                    targetPlayerId: data.targetPlayerId, targetHeroId: data.targetHeroId
+                }, 'immediate play effect')) {
+                    gameState.pendingCard = null;
+                    gameState.state = 'PLAYING';
+                    broadcastState();
+                    return;
+                }
                 if (thenDraw && gameState.mainDeck.length > 0) {
                     drawCardsWithPassives(gameState, io, thenDraw, player);
                     io.emit('message', `${getPlayerName(gameState, player.id)} drew ${thenDraw} extra card(s)!`);
@@ -2314,6 +3320,15 @@ socket.on('resolve_immediate_play', (data) => {
             // Clear the IMMEDIATE_PLAY_CHOICE so it can't linger past resolution.
             gameState.pendingAction = null;
 
+            if (thenDraw > 0 && queueLumberingDrawSequence(gameState, player, thenDraw, {
+                type: 'START_CARD_CHALLENGE', playerId: socket.id,
+                card: gameState.pendingCard
+            }, 'Snowball')) {
+                gameState.pendingCard = null;
+                gameState.state = 'PLAYING';
+                broadcastState();
+                return;
+            }
             if (thenDraw > 0) {
                 drawCardsWithPassives(gameState, io, thenDraw, player);
                 io.emit('message', `${getPlayerName(gameState, socket.id)} drew ${thenDraw} card(s) from Snowball!`);
@@ -2347,8 +3362,13 @@ socket.on('resolve_immediate_play', (data) => {
         const tHeroIndex = player.party.findIndex(h => h.id === data.targetHeroId);
         if (tHeroIndex !== -1) {
             const targetHero = player.party[tHeroIndex];
-            const pendingSkillId = gameState.pendingAction.skillId;
+            const pendingAction = gameState.pendingAction;
+            const pendingSkillId = pendingAction.skillId;
+            let didSacrifice = false;
+            const decoy = equippedItems(targetHero).find(item => item.effect_id === 'ITEM_DECOY');
             if (consumeDecoyDoll(targetHero, 'SACRIFICE')) {
+                didSacrifice = true;
+                if (decoy) recordSacrificeEvent(gameState, player, decoy, { isHero: false });
                 io.emit('message', `${getPlayerName(gameState, socket.id)} discarded Decoy Doll instead of sacrificing ${targetHero.name}!`);
             } else if (player.maegistyActive) {
                 const items = equippedItems(targetHero);
@@ -2359,20 +3379,38 @@ socket.on('resolve_immediate_play', (data) => {
                 io.emit('message', `${targetHero.name} and its equipped Items returned to ${getPlayerName(gameState, socket.id)}'s hand due to Maegisty.`);
             } else {
                 player.party.splice(tHeroIndex, 1);
-                equippedItems(targetHero).forEach(item => gameState.discardPile.push(item));
+                const removedItems = ['equippedItem', 'equippedItem2']
+                    .filter(slot => targetHero[slot])
+                    .map(slot => ({ slot, card: targetHero[slot] }));
+                removedItems.forEach(entry => gameState.discardPile.push(entry.card));
                 targetHero.equippedItem = null;
                 targetHero.equippedItem2 = null;
                 gameState.discardPile.push(targetHero);
-                triggerSoulTethers(gameState, player);
-                if (player.silentShieldActive) gameState.pendingSilentShieldActorId = socket.id;
+                didSacrifice = true;
+                recordSacrificeEvent(gameState, player, targetHero, {
+                    isHero: true, removedItems,
+                    initiatorId: player.silentShieldActive ? socket.id : null
+                });
                 io.emit('message', `${getPlayerName(gameState, socket.id)} sacrificed their ${targetHero.name}!`);
             }
-            triggerFeralDragon(socket.id);
-
-            if (pendingSkillId === 'SKILL_DOE_FALLOW') {
+            if (pendingAction.type === 'DRAGONS_BILE_SACRIFICE') {
+                if (!pendingAction.nextAction
+                    || !queueGobletReroll(pendingAction.originalActor, pendingAction.nextAction.heroId)) {
+                    resetToPlayingState();
+                }
+                broadcastState();
+                return;
+            } else if (pendingAction.type === 'LIGHTNING_LABRYS_SACRIFICE') {
+                queueLightningLabrysPlayerChoice(gameState, pendingAction.originalActor, pendingAction.remainingChoices);
+                if (pendingAction.remainingChoices > 0) {
+                    io.emit('message', `${getPlayerName(gameState, pendingAction.originalActor)} must choose the next player for Lightning Labrys.`);
+                }
+                broadcastState();
+                return;
+            } else if (pendingSkillId === 'SKILL_DOE_FALLOW') {
                 resetToPlayingState();
                 const amount = Math.max(0, 7 - player.hand.length);
-                drawCardsWithPassives(gameState, io, amount, player);
+                dealCards(amount, player.id, 'Doe Fallow');
                 io.emit('message', `${getPlayerName(gameState, socket.id)} drew ${amount} card(s) to reach 7 cards with Doe Fallow.`);
             } else if (pendingSkillId === 'SKILL_MAJESTELK') {
                 gameState.state = 'WAITING_FOR_MAJESTELK_CHOICE';
@@ -2396,6 +3434,178 @@ socket.on('resolve_immediate_play', (data) => {
         broadcastState();
     });
 
+    socket.on('choose_roaryal_guard_class', ({ className } = {}) => {
+        const action = gameState.pendingAction;
+        if (gameState.state !== 'WAITING_FOR_CLASS_SELECTION' || action?.type !== 'ROARYAL_GUARD_CLASS'
+            || action.playerToChoose !== socket.id || !CLASSES.includes(className)) return;
+
+        let returned = 0;
+        Object.values(gameState.players).forEach(owner => {
+            for (let index = owner.party.length - 1; index >= 0; index--) {
+                const hero = owner.party[index];
+                if (effectiveHeroClass(hero) !== className) continue;
+                owner.party.splice(index, 1);
+                const items = equippedItems(hero);
+                hero.equippedItem = null;
+                hero.equippedItem2 = null;
+                owner.hand.push(hero, ...items);
+                returned += 1;
+            }
+        });
+        io.emit('message', `${getPlayerName(gameState, socket.id)} chose ${className} with Roaryal Guard and returned ${returned} Hero${returned === 1 ? '' : 'es'} to their owners' hands.`);
+        resetToPlayingState();
+        broadcastState();
+    });
+
+    socket.on('resolve_dragon_wasp_choice', ({ use } = {}) => {
+        const action = gameState.pendingAction;
+        if (gameState.state !== 'WAITING_FOR_DRAGON_WASP_CHOICE'
+            || action?.type !== 'DRAGON_WASP_REPLACEMENT'
+            || action.playerToChoose !== socket.id) return;
+        const player = gameState.players[socket.id];
+        const trigger = action.trigger;
+        if (!player || !trigger) return;
+        if (use === true && player.hand.length >= 2) {
+            gameState.state = 'WAITING_FOR_DISCARD_PENALTY';
+            gameState.pendingAction = {
+                type: 'DRAGON_WASP_DISCARD', playerToChoose: socket.id,
+                originalActor: socket.id, amount: 2,
+                nextAction: { type: 'COMPLETE_DRAGON_WASP_REPLACEMENT', trigger }
+            };
+            io.emit('message', `${getPlayerName(gameState, socket.id)} chose to discard 2 cards with Dragon Wasp.`);
+        } else {
+            queueCommittedHeroRemovalTriggers(gameState, player, trigger.hero, {
+                ...trigger, isHero: true
+            });
+            resetToPlayingState();
+            resumeExpansionChoices();
+        }
+        broadcastState();
+    });
+
+    socket.on('resolve_lumbering_demon_draw', ({ use } = {}) => {
+        const action = gameState.pendingAction;
+        const sequence = gameState.pendingLumberingDraws?.[0];
+        if (gameState.state !== 'WAITING_FOR_LUMBERING_DEMON_CHOICE'
+            || action?.type !== 'LUMBERING_DEMON_DRAW'
+            || action.playerToChoose !== socket.id || sequence?.playerId !== socket.id) return;
+        const player = gameState.players[socket.id];
+        if (!player) return;
+        gameState.pendingAction = null;
+        if (use === true) {
+            const drawn = drawCardsWithoutPassives(gameState, io, 2, player);
+            if (drawn.length > 0 && player.hand.length > 0) {
+                gameState.state = 'WAITING_FOR_DISCARD_PENALTY';
+                gameState.pendingAction = {
+                    type: 'LUMBERING_DEMON_DISCARD', playerToChoose: socket.id,
+                    originalActor: socket.id, amount: 1,
+                    nextAction: { type: 'COMPLETE_LUMBERING_DEMON_DRAW', drawn }
+                };
+                io.emit('message', `${getPlayerName(gameState, socket.id)} replaced one draw with Lumbering Demon and must discard a card.`);
+            } else {
+                completeLumberingDrawStep(sequence, drawn);
+                resetToPlayingState();
+                resumeExpansionChoices();
+            }
+        } else {
+            const drawn = drawCardsWithoutPassives(gameState, io, 1, player);
+            completeLumberingDrawStep(sequence, drawn);
+            resetToPlayingState();
+            resumeExpansionChoices();
+        }
+        broadcastState();
+    });
+
+    socket.on('resolve_goblet_reroll', ({ use } = {}) => {
+        const action = gameState.pendingAction;
+        if (gameState.state !== 'WAITING_FOR_GOBLET_REROLL' || action?.type !== 'GOBLET_REROLL'
+            || action.playerToChoose !== socket.id) return;
+        const player = gameState.players[socket.id];
+        const hero = player?.party?.find(card => card.id === action.heroId);
+        if (use !== true || !hero) {
+            resetToPlayingState();
+            broadcastState();
+            return;
+        }
+        const slot = ['equippedItem', 'equippedItem2']
+            .find(key => hero[key]?.effect_id === 'ITEM_GOBLET_CAFFEINATION');
+        if (!slot) return;
+        const goblet = hero[slot];
+        hero[slot] = null;
+        gameState.discardPile.push(goblet);
+        recordSacrificeEvent(gameState, player, goblet, { isHero: false });
+        gameState.state = 'WAITING_TO_ROLL';
+        gameState.pendingAction = null;
+        gameState.pendingRoll = {
+            type: 'HERO_SKILL', rollerId: socket.id, targetHeroId: hero.id,
+            roll1: 0, roll2: 0, passiveBonus: 0, modifierTotal: 0,
+            baseRoll: 0, currentRoll: 0, passedPlayers: [], apSpent: 0,
+            gobletReroll: true
+        };
+        io.emit('message', `${getPlayerName(gameState, socket.id)} sacrificed Goblet of Caffeination and may immediately reroll ${hero.name}'s skill for 0 AP.`);
+        broadcastState();
+    });
+
+    socket.on('resolve_wandering_behemoth_draw', ({ use } = {}) => {
+        const action = gameState.pendingAction;
+        if (gameState.state !== 'WAITING_FOR_MONSTER_TRIGGER_CHOICE'
+            || action?.type !== 'MONSTER_OPTIONAL_DRAW' || action.playerToChoose !== socket.id) return;
+        const source = action.source;
+        resetToPlayingState();
+        if (use === true) {
+            dealCards(1, socket.id, source);
+            io.emit('message', `${getPlayerName(gameState, socket.id)} drew a card with ${source}.`);
+        }
+        broadcastState();
+    });
+
+    socket.on('resolve_end_turn_monster_effect', ({ use } = {}) => {
+        const action = gameState.pendingAction;
+        if (gameState.state !== 'WAITING_FOR_END_TURN_CHOICE'
+            || action?.type !== 'END_TURN_MONSTER_CHOICE' || action.playerToChoose !== socket.id) return;
+        const effect = action.effect;
+        resetToPlayingState();
+        if (use !== true) {
+            advanceEndTurnMonsterEffect();
+            broadcastState();
+            return;
+        }
+        if (effect === 'GORETELODONT_DRAW') {
+            const queued = queueLumberingDrawSequence(
+                gameState, gameState.players[socket.id], 3,
+                { type: 'ADVANCE_END_TURN_MONSTER_EFFECT' }, 'Goretelodont'
+            );
+            if (!queued) drawCardsWithPassives(gameState, io, 3, gameState.players[socket.id]);
+            io.emit('message', `${getPlayerName(gameState, socket.id)} drew 3 cards with Goretelodont.`);
+            if (!queued && gameState.state === 'PLAYING' && !gameState.pendingAction && !gameState.pendingCard) {
+                advanceEndTurnMonsterEffect();
+            }
+        } else if (effect === 'CLAWED_NIGHTMARE_PULL') {
+            const hasTarget = Object.entries(gameState.players)
+                .some(([id, player]) => id !== socket.id && player.hand.length > 0 && player.connected !== false);
+            if (hasTarget) {
+                gameState.state = 'WAITING_FOR_SKILL_TARGET';
+                gameState.pendingAction = {
+                    type: 'END_CLAWED_NIGHTMARE_PLAYER', playerToChoose: socket.id,
+                    originalActor: socket.id
+                };
+            } else {
+                advanceEndTurnMonsterEffect();
+            }
+        } else if (effect === 'SCAVENGER_GRIFFIN_STEAL') {
+            if (hasStealOrDestroyTarget(socket.id, 'STEAL')) {
+                gameState.state = 'PLAYING';
+                gameState.pendingAction = {
+                    type: 'STEAL', playerToChoose: socket.id, originalActor: socket.id,
+                    endTurnContinuation: true
+                };
+            } else {
+                advanceEndTurnMonsterEffect();
+            }
+        }
+        broadcastState();
+    });
+
     socket.on('submit_penalty_discard', (data) => {
         const player = gameState.players[socket.id];
         if (!player) return;
@@ -2415,6 +3625,25 @@ socket.on('resolve_immediate_play', (data) => {
             }
             
             io.emit('message', `${getPlayerName(gameState, socket.id)} discarded ${cardIds.length} card(s)!`);
+            const nextAction = gameState.pendingAction.nextAction;
+            if (nextAction?.type === 'COMPLETE_LUMBERING_DEMON_DRAW') {
+                const sequence = gameState.pendingLumberingDraws?.[0];
+                completeLumberingDrawStep(sequence, nextAction.drawn || []);
+                resetToPlayingState();
+                resumeExpansionChoices();
+                broadcastState();
+                return;
+            }
+            if (nextAction?.type === 'COMPLETE_DRAGON_WASP_REPLACEMENT') {
+                const restored = restoreDragonWaspHero(nextAction.trigger);
+                resetToPlayingState();
+                io.emit('message', restored
+                    ? `${getPlayerName(gameState, socket.id)} discarded 2 cards with Dragon Wasp, so ${nextAction.trigger.hero.name} remains in their Party.`
+                    : `Dragon Wasp could not restore the Hero.`);
+                resumeExpansionChoices();
+                broadcastState();
+                return;
+            }
             resetToPlayingState();
             broadcastState();
         } else if (gameState.state === 'WAITING_FOR_MULTIPLE_DISCARDS') {
@@ -2453,8 +3682,10 @@ socket.on('resolve_immediate_play', (data) => {
             broadcastState();
         } else if (gameState.state === 'WAITING_FOR_VARIABLE_DISCARD') {
             const pAction = gameState.pendingAction;
+            if (!pAction) return;
             if (socket.id !== pAction.originalActor) return;
-            if (!cardIds || !Array.isArray(cardIds) || cardIds.length > pAction.maxAmount) return;
+            if (!cardIds || !Array.isArray(cardIds) || cardIds.length > pAction.maxAmount
+                || new Set(cardIds).size !== cardIds.length) return;
 
             let discardedCount = 0;
             for (const cardId of cardIds) {
@@ -2468,7 +3699,31 @@ socket.on('resolve_immediate_play', (data) => {
 
             io.emit('message', `${getPlayerName(gameState, socket.id)} discarded ${discardedCount} card(s)!`);
 
-            if (discardedCount > 0 && pAction.type === 'VARIABLE_DISCARD_TO_DESTROY') {
+            if (pAction.type === 'BIGGEST_RING_DISCARD') {
+                const bonus = discardedCount * 2;
+                gameState.pendingRoll.currentRoll += bonus;
+                (gameState.pendingRoll.breakdown = gameState.pendingRoll.breakdown || []).push({
+                    source: 'Biggest Ring Ever', value: bonus
+                });
+                gameState.state = 'WAITING_FOR_MODIFIERS';
+                gameState.pendingAction = null;
+                io.emit('message', `${getPlayerName(gameState, socket.id)} added +${bonus} with Biggest Ring Ever.`);
+                io.emit('dice_roll_pending', {
+                    rollerId: gameState.pendingRoll.rollerId,
+                    rollerName: getPlayerName(gameState, gameState.pendingRoll.rollerId),
+                    roll1: gameState.pendingRoll.roll1, roll2: gameState.pendingRoll.roll2,
+                    passiveBonus: gameState.pendingRoll.passiveBonus,
+                    breakdown: gameState.pendingRoll.breakdown,
+                    modifierTotal: gameState.pendingRoll.modifierTotal,
+                    finalTotal: gameState.pendingRoll.currentRoll,
+                    total: gameState.pendingRoll.currentRoll,
+                    reason: 'for a skill'
+                });
+                startModifierTimer();
+            } else if (discardedCount > 0 && pAction.type === 'LIGHTNING_LABRYS_DISCARD') {
+                queueLightningLabrysPlayerChoice(gameState, socket.id, discardedCount);
+                io.emit('message', `${getPlayerName(gameState, socket.id)} must choose ${discardedCount} player${discardedCount === 1 ? '' : 's'} for Lightning Labrys, one at a time.`);
+            } else if (discardedCount > 0 && pAction.type === 'VARIABLE_DISCARD_TO_DESTROY') {
                 resetToPlayingState();
                 // Cap to the number of destroyable opponent heroes so we never ask
                 // for more DESTROY targets than exist (Qi Bear soft-locked when the
@@ -2514,6 +3769,7 @@ socket.on('resolve_immediate_play', (data) => {
         }
         registerCardPlayed(challengeCard);
         gameState.discardPile.push(challengeCard);
+        triggerPlayedCardMonsterPassives(socket.id, challengeCard);
 
         // Bloodwing: "Each time another player CHALLENGES you, that player must
         // DISCARD a card." The challenged player (the one who played the disputed
@@ -2529,6 +3785,7 @@ socket.on('resolve_immediate_play', (data) => {
         }
 
         // Transition to Dual-Roll State
+        clearChallengeTimer();
         gameState.state = 'WAITING_TO_ROLL_CHALLENGE';
         gameState.pendingRoll = {
             type: 'CHALLENGE',
@@ -2557,10 +3814,7 @@ socket.on('resolve_immediate_play', (data) => {
             gameState.pendingChallenge.passedPlayers.push(socket.id);
         }
 
-        if (gameState.pendingChallenge.passedPlayers.length >= Object.keys(gameState.players).length - 1) {
-            io.emit('challenge_resolved', { message: `${gameState.pendingChallenge.card.name} was not challenged and resolves normally.` });
-            resolvePendingCard();
-        } else {
+        if (!settleUnchallengedCardIfComplete()) {
             broadcastState();
         }
     });
@@ -2586,6 +3840,23 @@ socket.on('resolve_immediate_play', (data) => {
 
         const player = gameState.players[socket.id];
 
+        if (pAction.type === 'FREE_SLAY') {
+            if (!gameState.activeMonsters.some(monster => monster.id === targetId)) return;
+            gameState.pendingAction = null;
+            const monster = slayFaceUpMonster(socket.id, targetId, 'SKILL_VICIOUS_WILDCAT');
+            if (!monster) return;
+            gameState.forcedEndTurnPlayerId = socket.id;
+            const winResult = checkWinCondition();
+            if (winResult) {
+                handleGameOver(winResult);
+            } else if (gameState.state === 'PLAYING' && !gameState.pendingAction && !gameState.pendingCard) {
+                gameState.forcedEndTurnPlayerId = null;
+                beginEndTurn(socket.id);
+            }
+            broadcastState();
+            return;
+        }
+
         if (pAction.type === 'FREE_ATTACK') {
             const monster = gameState.activeMonsters.find(card => card.id === targetId);
             if (!monster || !meetsMonsterRequirements(player, monster.requirement)) return;
@@ -2604,6 +3875,7 @@ socket.on('resolve_immediate_play', (data) => {
         if (pAction.type === 'DISCARD') {
             const cardIndex = player.hand.findIndex(c => c.id === targetId);
             if (cardIndex !== -1) {
+                if (pAction.allowedTypes && !pAction.allowedTypes.includes(player.hand[cardIndex].type)) return;
                 const card = player.hand.splice(cardIndex, 1)[0];
                 gameState.discardPile.push(card);
                 pAction.amount -= 1;
@@ -2622,6 +3894,35 @@ socket.on('resolve_immediate_play', (data) => {
                             gameState.pendingAction = null;
                             gameState.pendingRoll = next.challengeData;
                             io.emit('challenge_accepted', gameState.pendingRoll);
+                        } else if (next.type === 'START_SEQUENTIAL_DISCARD') {
+                            const targets = (next.targets || []).filter(id => gameState.players[id]?.hand?.length > 0);
+                            gameState.pendingAction = null;
+                            if (targets.length > 0) {
+                                gameState.state = 'WAITING_FOR_GLOBAL_ACTION';
+                                gameState.pendingGlobalAction = {
+                                    type: 'SEQUENTIAL_DISCARD', initiatorId: next.originalActor,
+                                    pendingPlayerIds: [targets[0]], remainingPlayerIds: targets.slice(1),
+                                    amount: next.amount,
+                                    remainingForCurrent: Math.min(next.amount, gameState.players[targets[0]].hand.length)
+                                };
+                                io.emit('global_action_requested', gameState.pendingGlobalAction);
+                            } else {
+                                resetToPlayingState();
+                            }
+                        } else if (next.type === 'APPLY_SHADOW_SAINT') {
+                            const actor = gameState.players[next.originalActor];
+                            gameState.pendingAction = null;
+                            if (actor) {
+                                actor.blocksOpponentModifiersThisTurn = true;
+                                io.emit('message', `${getPlayerName(gameState, actor.id)} prevents every other player from playing Modifiers until the end of the turn.`);
+                            }
+                            resetToPlayingState();
+                        } else if (next.type === 'START_MONSTER_ATTACK') {
+                            gameState.pendingAction = null;
+                            if (!startMonsterAttackRoll(next.playerId, next.monsterId)) {
+                                resetToPlayingState();
+                                io.emit('message', `The Monster attack could not start after its cost was paid.`);
+                            }
                         } else if ((next.type === 'STEAL' || next.type === 'DESTROY') && !hasStealOrDestroyTarget(socket.id, next.type)) {
                             // No legal Hero to steal/destroy — don't strand the actor
                             // with an unfulfillable pending action after they've paid
@@ -2650,6 +3951,7 @@ socket.on('resolve_immediate_play', (data) => {
                 const p = gameState.players[pId];
                 const heroIndex = p.party.findIndex(h => h.id === targetId);
                 if (heroIndex !== -1) {
+                    if (pAction.type === 'STEAL' && (pId === pAction.originalActor || p.cannotBeStolen)) return;
                     const hero = p.party[heroIndex];
 
                     if (pAction.type === 'DESTROY') {
@@ -2673,7 +3975,10 @@ socket.on('resolve_immediate_play', (data) => {
                             triggerCursedGlove(gameState, p, thief);
                             io.emit('message', `Stole ${hero.name}!`);
                         } else if (pAction.type === 'DESTROY') {
-                            const items = equippedItems(hero);
+                            const removedItems = ['equippedItem', 'equippedItem2']
+                                .filter(slot => hero[slot])
+                                .map(slot => ({ slot, card: hero[slot] }));
+                            const items = removedItems.map(entry => entry.card);
                             hero.equippedItem = null;
                             hero.equippedItem2 = null;
                             if (p.maegistyActive) {
@@ -2681,17 +3986,12 @@ socket.on('resolve_immediate_play', (data) => {
                                 io.emit('message', `${hero.name} and its Items returned to ${getPlayerName(gameState, p.id)}'s hand due to Maegisty.`);
                             } else {
                                 gameState.discardPile.push(hero, ...items);
-                                if (gameState.players[pAction.originalActor]?.silentShieldActive) {
-                                    gameState.pendingSilentShieldActorId = pAction.originalActor;
-                                }
-                                triggerSoulTethers(gameState, p);
+                                recordDestroyEvent(gameState, p, hero, {
+                                    removedItems,
+                                    initiatorId: gameState.players[pAction.originalActor]?.silentShieldActive
+                                        ? pAction.originalActor : null
+                                });
                                 io.emit('message', `Destroyed ${hero.name}!`);
-                            }
-
-                            const hasDracos = p.slainMonsters && p.slainMonsters.some(m => m.effect_id === 'MONSTER_DRACOS');
-                            if (hasDracos) {
-                                io.emit('message', `${getPlayerName(gameState, p.id)}'s Hero was destroyed, but they draw a card due to Dracos!`);
-                                if (gameState.mainDeck.length > 0) p.hand.push(gameState.mainDeck.pop());
                             }
                         }
                     }
@@ -2707,6 +4007,10 @@ socket.on('resolve_immediate_play', (data) => {
                     }
                     break;
                 }
+            }
+            if (pAction.endTurnContinuation && !gameState.pendingAction) {
+                resetToPlayingState();
+                advanceEndTurnMonsterEffect();
             }
         } else if (pAction.type === 'EXCHANGE_STEP_1') {
             let targetOpponentId = null;
@@ -2757,7 +4061,7 @@ socket.on('resolve_immediate_play', (data) => {
             if (returned) {
                 io.emit('message', `${getPlayerName(gameState, returned.owner.id)} got ${returned.item.name} back in their hand!`);
                 // The caster still receives the separate draw named by the spell.
-                drawCardsWithPassives(gameState, io, 1, player);
+                dealCards(1, player.id, 'Winds of Change');
             }
             gameState.pendingAction = null;
         } else if (pAction.type === 'FORCE_DISCARD_TARGET' || pAction.type === 'CONDITIONAL_PULL' || pAction.type === 'PUMA_PULL' || pAction.type === 'LOOK_AND_PULL') {
@@ -2821,7 +4125,7 @@ socket.on('resolve_immediate_play', (data) => {
                         }
                         io.emit('message', `${getPlayerName(gameState, player.id)} pulled cards from ${getPlayerName(gameState, tp.id)}'s hand!`);
                         if (gameState.mainDeck.length > 0) {
-                            tp.hand.push(gameState.mainDeck.pop());
+                            dealCards(1, tp.id, 'Plundering Puma');
                             io.emit('message', `${getPlayerName(gameState, tp.id)} drew a card!`);
                         }
                     } else {
@@ -2884,7 +4188,7 @@ socket.on('resolve_immediate_play', (data) => {
         if (!player || player.usedMuscipulaRexThisTurn
             || !(player.slainMonsters || []).some(monster => monster.effect_id === 'MONSTER_MUSCIPULA_REX')) return;
         player.usedMuscipulaRexThisTurn = true;
-        drawCardsWithPassives(gameState, io, 1, player);
+        dealCards(1, player.id, 'Muscipula Rex');
         const message = `${getPlayerName(gameState, player.id)} used Muscipula Rex and drew a card without spending an action point.`;
         io.emit('monster_effect_triggered', { monsterId: 'card_139', monsterName: 'Muscipula Rex', ownerId: player.id, message });
         io.emit('message', message);
@@ -2945,6 +4249,20 @@ socket.on('resolve_immediate_play', (data) => {
 
             io.emit('message', `The Shadow Claw (Thief) stole a card from ${getPlayerName(gameState, targetData.targetPlayerId)}!`);
             broadcastState();
+        } else if (player.leader.effect_id === 'LEADER_NECROMANCER') {
+            if (player.usedLeaderSkillThisTurn || player.ap < 2 || gameState.discardPile.length === 0) return;
+            player.ap -= 2;
+            player.usedLeaderSkillThisTurn = true;
+            gameState.state = 'WAITING_FOR_SKILL_TARGET';
+            gameState.pendingAction = {
+                type: 'SKILL_TARGET_DISCARD',
+                originalActor: socket.id,
+                playerToChoose: socket.id,
+                skillId: 'LEADER_NECROMANCER',
+                heroId: null
+            };
+            io.emit('message', `${getPlayerName(gameState, socket.id)} used The Gnawing Dread and is choosing a card from the discard pile.`);
+            broadcastState();
         }
     });
 
@@ -2959,49 +4277,7 @@ socket.on('resolve_immediate_play', (data) => {
             return; // Prevent ending turn while targeting
         }
 
-        // Pass turn
-        const currentIndex = gameState.playerOrder.indexOf(gameState.activePlayerSocketId);
-        const nextIndex = (currentIndex + 1) % gameState.playerOrder.length;
-        gameState.activePlayerSocketId = gameState.playerOrder[nextIndex];
-        
-        // FORCE CLEAN STATE FOR NEW TURN
-        resetToPlayingState();
-        gameState.pendingRoll = null;
-        gameState.pendingChallenge = null;
-        gameState.pendingGlobalAction = null;
-        gameState.pendingAction = null;
-        gameState.waitingForInput = false;
-        if (modifierTimer) clearTimeout(modifierTimer);
-        
-        // Reset AP and draw a card for the new player
-        const currentPlayer = gameState.players[socket.id];
-        currentPlayer.magicRollBonus = 0; // Clear at end of turn
-        currentPlayer.rollBonus = 0;      // Wise Shield / Vibrant Glow expire at end of turn
-        currentPlayer.rollBonusSources = [];
-        currentPlayer.attackRollBonus = 0;
-        currentPlayer.stagguardActive = false;
-        currentPlayer.silentShieldActive = false;
-        currentPlayer.cannotBeChallenged = false; // Iron Resolve lasts only this turn
-        currentPlayer.usedLeaderSkillThisTurn = false;
-        
-        const nextPlayer = gameState.players[gameState.activePlayerSocketId];
-        clearUntilNextTurnProtections(nextPlayer);
-        nextPlayer.usedLeaderSkillThisTurn = false;
-        let baseAP = 3;
-        if (nextPlayer.slainMonsters && nextPlayer.slainMonsters.some(m => m.effect_id === 'MONSTER_MEGA_SLIME')) {
-            baseAP = 4;
-        }
-        nextPlayer.ap = baseAP;
-
-        // Force reset usedSkillThisTurn for ALL players just to be absolutely safe
-        for (const pId in gameState.players) {
-            gameState.players[pId].usedNobleShamanThisTurn = false;
-            gameState.players[pId].usedMuscipulaRexThisTurn = false;
-            gameState.players[pId].party.forEach(c => {
-                if (c.type === 'Hero Card') c.usedSkillThisTurn = false;
-            });
-        }
-        
+        beginEndTurn(socket.id);
         broadcastState();
     });
 
@@ -3020,7 +4296,13 @@ function startGame() {
     gameState.pendingRoll = null;
     gameState.pendingChallenge = null;
     gameState.pendingGlobalAction = null;
+    gameState.pendingPassiveDraws = [];
+    gameState.pendingMonsterTriggers = [];
+    gameState.pendingLumberingDraws = [];
+    gameState.pendingDeferredDrawPassives = [];
+    gameState.pendingEndTurnEffects = null;
     if (modifierTimer) clearTimeout(modifierTimer);
+    clearChallengeTimer();
 
     gameState.playerOrder.forEach(id => {
         dealCards(5, id);
@@ -3060,4 +4342,16 @@ module.exports = {
     clearUntilNextTurnProtections,
     playerHasEffectiveClass,
     RECONNECT_GRACE_MS,
+    CHALLENGE_TIMEOUT_MS,
+    getConnectedChallengeOpponentIds,
+    haveAllConnectedChallengeOpponentsPassed,
+    queueLightningLabrysPlayerChoice,
+    queueLightningLabrysSacrifice,
+    queuePassiveDraw,
+    triggerPlayedCardMonsterPassives,
+    attackCostAllowedTypes,
+    eligibleEndTurnMonsterEffects,
+    restoreDragonWaspHero,
+    completeLumberingDrawStep,
+    resolveLumberingContinuation,
 };
