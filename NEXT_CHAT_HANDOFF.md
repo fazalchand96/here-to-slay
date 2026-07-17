@@ -5,12 +5,13 @@
 - Implemented all 48 physical cards (`card_173` through `card_220`) from the Dragon Berserkers & Necromancers Expansion and Monster Expansion.
 - Added the Berserker and Necromancer classes, bringing class-based victory to 7 distinct classes while ten classes are available in the game.
 - Monster victory now requires a slain value of 4; Venomous Gemini still contributes 2 toward that total.
+- Own/opponent party sheets render each Party Leader as a full card in its matching class column; target-selection instructions use a compact non-obstructive banner.
 - Added all leader, Hero, Magic, Item, Cursed Item, Modifier, Challenge, and Monster effects, including queued/replacement interactions such as Dragon Wasp, Lumbering Demon, Big Buckley, and per-card draw triggers.
 - Generated and installed 48 standalone WebP illustrations and 48 full-card WebP frames. Expansion cards are admitted to live decks only when their full frame exists.
 - Added double-Item-slot markers to the four printed Berserker Heroes.
 - Updated bot targeting/state handling and dynamic simulation card tracking.
-- Verification: JavaScript syntax checks passed; `npm test` passed 210/210; two-bot simulation ran through normal turns/challenges/modifiers without stalling; Android landscape lobby and representative card assets were visually verified.
-- Release cache version after the monster-victory update: `hts-v131`.
+- Verification: JavaScript syntax checks passed; `npm test` passed 210/210; the focused Android opponent-targeting regression passed; two-bot simulation ran through normal turns/challenges/modifiers without stalling; Android landscape lobby and representative card assets were visually verified.
+- Current release cache version: `hts-v132`.
 - Production URL remains `https://here-to-slay-ca6f.onrender.com/`.
 
 Saved 2026-07-14 after the monster-card and monster-inspector pass.

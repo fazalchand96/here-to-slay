@@ -7684,21 +7684,14 @@ body.landscape #player-win-tracker {
 .party-class-column > header strong { overflow: hidden; text-overflow: ellipsis; }
 .party-class-column > header b { color: rgba(255,242,205,.72); font: inherit; }
 .party-class-gem { display: none; }
-.party-class-leader {
-    width: 100%;
-    min-height: 29px;
-    margin-bottom: 6px;
-    padding: 3px 4px;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    color: #ffe29b;
-    font-size: clamp(.42rem, .7vw, .56rem);
-    line-height: 1.1;
-    cursor: pointer;
-}
-.party-class-leader span { display: block; font-size: .75rem; }
 .party-class-stack { display: flex; flex-direction: column; align-items: center; gap: 7px; min-height: 94px; }
+.party-class-leader-card {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    flex: 0 0 auto;
+}
 #opponent-modal.own-party-view .party-class-stack .card {
     width: auto !important;
     height: clamp(98px, 22dvh, 136px) !important;
@@ -7740,7 +7733,6 @@ body.landscape #player-win-tracker {
     .party-class-grid { grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; }
     .party-class-column { padding-inline: 1px; }
     .party-class-column > header { gap: 2px; font-size: clamp(.38rem, 1.45vw, .5rem); }
-    .party-class-leader { padding-inline: 1px; font-size: clamp(.36rem, 1.25vw, .46rem); }
 }
 @media (max-height: 520px) {
     #party-dock { height: 78px; min-height: 62px; }
@@ -7983,9 +7975,6 @@ body.landscape #player-hand.cards-many::after { display: none !important; }
     #opponent-modal.own-party-view .party-class-column > header {
         font-size: clamp(.31rem, 1.12vw, .43rem) !important;
     }
-    #opponent-modal.own-party-view .party-class-leader {
-        font-size: clamp(.3rem, 1vw, .4rem) !important;
-    }
     #opponent-modal.own-party-view .own-party-monsters {
         flex-basis: 92px;
         grid-template-columns: minmax(76px, 94px) minmax(0, 1fr);
@@ -8021,4 +8010,32 @@ body.landscape #player-hand.cards-many::after { display: none !important; }
         min-height: 34px !important;
         margin-top: 2px !important;
     }
+}
+
+/* Target instructions stay readable without covering the cards being chosen.
+   The compact banner is especially important above the full party sheet on
+   short Android landscape screens. */
+#target-banner-text {
+    margin: 0 !important;
+    font-size: clamp(.68rem, 1.65vw, .92rem) !important;
+    line-height: 1.15 !important;
+}
+body.target-mode-active #target-banner {
+    top: 54px !important;
+    width: min(76vw, 430px) !important;
+    max-width: 430px !important;
+    padding: 5px 10px !important;
+    border-width: 1px !important;
+    border-radius: 8px !important;
+}
+body.target-mode-active #target-banner-text {
+    font-size: clamp(.58rem, 1.45vw, .78rem) !important;
+}
+body.target-mode-active #opponent-modal.own-party-view #opponent-modal-title {
+    margin-bottom: 1px !important;
+    font-size: clamp(.78rem, 2.5vw, 1.05rem) !important;
+    line-height: 1 !important;
+}
+body.target-mode-active #opponent-modal.own-party-view #opponent-modal-content {
+    padding-top: 3px !important;
 }

@@ -737,17 +737,17 @@ function buildClassPartyGrid(player, isOwn) {
     const columns = PARTY_CLASS_ORDER.map(className => {
         const heroes = (player.party || []).filter(hero => effectiveHeroClass(hero) === className);
         const leaderInClass = player.leader?.class === className;
-        const leaderMarker = leaderInClass
-            ? `<button class="party-class-leader" onclick="inspectCard('${player.leader.id}')" title="View ${player.leader.name}"><span>♛</span>${player.leader.name}</button>`
+        const leaderCard = leaderInClass
+            ? `<div class="party-class-leader-card" title="Party Leader: ${player.leader.name}">${renderCard(player.leader, isOwn, false, false, isMyTurn)}</div>`
             : '';
         const heroCards = heroes.length
             ? heroes.map(hero => renderCard(hero, isOwn, false, false, isMyTurn)).join('')
-            : `<div class="party-class-empty">Empty</div>`;
+            : (leaderInClass ? '' : `<div class="party-class-empty">Empty</div>`);
+        const classCardCount = heroes.length + (leaderInClass ? 1 : 0);
         return `
             <section class="party-class-column" data-class="${className.toLowerCase()}">
-                <header><span class="party-class-gem"></span><strong>${className}</strong><b>${heroes.length}</b></header>
-                ${leaderMarker}
-                <div class="party-class-stack">${heroCards}</div>
+                <header><span class="party-class-gem"></span><strong>${className}</strong><b>${classCardCount}</b></header>
+                <div class="party-class-stack">${leaderCard}${heroCards}</div>
             </section>`;
     }).join('');
 
