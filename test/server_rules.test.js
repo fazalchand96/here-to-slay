@@ -180,11 +180,18 @@ test('Monster attack costs accept the exact printed discard categories', () => {
     ]);
 });
 
-test('Voltclaw Lion requires a Magic card for normal and free attacks', () => {
-    const voltclaw = { attack_cost: { discard: 'Magic Card', count: 1 } };
-    assert.equal(canPayMonsterAttackCost({ hand: [] }, voltclaw), false);
-    assert.equal(canPayMonsterAttackCost({ hand: [{ type: 'Modifier Card' }] }, voltclaw), false);
-    assert.equal(canPayMonsterAttackCost({ hand: [{ type: 'Magic Card' }] }, voltclaw), true);
+test('all extra Monster attack costs recognize their legal payments', () => {
+    const hand = [
+        { type: 'Magic Card' },
+        { type: 'Challenge Card' },
+        { type: 'Cursed Item Card' }
+    ];
+    assert.equal(canPayMonsterAttackCost({ hand: [] }, { attack_cost: { discard: 'HAND' } }), true);
+    assert.equal(canPayMonsterAttackCost({ hand }, { attack_cost: { discard: 'ANY', count: 2 } }), true);
+    assert.equal(canPayMonsterAttackCost({ hand }, { attack_cost: { discard: 'Magic Card', count: 1 } }), true);
+    assert.equal(canPayMonsterAttackCost({ hand }, { attack_cost: { discard: 'Challenge Card', count: 1 } }), true);
+    assert.equal(canPayMonsterAttackCost({ hand }, { attack_cost: { discard: 'Item Card', count: 1, include_cursed: true } }), true);
+    assert.equal(canPayMonsterAttackCost({ hand: [{ type: 'Modifier Card' }] }, { attack_cost: { discard: 'Magic Card', count: 1 } }), false);
 });
 
 test('empty-hand end-turn Monster effects are queued in deterministic order', () => {
