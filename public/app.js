@@ -730,7 +730,7 @@ function updateWaitingOverlay(data) {
     if (detail) detail.textContent = stateDetails[data.state] || 'The next action is being resolved.';
 }
 
-const PARTY_CLASS_ORDER = ['Fighter', 'Bard', 'Guardian', 'Ranger', 'Thief', 'Wizard', 'Druid', 'Warrior', 'Necromancer', 'Berserker'];
+const PARTY_CLASS_ORDER = ['Fighter', 'Bard', 'Guardian', 'Ranger', 'Thief', 'Wizard', 'Druid', 'Warrior', 'Necromancer', 'Berserker', 'Sorcerer'];
 
 function buildClassPartyGrid(player, isOwn) {
     const isMyTurn = latestGameState?.activePlayerSocketId === myId;
@@ -1267,11 +1267,11 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
             // their harmful intent, and the regular equip glow for normal items.
             glowClass += isCurseEquip() ? ' valid-target valid-target-steal' : ' valid-target valid-target-equip';
 
-        } else if (myTargetMode && !inHand && isMine && ['PENALTY', 'DRUID_SKILL_SACRIFICE', 'LIGHTNING_LABRYS_SACRIFICE', 'DRAGONS_BILE_SACRIFICE'].includes(currentPendingAction.type) && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE' && card.type === 'Hero Card') {
+        } else if (myTargetMode && !inHand && isMine && ['PENALTY', 'DRUID_SKILL_SACRIFICE', 'LIGHTNING_LABRYS_SACRIFICE', 'DRAGONS_BILE_SACRIFICE', 'ORACON_SACRIFICE'].includes(currentPendingAction.type) && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE' && card.type === 'Hero Card') {
 
             glowClass += ' valid-target valid-target-steal';
 
-        } else if (isMultiTargeting && inHand && isMine && window.latestGameState && ['WAITING_FOR_DISCARD_PENALTY', 'WAITING_FOR_MULTIPLE_DISCARDS', 'WAITING_FOR_VARIABLE_DISCARD'].includes(window.latestGameState.state)) {
+        } else if (isMultiTargeting && inHand && isMine && card.id !== currentPendingAction?.excludeCardId && window.latestGameState && ['WAITING_FOR_DISCARD_PENALTY', 'WAITING_FOR_MULTIPLE_DISCARDS', 'WAITING_FOR_VARIABLE_DISCARD'].includes(window.latestGameState.state)) {
 
             const isSelected = multiTargetSelected && multiTargetSelected.includes(card.id);
 
@@ -1329,7 +1329,7 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
         ? `<div class="board-card-name" title="${card.name || ''}">${card.name || 'Unknown'}</div>`
         : '';
     // Per-class / per-type accent that tints the frame border + type ribbon (--cc).
-    const CLASS_TINT = { Fighter: 'var(--class-fighter)', Bard: 'var(--class-bard)', Guardian: 'var(--class-guardian)', Ranger: 'var(--class-ranger)', Thief: 'var(--class-thief)', Wizard: 'var(--class-wizard)', Druid: 'var(--class-druid)', Warrior: 'var(--class-warrior)', Necromancer: 'var(--class-necromancer)', Berserker: 'var(--class-berserker)' };
+    const CLASS_TINT = { Fighter: 'var(--class-fighter)', Bard: 'var(--class-bard)', Guardian: 'var(--class-guardian)', Ranger: 'var(--class-ranger)', Thief: 'var(--class-thief)', Wizard: 'var(--class-wizard)', Druid: 'var(--class-druid)', Warrior: 'var(--class-warrior)', Necromancer: 'var(--class-necromancer)', Berserker: 'var(--class-berserker)', Sorcerer: 'var(--class-sorcerer)' };
     const TYPE_TINT = { 'Item Card': 'var(--gold)', 'Cursed Item Card': 'var(--class-wizard)', 'Magic Card': 'var(--class-wizard)', 'Modifier Card': '#5aa8b8', 'Challenge Card': '#e07a4a' };
     let cardTint, variantClass = '';
     if (card.type === 'Party Leader') { cardTint = 'var(--leader-pink)'; variantClass = ' card-leader'; }
@@ -2256,13 +2256,13 @@ function buildBoardParts(data, ctx) {
 
     // --- Local class tracker --- (slain progress already lives in the Party dock)
     const myStats = calculateWinStats(me);
-    const classProgress = Math.min(myStats.uniqueClasses, 7);
-    const classGems = Array.from({ length: 7 }, (_, index) =>
+    const classProgress = Math.min(myStats.uniqueClasses, 9);
+    const classGems = Array.from({ length: 9 }, (_, index) =>
         `<em class="${index < classProgress ? 'on' : ''}"></em>`
     ).join('');
     const winTrackHtml = `
-        <span class="wt-classes" title="Collect 7 different classes to win">
-            <span class="wt-class-label">Classes <b>${classProgress}/7</b></span>
+        <span class="wt-classes" title="Collect 9 different classes to win">
+            <span class="wt-class-label">Classes <b>${classProgress}/9</b></span>
             <i class="wt-class-gems">${classGems}</i>
         </span>`;
 
@@ -2380,7 +2380,12 @@ function renderBoard(data) {
         'WAITING_FOR_LUMBERING_DEMON_CHOICE',
         'WAITING_FOR_GOBLET_REROLL',
         'WAITING_FOR_MONSTER_TRIGGER_CHOICE',
-        'WAITING_FOR_END_TURN_CHOICE'
+        'WAITING_FOR_END_TURN_CHOICE',
+        'WAITING_FOR_DRAGALTER_CHOICE',
+        'WAITING_FOR_SMOK_CHOICE',
+        'WAITING_FOR_MIRRORYU_CHOICE',
+        'WAITING_FOR_LUUT_CHOICE',
+        'WAITING_FOR_CALAMITY_MONGREL_CHOICE'
     ];
     isTargetMode = currentPendingAction !== null && !dedicatedStates.includes(data.state);
 
@@ -2996,6 +3001,8 @@ function renderBoard(data) {
 
             targetBannerText.innerText = data.pendingAction.type === 'DRUID_SKILL_SACRIFICE'
                 ? `SELECT ONE OF YOUR HEROES TO SACRIFICE`
+                : data.pendingAction.type === 'ORACON_SACRIFICE'
+                    ? `ORACON PULLED A MODIFIER — SELECT ONE OF YOUR HEROES TO SACRIFICE`
                 : data.pendingAction.type === 'LIGHTNING_LABRYS_SACRIFICE'
                     ? `SELECT ONE OF YOUR HEROES TO SACRIFICE FOR LIGHTNING LABRYS`
                     : data.pendingAction.type === 'DRAGONS_BILE_SACRIFICE'
@@ -3134,6 +3141,81 @@ function renderBoard(data) {
             targetBannerText.innerText = 'WAITING FOR AN END-OF-TURN MONSTER EFFECT...';
         }
 
+    } else if (data.state === 'WAITING_FOR_DRAGALTER_CHOICE') {
+        targetBanner?.classList.remove('hidden');
+        if (data.pendingAction?.playerToChoose === myId) {
+            waitingOverlay?.classList.add('hidden');
+            const cards = (data.players?.[myId]?.hand || []).filter(card => data.pendingAction.allowedCardIds?.includes(card.id));
+            targetBannerText.innerHTML = `CHOOSE A MODIFIER TO DISCARD FOR DRAGALTER<br>${cards.flatMap(card =>
+                (card.modifier_values || []).map(value => `<button class="action-btn inline" onclick="socket.emit('resolve_dragalter_choice',{cardId:'${card.id}',value:${value}})">${card.name}: ${value >= 0 ? '+' : ''}${value}</button>`)
+            ).join(' ')}`;
+        } else {
+            waitingOverlay?.classList.remove('hidden');
+            targetBannerText.innerText = 'WAITING FOR DRAGALTER...';
+        }
+
+    } else if (data.state === 'WAITING_FOR_SMOK_CHOICE') {
+        targetBanner?.classList.remove('hidden');
+        if (data.pendingAction?.playerToChoose === myId) {
+            waitingOverlay?.classList.add('hidden');
+            const cards = (data.players?.[myId]?.hand || []).filter(card => data.pendingAction.allowedCardIds?.includes(card.id));
+            targetBannerText.innerHTML = `REVEAL A MAGIC CARD TO GAIN 1 EXTRA ACTION POINT?<br>${cards.map(card =>
+                `<button class="action-btn inline" onclick="socket.emit('resolve_smok_choice',{cardId:'${card.id}'})">REVEAL ${card.name}</button>`
+            ).join(' ')} <button class="action-btn inline" onclick="socket.emit('resolve_smok_choice',{})">KEEP HIDDEN</button>`;
+        } else {
+            waitingOverlay?.classList.remove('hidden');
+            targetBannerText.innerText = 'WAITING FOR SMOK...';
+        }
+
+    } else if (data.state === 'WAITING_FOR_MIRRORYU_CHOICE') {
+        targetBanner?.classList.remove('hidden');
+        if (data.pendingAction?.playerToChoose === myId) {
+            waitingOverlay?.classList.add('hidden');
+            const heroes = (data.players?.[myId]?.party || []).filter(card => data.pendingAction.allowedHeroIds?.includes(card.id));
+            targetBannerText.innerHTML = `CHOOSE ANOTHER HERO EFFECT FOR MIRRORYU (+3 TO ITS ROLL)<br>${heroes.map(card =>
+                `<button class="action-btn inline" onclick="socket.emit('resolve_mirroryu_choice',{heroId:'${card.id}'})">${card.name}</button>`
+            ).join(' ')}`;
+        } else {
+            waitingOverlay?.classList.remove('hidden');
+            targetBannerText.innerText = 'WAITING FOR MIRRORYU...';
+        }
+
+    } else if (data.state === 'WAITING_FOR_LUUT_CHOICE') {
+        targetBanner?.classList.remove('hidden');
+        if (data.pendingAction?.playerToChoose === myId) {
+            waitingOverlay?.classList.add('hidden');
+            if (data.pendingAction.type === 'LUUT_ITEM') {
+                const choices = (data.pendingAction.availableItems || []).map(entry => {
+                    const owner = data.players?.[entry.ownerId];
+                    const hero = owner?.party?.find(card => card.id === entry.heroId);
+                    const item = [hero?.equippedItem, hero?.equippedItem2].find(card => card?.id === entry.itemId);
+                    return `<button class="action-btn inline" onclick="socket.emit('resolve_luut_choice',{itemId:'${entry.itemId}'})">${item?.name || 'Equipped Item'} (${hero?.name || 'Hero'})</button>`;
+                });
+                targetBannerText.innerHTML = `CHOOSE AN EQUIPPED ITEM TO STEAL WITH LUUT<br>${choices.join(' ')}`;
+            } else {
+                const heroes = (data.players?.[myId]?.party || []).filter(card => data.pendingAction.destinationHeroIds?.includes(card.id));
+                targetBannerText.innerHTML = `CHOOSE A HERO TO EQUIP THE STOLEN ITEM<br>${heroes.map(card =>
+                    `<button class="action-btn inline" onclick="socket.emit('resolve_luut_choice',{heroId:'${card.id}'})">${card.name}</button>`
+                ).join(' ')}`;
+            }
+        } else {
+            waitingOverlay?.classList.remove('hidden');
+            targetBannerText.innerText = 'WAITING FOR LUUT...';
+        }
+
+    } else if (data.state === 'WAITING_FOR_CALAMITY_MONGREL_CHOICE') {
+        targetBanner?.classList.remove('hidden');
+        if (data.pendingAction?.playerToChoose === myId) {
+            waitingOverlay?.classList.add('hidden');
+            const card = data.players?.[myId]?.hand?.find(entry => entry.id === data.pendingAction.cardId);
+            targetBannerText.innerHTML = `CALAMITY MONGREL: DISCARD ${card?.name || 'THIS CHALLENGE'} AND DRAW 2 CARDS?
+                <button class="action-btn inline" onclick="socket.emit('resolve_calamity_mongrel_choice',{use:true})">DISCARD & DRAW 2</button>
+                <button class="action-btn inline" onclick="socket.emit('resolve_calamity_mongrel_choice',{use:false})">KEEP CARD</button>`;
+        } else {
+            waitingOverlay?.classList.remove('hidden');
+            targetBannerText.innerText = 'WAITING FOR CALAMITY MONGREL...';
+        }
+
     } else if (data.state === 'WAITING_FOR_DISCARD_PENALTY' || data.state === 'WAITING_FOR_MULTIPLE_DISCARDS' || data.state === 'WAITING_FOR_VARIABLE_DISCARD') {
 
         document.body?.classList.remove('target-mode-active');
@@ -3224,7 +3306,11 @@ function renderBoard(data) {
 
                 let amt = data.pendingAction.amount;
 
-                targetBannerText.innerHTML = `SELECT ${amt} CARD(S) TO DISCARD AS A PENALTY <button class="action-btn inline attack" style="margin-left:15px; font-size:16px;" onclick="submitPenaltyDiscard()">Confirm</button>`;
+                targetBannerText.innerHTML = data.pendingAction.type === 'FEARLESS_FLAME_DISCARD'
+                    ? `THE FEARLESS FLAME: DISCARD 1 CARD FOR +1 TO YOUR ROLL
+                        <button class="action-btn inline attack" onclick="submitPenaltyDiscard()">DISCARD FOR +1</button>
+                        <button class="action-btn inline" onclick="socket.emit('resolve_fearless_flame_choice',{use:false})">SKIP</button>`
+                    : `SELECT ${amt} CARD(S) TO DISCARD AS A PENALTY <button class="action-btn inline attack" style="margin-left:15px; font-size:16px;" onclick="submitPenaltyDiscard()">Confirm</button>`;
 
                 if (!isMultiTargeting || multiTargetMax !== amt) {
 
@@ -6286,7 +6372,7 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
             else if (type === 'RETURN_ITEM' && !inHand && card.type === 'Hero Card' && card.equippedItem) isValid = true;
 
-            else if (['PENALTY', 'DRUID_SKILL_SACRIFICE', 'LIGHTNING_LABRYS_SACRIFICE', 'DRAGONS_BILE_SACRIFICE'].includes(type) && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE' && !inHand && isMine && card.type === 'Hero Card') isValid = true;
+            else if (['PENALTY', 'DRUID_SKILL_SACRIFICE', 'LIGHTNING_LABRYS_SACRIFICE', 'DRAGONS_BILE_SACRIFICE', 'ORACON_SACRIFICE'].includes(type) && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE' && !inHand && isMine && card.type === 'Hero Card') isValid = true;
 
             else if (type === 'FREE_ATTACK' && context.location === 'monsters') isValid = meetsMonsterRequirements(latestGameState.players[myId], card.requirement);
             else if (type === 'FREE_SLAY' && context.location === 'monsters') isValid = true;
@@ -6302,7 +6388,7 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
         } else if (isMultiTargeting) {
 
-            if (latestGameState && ['WAITING_FOR_DISCARD_PENALTY', 'WAITING_FOR_MULTIPLE_DISCARDS', 'WAITING_FOR_VARIABLE_DISCARD'].includes(latestGameState.state)) {
+            if (latestGameState && card.id !== currentPendingAction?.excludeCardId && ['WAITING_FOR_DISCARD_PENALTY', 'WAITING_FOR_MULTIPLE_DISCARDS', 'WAITING_FOR_VARIABLE_DISCARD'].includes(latestGameState.state)) {
 
                 if (context.location === 'hand' && isMine) isValid = true;
 
@@ -6350,7 +6436,7 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
             btn.onclick = () => {
 
-                if (myTargetMode && ['PENALTY', 'DRUID_SKILL_SACRIFICE', 'LIGHTNING_LABRYS_SACRIFICE', 'DRAGONS_BILE_SACRIFICE'].includes(currentPendingAction.type) && window.latestGameState?.state === 'WAITING_FOR_SACRIFICE') {
+                if (myTargetMode && ['PENALTY', 'DRUID_SKILL_SACRIFICE', 'LIGHTNING_LABRYS_SACRIFICE', 'DRAGONS_BILE_SACRIFICE', 'ORACON_SACRIFICE'].includes(currentPendingAction.type) && window.latestGameState?.state === 'WAITING_FOR_SACRIFICE') {
 
                     socket.emit('submit_penalty_sacrifice', { targetHeroId: card.id });
 
@@ -6586,7 +6672,7 @@ function handleTargetingClick(cardEl, cardId) {
 
             else if (type === 'RETURN_ITEM' && !inHand && card.type === 'Hero Card' && card.equippedItem) isValid = true;
 
-            else if (['PENALTY', 'DRUID_SKILL_SACRIFICE', 'LIGHTNING_LABRYS_SACRIFICE', 'DRAGONS_BILE_SACRIFICE'].includes(type) && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE' && !inHand && isMine && card.type === 'Hero Card') isValid = true;
+            else if (['PENALTY', 'DRUID_SKILL_SACRIFICE', 'LIGHTNING_LABRYS_SACRIFICE', 'DRAGONS_BILE_SACRIFICE', 'ORACON_SACRIFICE'].includes(type) && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE' && !inHand && isMine && card.type === 'Hero Card') isValid = true;
 
             else if (type === 'FREE_ATTACK' && context.location === 'monsters') isValid = meetsMonsterRequirements(latestGameState.players[myId], card.requirement);
             else if (type === 'FREE_SLAY' && context.location === 'monsters') isValid = true;
@@ -6595,7 +6681,7 @@ function handleTargetingClick(cardEl, cardId) {
 
             if (isValid) {
 
-                if (['PENALTY', 'DRUID_SKILL_SACRIFICE', 'LIGHTNING_LABRYS_SACRIFICE', 'DRAGONS_BILE_SACRIFICE'].includes(type) && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE') {
+                if (['PENALTY', 'DRUID_SKILL_SACRIFICE', 'LIGHTNING_LABRYS_SACRIFICE', 'DRAGONS_BILE_SACRIFICE', 'ORACON_SACRIFICE'].includes(type) && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE') {
 
                     socket.emit('submit_penalty_sacrifice', { targetHeroId: cardId });
 
@@ -6703,7 +6789,7 @@ function handleTargetingClick(cardEl, cardId) {
 
         const context = findCardContext(cardId);
 
-        if (latestGameState && ['WAITING_FOR_DISCARD_PENALTY', 'WAITING_FOR_MULTIPLE_DISCARDS', 'WAITING_FOR_VARIABLE_DISCARD'].includes(latestGameState.state)) {
+        if (latestGameState && card.id !== currentPendingAction?.excludeCardId && ['WAITING_FOR_DISCARD_PENALTY', 'WAITING_FOR_MULTIPLE_DISCARDS', 'WAITING_FOR_VARIABLE_DISCARD'].includes(latestGameState.state)) {
 
             if (context && context.location === 'hand' && context.owner === myId) {
 

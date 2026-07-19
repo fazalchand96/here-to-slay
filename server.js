@@ -98,6 +98,80 @@ function hasStealOrDestroyTarget(actorId, type) {
     return false;
 }
 
+function queueFearlessFlameChoices(entries) {
+    const eligible = entries.filter(entry => {
+        const player = gameState.players[entry.playerId];
+        return player?.leader?.effect_id === 'LEADER_SORCERER' && player.hand.length > 0;
+    });
+    gameState.pendingRoll.fearlessFlameQueue = eligible;
+    return startNextFearlessFlameChoice();
+}
+
+function startNextFearlessFlameChoice() {
+    const next = gameState.pendingRoll?.fearlessFlameQueue?.[0];
+    if (!next) {
+        if (gameState.pendingRoll) gameState.pendingRoll.fearlessFlameQueue = [];
+        gameState.pendingAction = null;
+        gameState.state = 'WAITING_FOR_MODIFIERS';
+        startModifierTimer();
+        return false;
+    }
+    gameState.state = 'WAITING_FOR_DISCARD_PENALTY';
+    gameState.pendingAction = {
+        type: 'FEARLESS_FLAME_DISCARD', playerToChoose: next.playerId,
+        originalActor: next.playerId, amount: 1, optional: true, rollSide: next.rollSide
+    };
+    io.emit('message', `${getPlayerName(gameState, next.playerId)} may discard a card for +1 with The Fearless Flame.`);
+    return true;
+}
+
+function finishFearlessFlameChoice(useBonus) {
+    const action = gameState.pendingAction;
+    const roll = gameState.pendingRoll;
+    if (!roll || action?.type !== 'FEARLESS_FLAME_DISCARD') return;
+    if (useBonus) {
+        if (roll.type === 'CHALLENGE') {
+            if (action.rollSide === 'ACTIVE') {
+                roll.activeBase += 1;
+                (roll.activeBreakdown = roll.activeBreakdown || []).push({ source: 'The Fearless Flame', value: 1 });
+            } else {
+                roll.challengerBase += 1;
+                (roll.challengerBreakdown = roll.challengerBreakdown || []).push({ source: 'The Fearless Flame', value: 1 });
+            }
+        } else {
+            roll.baseRoll += 1;
+            roll.currentRoll += 1;
+            roll.passiveBonus += 1;
+            (roll.breakdown = roll.breakdown || []).push({ source: 'The Fearless Flame', value: 1 });
+        }
+        io.emit('message', `${getPlayerName(gameState, action.playerToChoose)} gained +1 from The Fearless Flame.`);
+        if (roll.type === 'CHALLENGE') {
+            io.emit('dice_roll_pending', {
+                isChallenge: true, type: 'CHALLENGE',
+                activeId: roll.activeId, activeName: getPlayerName(gameState, roll.activeId),
+                activeRoll1: roll.activeRoll1, activeRoll2: roll.activeRoll2, activeBreakdown: roll.activeBreakdown,
+                activeTotal: roll.activeBase, activeModifierTotal: roll.activeModifiers || 0,
+                activeFinalTotal: roll.activeBase + (roll.activeModifiers || 0),
+                challengerId: roll.challengerId, challengerName: getPlayerName(gameState, roll.challengerId),
+                challengerRoll1: roll.challengerRoll1, challengerRoll2: roll.challengerRoll2,
+                challengerBreakdown: roll.challengerBreakdown, challengerTotal: roll.challengerBase,
+                challengerModifierTotal: roll.challengerModifiers || 0,
+                challengerFinalTotal: roll.challengerBase + (roll.challengerModifiers || 0), reason: 'for a CHALLENGE!'
+            });
+        } else {
+            io.emit('dice_roll_pending', {
+                rollerId: roll.rollerId, rollerName: getPlayerName(gameState, roll.rollerId),
+                roll1: roll.roll1, roll2: roll.roll2, passiveBonus: roll.passiveBonus,
+                breakdown: roll.breakdown, modifierTotal: roll.modifierTotal || 0,
+                finalTotal: roll.currentRoll, total: roll.currentRoll,
+                reason: roll.type === 'ATTACK' ? 'to attack a monster' : 'for a skill'
+            });
+        }
+    }
+    roll.fearlessFlameQueue.shift();
+    startNextFearlessFlameChoice();
+}
+
 function clearChallengeTimer() {
     if (!challengeTimer) return;
     clearTimeout(challengeTimer);
@@ -209,7 +283,7 @@ function queueLightningLabrysSacrifice(state, targetPlayerId) {
     return true;
 }
 
-const CLASSES = ['Fighter', 'Bard', 'Guardian', 'Ranger', 'Thief', 'Wizard', 'Druid', 'Warrior', 'Necromancer', 'Berserker'];
+const CLASSES = ['Fighter', 'Bard', 'Guardian', 'Ranger', 'Thief', 'Wizard', 'Druid', 'Warrior', 'Necromancer', 'Berserker', 'Sorcerer'];
 
 const TARGETING_SKILLS = ['DESTROY_HERO', 'STEAL_HERO', 'MAGIC_DESTRUCTIVE', 'SKILL_MEOWZIO', 'SKILL_SHURIKITTY', 'SKILL_TIPSY_TOOTIE', 'SKILL_WHISKERS', 'SKILL_WIGGLES', 'SKILL_SERIOUS_GREY', 'SKILL_PERFECT_VESSEL', 'SKILL_UNBRIDLED_FURY'];
 // Skills whose executeSkill consumes targetData and resolves immediately (single
@@ -217,8 +291,8 @@ const TARGETING_SKILLS = ['DESTROY_HERO', 'STEAL_HERO', 'MAGIC_DESTRUCTIVE', 'SK
 // their executeSkill sets up its own pull-targeting (LOOK_AND_PULL/PUMA_PULL/
 // CONDITIONAL_PULL), so listing them here caused a double player-selection that
 // soft-locked (you picked once, then had no clickable opponent for the pull).
-const PLAYER_TARGETING_SKILLS = ['PULL_CARD', 'SKILL_HEAVY_BEAR', 'TRADE_HANDS', 'SKILL_SHARP_FOX', 'SKILL_SILENT_SHADOW', 'SKILL_SLIPPERY_PAWS', 'SKILL_HOPPER', 'SKILL_BUCK_OMENS', 'SKILL_BLINDING_BLADE', 'SKILL_HOLLOW_HUSK', 'SKILL_BOSTON_TERROR'];
-const DISCARD_TARGETING_SKILLS = ['SKILL_GUIDING_LIGHT', 'SKILL_RADIANT_HORN', 'SKILL_LOOKIE_ROOKIE', 'SKILL_BUN_BUN', 'SKILL_MAGUS_MOOSE', 'SKILL_ANNIHILATOR', 'MAGIC_CALL_FALLEN'];
+const PLAYER_TARGETING_SKILLS = ['PULL_CARD', 'SKILL_HEAVY_BEAR', 'TRADE_HANDS', 'SKILL_SHARP_FOX', 'SKILL_SILENT_SHADOW', 'SKILL_SLIPPERY_PAWS', 'SKILL_HOPPER', 'SKILL_BUCK_OMENS', 'SKILL_BLINDING_BLADE', 'SKILL_HOLLOW_HUSK', 'SKILL_BOSTON_TERROR', 'SKILL_DYSTORTIVERN', 'SKILL_ORACON'];
+const DISCARD_TARGETING_SKILLS = ['SKILL_GUIDING_LIGHT', 'SKILL_RADIANT_HORN', 'SKILL_LOOKIE_ROOKIE', 'SKILL_BUN_BUN', 'SKILL_MAGUS_MOOSE', 'SKILL_ANNIHILATOR', 'SKILL_RENOVERN', 'SKILL_SHAMANAGA', 'MAGIC_CALL_FALLEN'];
 const SELF_ITEM_TARGETING_SKILLS = ['SKILL_HOLY_CURSELIFTER'];
 const MULTI_TARGETING_SKILLS = ['SKILL_FLUFFY', 'SKILL_TENACIOUS_TIMBER'];
 
@@ -483,7 +557,7 @@ function checkWinCondition() {
             return { winnerId: p.id, reason: 'slayed 4 monsters' };
         }
 
-        // Condition 2: 7 Different Classes in Party with this expansion.
+        // Condition 2: 9 Different Classes in Party with all live expansions.
         const classes = new Set();
         if (p.leader) classes.add(p.leader.class);
         p.party.forEach(hero => {
@@ -491,8 +565,8 @@ function checkWinCondition() {
             if (cls) classes.add(cls);
         });
 
-        if (classes.size >= 7) {
-            return { winnerId: p.id, reason: 'assembled 7 classes' };
+        if (classes.size >= 9) {
+            return { winnerId: p.id, reason: 'assembled 9 classes' };
         }
     }
     return null;
@@ -527,6 +601,8 @@ function resetGameForNextMatch() {
     gameState.pendingLumberingDraws = [];
     gameState.pendingDeferredDrawPassives = [];
     gameState.pendingEndTurnEffects = null;
+    gameState.pendingShamanagaSacrifice = null;
+    gameState.pendingSmokReveal = null;
     gameState.activePlayerSocketId = null;
     gameState.winner = null;
     clearChallengeTimer();
@@ -935,6 +1011,13 @@ function resolveLumberingContinuation(sequence) {
                 playerToChoose: player.id, originalActor: player.id, optional: true
             };
         }
+    } else if (continuation.type === 'SMOK_REVEAL') {
+        const magicIds = sequence.drawnCards
+            .filter(card => card.type === 'Magic Card' && player.hand.some(held => held.id === card.id))
+            .map(card => card.id);
+        if (magicIds.length > 0) {
+            gameState.pendingSmokReveal = { playerId: player.id, allowedCardIds: magicIds };
+        }
     } else if (continuation.type === 'START_CARD_CHALLENGE') {
         gameState.pendingCard = continuation.card;
         gameState.pendingChallenge = {
@@ -957,6 +1040,44 @@ function resolveLumberingContinuation(sequence) {
 
 function resumeExpansionChoices() {
     if (gameState.state !== 'PLAYING' || gameState.pendingAction || gameState.pendingCard || gameState.pendingChallenge) return;
+
+    if (gameState.pendingShamanagaSacrifice) {
+        const pending = gameState.pendingShamanagaSacrifice;
+        gameState.pendingShamanagaSacrifice = null;
+        const owner = gameState.players[pending.playerId];
+        const index = owner?.party?.findIndex(card => card.id === pending.heroId) ?? -1;
+        if (owner && index !== -1) {
+            const hero = owner.party[index];
+            const items = equippedItems(hero);
+            owner.party.splice(index, 1);
+            hero.equippedItem = null;
+            hero.equippedItem2 = null;
+            if (owner.maegistyActive) {
+                owner.hand.push(hero, ...items);
+                io.emit('message', `${hero.name} and its Items returned to ${getPlayerName(gameState, owner.id)}'s hand instead of being sacrificed after Shamanaga.`);
+            } else {
+                gameState.discardPile.push(hero, ...items);
+                recordSacrificeEvent(gameState, owner, hero, { isHero: true });
+                io.emit('message', `${getPlayerName(gameState, owner.id)} sacrificed ${hero.name} after resolving its effect with Shamanaga.`);
+            }
+        }
+    }
+
+    if (gameState.pendingSmokReveal) {
+        const pending = gameState.pendingSmokReveal;
+        gameState.pendingSmokReveal = null;
+        const player = gameState.players[pending.playerId];
+        const allowedCardIds = (pending.allowedCardIds || []).filter(cardId =>
+            player?.hand?.some(card => card.id === cardId && card.type === 'Magic Card'));
+        if (player && allowedCardIds.length > 0) {
+            gameState.state = 'WAITING_FOR_SMOK_CHOICE';
+            gameState.pendingAction = {
+                type: 'SMOK_REVEAL', playerToChoose: player.id,
+                originalActor: player.id, allowedCardIds
+            };
+            return;
+        }
+    }
 
     if (gameState.pendingSilentShieldActorId) {
         const playerId = gameState.pendingSilentShieldActorId;
@@ -1043,6 +1164,16 @@ function resumeExpansionChoices() {
             if (gameState.state !== 'PLAYING' || gameState.pendingAction || gameState.pendingCard) return;
             continue;
         }
+        if (trigger.type === 'CALAMITY_MONGREL_REPLACE') {
+            const card = player.hand.find(entry => entry.id === trigger.cardId && entry.type === 'Challenge Card');
+            if (!card) continue;
+            gameState.state = 'WAITING_FOR_CALAMITY_MONGREL_CHOICE';
+            gameState.pendingAction = {
+                type: 'CALAMITY_MONGREL_REPLACE', playerToChoose: player.id,
+                originalActor: player.id, cardId: card.id
+            };
+            return;
+        }
         if (trigger.type === 'DOOMBRINGER_RETRIEVE') {
             if (gameState.discardPile.length === 0) continue;
             gameState.state = 'WAITING_FOR_SKILL_TARGET';
@@ -1105,6 +1236,11 @@ function resumeExpansionChoices() {
 
 function broadcastState() {
     resumeExpansionChoices();
+    if (gameState.state === 'PLAYING' && !gameState.pendingAction && !gameState.pendingCard
+        && !gameState.pendingChallenge && !gameState.pendingGlobalAction) {
+        const winResult = checkWinCondition();
+        if (winResult) handleGameOver(winResult);
+    }
     if (gameState.state === 'WAITING_FOR_CHALLENGES' && gameState.pendingChallenge) {
         ensureChallengeTimer();
     } else {
@@ -1577,6 +1713,16 @@ function resolvePendingRoll() {
                                 ? Math.max(0, (player.slainMonsters || []).length)
                                 : 2
                         };
+                    } else if (DISCARD_TARGETING_SKILLS.includes(hero.skill_id)) {
+                        const allowedTypes = hero.skill_id === 'SKILL_RENOVERN'
+                            ? ['Item Card']
+                            : hero.skill_id === 'SKILL_SHAMANAGA'
+                                ? ['Hero Card']
+                                : null;
+                        nextAction = {
+                            type: 'SKILL_TARGET_DISCARD', originalActor: rollerId,
+                            skillId: hero.skill_id, heroId: hero.id, allowedTypes
+                        };
                     } else {
                         nextAction = {
                             type: 'EXECUTE_SKILL_IMMEDIATE',
@@ -1653,13 +1799,25 @@ function resolvePendingRoll() {
                         };
                         io.emit('message', `${getPlayerName(gameState, player.id)} successfully rolled for ${hero.name}! Waiting for them to select targets...`);
                         broadcastState();
-                    } else if (DISCARD_TARGETING_SKILLS.includes(hero.skill_id) && gameState.discardPile.length > 0) {
+                    } else if (DISCARD_TARGETING_SKILLS.includes(hero.skill_id)) {
+                        const allowedTypes = hero.skill_id === 'SKILL_RENOVERN'
+                            ? ['Item Card']
+                            : hero.skill_id === 'SKILL_SHAMANAGA'
+                                ? ['Hero Card']
+                                : null;
+                        const hasEligible = gameState.discardPile.some(card => !allowedTypes || allowedTypes.includes(card.type));
+                        if (!hasEligible) {
+                            executeSkill(gameState, io, hero.skill_id, rollerId, heroId, null);
+                            broadcastState();
+                            return;
+                        }
                         gameState.state = 'WAITING_FOR_SKILL_TARGET';
                         gameState.pendingAction = {
                             type: 'SKILL_TARGET_DISCARD',
                             originalActor: rollerId,
                             skillId: hero.skill_id,
-                            heroId: hero.id
+                            heroId: hero.id,
+                            allowedTypes
                         };
                         io.emit('message', `${getPlayerName(gameState, player.id)} successfully rolled for ${hero.name}! Waiting for them to search the discard pile...`);
                         broadcastState();
@@ -2472,6 +2630,11 @@ io.on('connection', (socket) => {
         const rollerId = gameState.pendingAction.originalActor;
         const skillId = gameState.pendingAction.skillId;
         const heroId = gameState.pendingAction.heroId;
+        if (gameState.pendingAction.type === 'SKILL_TARGET_DISCARD' && targetData?.targetCardId) {
+            const selected = gameState.discardPile.find(card => card.id === targetData.targetCardId);
+            const allowedTypes = gameState.pendingAction.allowedTypes;
+            if (!selected || (allowedTypes && !allowedTypes.includes(selected.type))) return;
+        }
 
         // Reset state
         resetToPlayingState();
@@ -2890,6 +3053,10 @@ io.on('connection', (socket) => {
             }
             const baseRoll = roll1 + roll2;
             const rollDetails = calculateRollDetails(player, baseRoll, type, targetCard);
+            if (gameState.pendingRoll.mirroryuBonus) {
+                rollDetails.total += gameState.pendingRoll.mirroryuBonus;
+                rollDetails.breakdown.push({ source: 'Mirroryu', value: gameState.pendingRoll.mirroryuBonus });
+            }
             
             gameState.state = 'WAITING_FOR_MODIFIERS';
             gameState.modifierResponses.actedPlayers = [];
@@ -2917,7 +3084,7 @@ io.on('connection', (socket) => {
                 finalTotal: rollDetails.total,
                 reason: type === 'ATTACK' ? 'to attack a monster' : 'for a skill'
             });
-            startModifierTimer();
+            queueFearlessFlameChoices([{ playerId: socket.id, rollSide: 'ROLL' }]);
             broadcastState();
         } 
         // NEW LOGIC FOR DUAL CHALLENGE ROLLS
@@ -2976,13 +3143,73 @@ io.on('connection', (socket) => {
                     challengerTotal: pRoll.challengerBase, challengerModifierTotal: 0, challengerFinalTotal: pRoll.challengerBase,
                     reason: 'for a CHALLENGE!'
                 });
-                startModifierTimer();
+                queueFearlessFlameChoices([
+                    { playerId: pRoll.activeId, rollSide: 'ACTIVE' },
+                    { playerId: pRoll.challengerId, rollSide: 'CHALLENGER' }
+                ]);
             }
             broadcastState();
         }
     });
 
 /* --- MODIFIER / DICE PHASE --- */
+    function completeDiscardCostModifier({ playerId, cardId, modValue, targetRoll }) {
+        const player = gameState.players[playerId];
+        const index = player?.hand?.findIndex(card => card.id === cardId && card.type === 'Modifier Card') ?? -1;
+        if (index === -1 || !gameState.pendingRoll) return false;
+        const card = player.hand[index];
+        const allowed = Array.isArray(card.modifier_values) ? card.modifier_values : [];
+        if (!allowed.includes(modValue)) return false;
+        if (gameState.pendingRoll.type === 'CHALLENGE' && !['ACTIVE', 'CHALLENGER'].includes(targetRoll)) return false;
+        let appliedValue = modValue;
+        if (player.leader?.effect_id === 'LEADER_GUARDIAN') appliedValue += appliedValue > 0 ? 1 : -1;
+        player.hand.splice(index, 1);
+        gameState.discardPile.push(card);
+        registerCardPlayed(card);
+        triggerCrownedSerpent(gameState, io);
+        if (gameState.pendingRoll.type === 'CHALLENGE') {
+            if (targetRoll === 'ACTIVE') gameState.pendingRoll.activeModifiers = (gameState.pendingRoll.activeModifiers || 0) + appliedValue;
+            else gameState.pendingRoll.challengerModifiers = (gameState.pendingRoll.challengerModifiers || 0) + appliedValue;
+            const roll = gameState.pendingRoll;
+            io.emit('dice_roll_pending', {
+                isChallenge: true, type: 'CHALLENGE',
+                activeId: roll.activeId, activeName: getPlayerName(gameState, roll.activeId),
+                activeRoll1: roll.activeRoll1, activeRoll2: roll.activeRoll2, activeBreakdown: roll.activeBreakdown,
+                activeTotal: roll.activeBase, activeModifierTotal: roll.activeModifiers,
+                activeFinalTotal: roll.activeBase + (roll.activeModifiers || 0),
+                challengerId: roll.challengerId, challengerName: getPlayerName(gameState, roll.challengerId),
+                challengerRoll1: roll.challengerRoll1, challengerRoll2: roll.challengerRoll2, challengerBreakdown: roll.challengerBreakdown,
+                challengerTotal: roll.challengerBase, challengerModifierTotal: roll.challengerModifiers,
+                challengerFinalTotal: roll.challengerBase + (roll.challengerModifiers || 0), reason: 'for a CHALLENGE!'
+            });
+        } else {
+            gameState.pendingRoll.modifierTotal = (gameState.pendingRoll.modifierTotal || 0) + appliedValue;
+            gameState.pendingRoll.currentRoll += appliedValue;
+            const rollingPlayerId = gameState.pendingRoll.rollerId;
+            const rollingPlayer = gameState.players[rollingPlayerId];
+            if (playerId !== rollingPlayerId && appliedValue < 0
+                && rollingPlayer?.slainMonsters?.some(monster => monster.effect_id === 'MONSTER_ABYSS_QUEEN')) {
+                gameState.pendingRoll.currentRoll += 1;
+                gameState.pendingRoll.modifierTotal += 1;
+                io.emit('message', `Abyss Queen grants +1 to ${getPlayerName(gameState, rollingPlayerId)}'s roll against the opponent's modifier!`);
+            }
+            const roll = gameState.pendingRoll;
+            io.emit('dice_roll_pending', {
+                rollerId: roll.rollerId, rollerName: getPlayerName(gameState, roll.rollerId),
+                roll1: roll.roll1, roll2: roll.roll2, passiveBonus: roll.passiveBonus,
+                breakdown: roll.breakdown, modifierTotal: roll.modifierTotal,
+                finalTotal: roll.currentRoll, total: roll.currentRoll,
+                reason: roll.type === 'ATTACK' ? 'to attack a monster' : 'for a skill'
+            });
+        }
+        gameState.passedModifiers = [];
+        gameState.pendingAction = null;
+        gameState.state = 'WAITING_FOR_MODIFIERS';
+        startModifierTimer();
+        io.emit('message', `${getPlayerName(gameState, playerId)} discarded a card to play ${card.name} for ${appliedValue >= 0 ? '+' : ''}${appliedValue}.`);
+        return true;
+    }
+
     socket.on('submit_minus_four_retrieval', ({ cardId } = {}) => {
         const action = gameState.pendingAction;
         if (gameState.state !== 'WAITING_FOR_MODIFIER_RETRIEVAL' || !action
@@ -3107,7 +3334,6 @@ io.on('connection', (socket) => {
             if (cardIndex !== -1) {
                 const card = player.hand[cardIndex];
                 if (card.type === 'Modifier Card') {
-                    registerCardPlayed(card);
 
                 // The player explicitly chooses which value to apply (a "+1/-3" card
                 // can be played as +1 OR -3, on any roll — even a minus on your own).
@@ -3130,6 +3356,28 @@ io.on('connection', (socket) => {
                     return;
                 }
 
+                if (card.discard_on_play) {
+                    if (player.hand.length < 2) {
+                        reply({ ok: false, reason: `${card.name} requires another card to discard.` });
+                        return;
+                    }
+                    if (gameState.pendingRoll.type === 'CHALLENGE' && !['ACTIVE', 'CHALLENGER'].includes(data.targetRoll)) return;
+                    if (modifierTimer) clearTimeout(modifierTimer);
+                    gameState.state = 'WAITING_FOR_DISCARD_PENALTY';
+                    gameState.pendingAction = {
+                        type: 'MODIFIER_DISCARD_COST', playerToChoose: socket.id,
+                        originalActor: socket.id, amount: 1, excludeCardId: card.id,
+                        nextAction: {
+                            type: 'COMPLETE_DISCARD_COST_MODIFIER', playerId: socket.id,
+                            cardId: card.id, modValue, targetRoll: data.targetRoll || null
+                        }
+                    };
+                    io.emit('message', `${getPlayerName(gameState, socket.id)} must discard a card to play ${card.name}.`);
+                    broadcastState();
+                    return;
+                }
+
+                registerCardPlayed(card);
                 if (player.leader && player.leader.effect_id === 'LEADER_GUARDIAN') {
                     if (modValue > 0) modValue += 1; else if (modValue < 0) modValue -= 1;
                 }
@@ -3421,6 +3669,9 @@ socket.on('resolve_immediate_play', (data) => {
                 }
                 broadcastState();
                 return;
+            } else if (pendingAction.type === 'ORACON_SACRIFICE') {
+                resetToPlayingState();
+                io.emit('message', `${getPlayerName(gameState, socket.id)} completed Oracon's sacrifice.`);
             } else if (pendingSkillId === 'SKILL_DOE_FALLOW') {
                 resetToPlayingState();
                 const amount = Math.max(0, 7 - player.hand.length);
@@ -3445,6 +3696,101 @@ socket.on('resolve_immediate_play', (data) => {
         player.untilNextTurnRollBonus = value;
         io.emit('message', `${getPlayerName(gameState, socket.id)} chose ${value > 0 ? '+' : ''}${value} with Majestelk until the start of their next turn.`);
         resetToPlayingState();
+        broadcastState();
+    });
+
+    socket.on('resolve_dragalter_choice', ({ cardId, value } = {}) => {
+        const action = gameState.pendingAction;
+        if (gameState.state !== 'WAITING_FOR_DRAGALTER_CHOICE'
+            || action?.type !== 'DRAGALTER_MODIFIER' || action.playerToChoose !== socket.id
+            || !action.allowedCardIds?.includes(cardId)) return;
+        const player = gameState.players[socket.id];
+        const index = player?.hand?.findIndex(card => card.id === cardId && card.type === 'Modifier Card') ?? -1;
+        if (index === -1) return;
+        const modifier = player.hand[index];
+        const allowed = Array.isArray(modifier.modifier_values) ? modifier.modifier_values : [];
+        if (!allowed.includes(value)) return;
+        player.hand.splice(index, 1);
+        gameState.discardPile.push(modifier);
+        player.rollBonus = (player.rollBonus || 0) + value;
+        (player.rollBonusSources = player.rollBonusSources || []).push({ source: 'Dragalter', value });
+        resetToPlayingState();
+        io.emit('message', `${getPlayerName(gameState, socket.id)} discarded ${modifier.name}; Dragalter applies ${value >= 0 ? '+' : ''}${value} to all of their rolls for the rest of this turn.`);
+        broadcastState();
+    });
+
+    socket.on('resolve_fearless_flame_choice', ({ use } = {}) => {
+        const action = gameState.pendingAction;
+        if (gameState.state !== 'WAITING_FOR_DISCARD_PENALTY'
+            || action?.type !== 'FEARLESS_FLAME_DISCARD' || action.playerToChoose !== socket.id) return;
+        if (use === true) return;
+        finishFearlessFlameChoice(false);
+        broadcastState();
+    });
+
+    socket.on('resolve_smok_choice', ({ cardId } = {}) => {
+        const action = gameState.pendingAction;
+        if (gameState.state !== 'WAITING_FOR_SMOK_CHOICE' || action?.type !== 'SMOK_REVEAL'
+            || action.playerToChoose !== socket.id) return;
+        const player = gameState.players[socket.id];
+        if (cardId) {
+            const card = player?.hand?.find(entry => entry.id === cardId && entry.type === 'Magic Card');
+            if (!card || !action.allowedCardIds?.includes(card.id)) return;
+            player.ap = (player.ap || 0) + 1;
+            io.emit('card_revealed', { playerId: socket.id, playerName: getPlayerName(gameState, socket.id), card, source: 'Smok' });
+            io.emit('message', `${getPlayerName(gameState, socket.id)} revealed ${card.name} with Smok and gained 1 extra action point this turn.`);
+        } else {
+            io.emit('message', `${getPlayerName(gameState, socket.id)} declined to reveal a Magic card for Smok.`);
+        }
+        resetToPlayingState();
+        broadcastState();
+    });
+
+    socket.on('resolve_mirroryu_choice', ({ heroId } = {}) => {
+        const action = gameState.pendingAction;
+        if (gameState.state !== 'WAITING_FOR_MIRRORYU_CHOICE' || action?.type !== 'MIRRORYU_HERO'
+            || action.playerToChoose !== socket.id || !action.allowedHeroIds?.includes(heroId)) return;
+        const player = gameState.players[socket.id];
+        const hero = player?.party?.find(card => card.id === heroId && card.skill_id);
+        if (!hero || hero.id === action.sourceHeroId || hasEquippedEffect(hero, 'ITEM_SEALING_KEY')) return;
+        gameState.state = 'WAITING_TO_ROLL';
+        gameState.pendingAction = null;
+        gameState.pendingRoll = {
+            type: 'HERO_SKILL', rollerId: socket.id, targetHeroId: hero.id,
+            roll1: 0, roll2: 0, passiveBonus: 0, modifierTotal: 0,
+            baseRoll: 0, currentRoll: 0, passedPlayers: [], apSpent: 0,
+            mirroryuBonus: 3, mirroryuFreeRoll: true
+        };
+        io.emit('message', `${getPlayerName(gameState, socket.id)} chose ${hero.name}; Mirroryu grants +3 to its immediate skill roll.`);
+        broadcastState();
+    });
+
+    socket.on('resolve_luut_choice', ({ itemId, heroId } = {}) => {
+        const action = gameState.pendingAction;
+        if (gameState.state !== 'WAITING_FOR_LUUT_CHOICE' || !action || action.playerToChoose !== socket.id) return;
+        const player = gameState.players[socket.id];
+        if (action.type === 'LUUT_ITEM') {
+            const candidate = action.availableItems?.find(entry => entry.itemId === itemId);
+            if (!candidate) return;
+            gameState.pendingAction = { ...action, type: 'LUUT_DESTINATION', selectedItem: candidate };
+            io.emit('message', `${getPlayerName(gameState, socket.id)} selected an Item with Luut and must choose a Hero to equip it to.`);
+            broadcastState();
+            return;
+        }
+        if (action.type !== 'LUUT_DESTINATION' || !action.destinationHeroIds?.includes(heroId)) return;
+        const destination = player?.party?.find(card => card.id === heroId);
+        const selected = action.selectedItem;
+        const owner = selected && gameState.players[selected.ownerId];
+        const sourceHero = owner?.party?.find(card => card.id === selected.heroId);
+        const slot = ['equippedItem', 'equippedItem2'].find(key => sourceHero?.[key]?.id === selected.itemId);
+        const targetSlot = ['equippedItem', 'equippedItem2'].slice(0, destination?.item_slots || 1)
+            .find(key => destination && !destination[key]);
+        if (!slot || !targetSlot) return;
+        const item = sourceHero[slot];
+        sourceHero[slot] = null;
+        destination[targetSlot] = item;
+        resetToPlayingState();
+        io.emit('message', `${getPlayerName(gameState, socket.id)} stole ${item.name} with Luut and equipped it to ${destination.name}.`);
         broadcastState();
     });
 
@@ -3573,6 +3919,25 @@ socket.on('resolve_immediate_play', (data) => {
         broadcastState();
     });
 
+    socket.on('resolve_calamity_mongrel_choice', ({ use } = {}) => {
+        const action = gameState.pendingAction;
+        if (gameState.state !== 'WAITING_FOR_CALAMITY_MONGREL_CHOICE'
+            || action?.type !== 'CALAMITY_MONGREL_REPLACE' || action.playerToChoose !== socket.id) return;
+        const player = gameState.players[socket.id];
+        const index = player?.hand?.findIndex(card => card.id === action.cardId && card.type === 'Challenge Card') ?? -1;
+        resetToPlayingState();
+        if (use === true && index !== -1) {
+            const challenge = player.hand.splice(index, 1)[0];
+            gameState.discardPile.push(challenge);
+            const queued = queueLumberingDrawSequence(gameState, player, 2, null, 'Calamity Mongrel');
+            if (!queued) drawCardsWithPassives(gameState, io, 2, player);
+            io.emit('message', `${getPlayerName(gameState, socket.id)} discarded ${challenge.name} with Calamity Mongrel and drew 2 cards.`);
+        } else {
+            io.emit('message', `${getPlayerName(gameState, socket.id)} kept the Challenge card drawn with Calamity Mongrel.`);
+        }
+        broadcastState();
+    });
+
     socket.on('resolve_end_turn_monster_effect', ({ use } = {}) => {
         const action = gameState.pendingAction;
         if (gameState.state !== 'WAITING_FOR_END_TURN_CHOICE'
@@ -3630,6 +3995,14 @@ socket.on('resolve_immediate_play', (data) => {
             if (socket.id !== gameState.pendingAction.playerToChoose) return;
             if (!cardIds || !Array.isArray(cardIds) || cardIds.length !== gameState.pendingAction.amount) return;
 
+            const uniqueIds = [...new Set(cardIds)];
+            if (uniqueIds.length !== cardIds.length) return;
+            const allowedTypes = gameState.pendingAction.allowedTypes;
+            const excludedCardId = gameState.pendingAction.excludeCardId;
+            if (!uniqueIds.every(cardId => player.hand.some(card => card.id === cardId
+                && card.id !== excludedCardId
+                && (!allowedTypes || allowedTypes.includes(card.type))))) return;
+
             for (const cardId of cardIds) {
                 const cardIndex = player.hand.findIndex(c => c.id === cardId);
                 if (cardIndex !== -1) {
@@ -3639,7 +4012,35 @@ socket.on('resolve_immediate_play', (data) => {
             }
             
             io.emit('message', `${getPlayerName(gameState, socket.id)} discarded ${cardIds.length} card(s)!`);
+            if (gameState.pendingAction.type === 'FEARLESS_FLAME_DISCARD') {
+                finishFearlessFlameChoice(true);
+                broadcastState();
+                return;
+            }
             const nextAction = gameState.pendingAction.nextAction;
+            if (nextAction?.type === 'EGG_OF_FORTUNE_PULLS') {
+                const actor = gameState.players[nextAction.playerId];
+                let pulled = 0;
+                if (actor) {
+                    gameState.playerOrder.forEach(targetId => {
+                        if (targetId === actor.id) return;
+                        const target = gameState.players[targetId];
+                        if (!target || target.hand.length === 0) return;
+                        const index = Math.floor(Math.random() * target.hand.length);
+                        actor.hand.push(target.hand.splice(index, 1)[0]);
+                        pulled += 1;
+                    });
+                }
+                resetToPlayingState();
+                io.emit('message', `${getPlayerName(gameState, nextAction.playerId)} pulled ${pulled} card${pulled === 1 ? '' : 's'} from other players with Egg of Fortune.`);
+                broadcastState();
+                return;
+            }
+            if (nextAction?.type === 'COMPLETE_DISCARD_COST_MODIFIER') {
+                completeDiscardCostModifier(nextAction);
+                broadcastState();
+                return;
+            }
             if (nextAction?.type === 'COMPLETE_LUMBERING_DEMON_DRAW') {
                 const sequence = gameState.pendingLumberingDraws?.[0];
                 completeLumberingDrawStep(sequence, nextAction.drawn || []);
@@ -4315,6 +4716,8 @@ function startGame() {
     gameState.pendingLumberingDraws = [];
     gameState.pendingDeferredDrawPassives = [];
     gameState.pendingEndTurnEffects = null;
+    gameState.pendingShamanagaSacrifice = null;
+    gameState.pendingSmokReveal = null;
     if (modifierTimer) clearTimeout(modifierTimer);
     clearChallengeTimer();
 

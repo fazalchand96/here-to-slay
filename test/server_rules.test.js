@@ -497,25 +497,26 @@ test('Venomous Gemini counts as two slain Monsters', () => {
     assert.match(res.reason, /4 monsters/);
 });
 
-test('assembling 7 different classes (leader + party) wins with expansion Heroes live', () => {
+test('assembling 9 different classes (leader + party) wins with expansion Heroes live', () => {
     setBoard([{
         leader: leader('LEADER_WIZARD', 'Wizard'),
         party: [
             heroOf('Fighter'), heroOf('Bard'), heroOf('Guardian'),
             heroOf('Ranger'), heroOf('Thief'), heroOf('Druid'),
+            heroOf('Warrior'), heroOf('Sorcerer'),
         ],
     }]);
     const res = checkWinCondition();
     assert.equal(res.winnerId, 'p0');
-    assert.match(res.reason, /7 classes/);
+    assert.match(res.reason, /9 classes/);
 });
 
-test('duplicate classes do NOT count toward the 7-class win', () => {
+test('duplicate classes do NOT count toward the 9-class win', () => {
     setBoard([{
         leader: leader('LEADER_FIGHTER', 'Fighter'),
         party: [heroOf('Fighter'), heroOf('Fighter'), heroOf('Bard'), heroOf('Thief'), heroOf('Ranger')],
     }]);
-    // Distinct classes: Fighter, Bard, Thief, Ranger = 4 < 7
+    // Distinct classes: Fighter, Bard, Thief, Ranger = 4 < 9
     assert.equal(checkWinCondition(), null);
 });
 
@@ -529,19 +530,20 @@ test('a Mask makes the equipped Hero count as the Mask\'s class for requirements
     assert.equal(meetsMonsterRequirements(fighterWithBardMask, '1 Fighter'), false); // original class is replaced
 });
 
-test('a Mask can complete the 7-class win by changing a duplicate class', () => {
-    // Leader Fighter + {Bard, Guardian, Ranger, Thief, Druid} + a second Fighter
-    // wearing a Wizard Mask -> the masked hero counts as Wizard -> 7 classes.
+test('a Mask can complete the 9-class win by changing a duplicate class', () => {
+    // Leader Fighter + seven other classes + a second Fighter wearing a
+    // Sorcerer Mask -> the masked hero counts as Sorcerer -> 9 classes.
     setBoard([{
         leader: leader('LEADER_FIGHTER', 'Fighter'),
         party: [
             heroOf('Bard'), heroOf('Guardian'), heroOf('Ranger'), heroOf('Thief'), heroOf('Druid'),
-            heroOf('Fighter', { equippedItem: item('ITEM_MASK', 'Wizard Mask') }),
+            heroOf('Wizard'), heroOf('Warrior'),
+            heroOf('Fighter', { equippedItem: { ...item('ITEM_MASK', 'Sorcerer Mask'), class: 'Sorcerer' } }),
         ],
     }]);
     const res = checkWinCondition();
     assert.equal(res && res.winnerId, 'p0');
-    assert.match(res.reason, /7 classes/);
+    assert.match(res.reason, /9 classes/);
 });
 
 test('only expansion cards with full card art enter live decks', () => {

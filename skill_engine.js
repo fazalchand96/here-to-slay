@@ -326,6 +326,13 @@ function applyDrawnCardPassives(gameState, io, player, card) {
     if (!player || !card) return;
     const hasRex = (player.slainMonsters || []).some(m => m.effect_id === 'MONSTER_REX_MAJOR');
     const hasOrthus = (player.slainMonsters || []).some(m => m.effect_id === 'MONSTER_ORTHUS');
+    const hasCalamityMongrel = (player.slainMonsters || []).some(m => m.effect_id === 'MONSTER_CALAMITY_MONGREL');
+    if (hasCalamityMongrel && card.type === 'Challenge Card') {
+        if (!gameState.pendingMonsterTriggers) gameState.pendingMonsterTriggers = [];
+        gameState.pendingMonsterTriggers.push({
+            type: 'CALAMITY_MONGREL_REPLACE', playerId: player.id, cardId: card.id
+        });
+    }
     if (hasOrthus && card.type === 'Magic Card' && !gameState.pendingCard) {
         const handIndex = player.hand.findIndex(candidate => candidate.id === card.id);
         if (handIndex !== -1) player.hand.splice(handIndex, 1);
@@ -551,12 +558,167 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
     console.log(`Executing skill ${skillId} for hero ${heroName} by player ${rollerId}`);
     let actionMessage = `${getPlayerName(gameState, player.id)} successfully used ${heroName}'s skill!`;
 
+    // The roll has already resolved before this function runs. Start from the
+    // normal action state; multi-step effects below replace it with their own
+    // explicit waiting state. This also prevents immediate skills from leaving
+    // the game stranded in the expired modifier window.
+    if (gameState.state === 'WAITING_FOR_MODIFIERS') gameState.state = 'PLAYING';
+
     // Helper to draw cards securely
     const drawCards = (num, p) => drawCardsWithPassives(gameState, io, num, p);
     const drawEffect = (num, p, continuation, source = heroName) =>
         drawCardsForEffect(gameState, io, num, p, continuation, source);
 
     switch(skillId) {
+        // --- DRAGON SORCERER EXPANSION ---
+        case 'SKILL_DRAGALTER': {
+            const modifiers = player.hand.filter(card => card.type === 'Modifier Card');
+            if (modifiers.length > 0) {
+                gameState.state = 'WAITING_FOR_DRAGALTER_CHOICE';
+                gameState.pendingAction = {
+                    type: 'DRAGALTER_MODIFIER', playerToChoose: rollerId,
+                    originalActor: rollerId, allowedCardIds: modifiers.map(card => card.id)
+                };
+                actionMessage = `${getPlayerName(gameState, player.id)} must choose a Modifier to discard for Dragalter.`;
+            } else {
+                actionMessage = `${getPlayerName(gameState, player.id)} has no Modifier to discard for Dragalter.`;
+            }
+            break;
+        }
+        case 'SKILL_DYSTORTIVERN': {
+            const target = targetData?.targetPlayerId && gameState.players[targetData.targetPlayerId];
+            if (target && target.id !== rollerId && player.leader && target.leader) {
+                [player.leader, target.leader] = [target.leader, player.leader];
+                actionMessage = `${getPlayerName(gameState, player.id)} traded Party Leaders with ${getPlayerName(gameState, target.id)} using Dystortivern.`;
+            } else {
+                actionMessage = `Dystortivern could not trade Party Leaders.`;
+            }
+            break;
+        }
+        case 'SKILL_EXTRAGA': {
+            let returned = 0;
+            Object.values(gameState.players || {}).forEach(owner => {
+                for (let index = owner.party.length - 1; index >= 0; index--) {
+                    const otherHero = owner.party[index];
+                    if (otherHero.id === heroId || effectiveHeroClass(otherHero) !== 'Sorcerer') continue;
+                    owner.party.splice(index, 1);
+                    const items = equippedItems(otherHero);
+                    otherHero.equippedItem = null;
+                    otherHero.equippedItem2 = null;
+                    otherHero.usedSkillThisTurn = false;
+                    owner.hand.push(otherHero, ...items);
+                    returned += 1;
+                }
+            });
+            actionMessage = `${getPlayerName(gameState, player.id)} returned ${returned} other Sorcerer${returned === 1 ? '' : 's'} to their owners' hands with Extraga.`;
+            break;
+        }
+        case 'SKILL_LUUT': {
+            const equipped = [];
+            Object.entries(gameState.players || {}).forEach(([ownerId, owner]) => {
+                if (ownerId === rollerId) return;
+                (owner.party || []).forEach(targetHero => equippedItems(targetHero)
+                    .filter(item => item.type === 'Item Card')
+                    .forEach(item => {
+                    equipped.push({ ownerId, heroId: targetHero.id, itemId: item.id });
+                }));
+            });
+            const destinations = (player.party || []).filter(targetHero => equippedItems(targetHero).length < (targetHero.item_slots || 1));
+            if (equipped.length > 0 && destinations.length > 0) {
+                gameState.state = 'WAITING_FOR_LUUT_CHOICE';
+                gameState.pendingAction = {
+                    type: 'LUUT_ITEM', playerToChoose: rollerId, originalActor: rollerId,
+                    availableItems: equipped, destinationHeroIds: destinations.map(card => card.id)
+                };
+                actionMessage = `${getPlayerName(gameState, player.id)} must choose an equipped Item to steal with Luut.`;
+            } else {
+                actionMessage = `Luut has no legal Item and destination Hero combination.`;
+            }
+            break;
+        }
+        case 'SKILL_MIRRORYU': {
+            const targets = (player.party || []).filter(card => card.id !== heroId && card.skill_id && !hasEquippedEffect(card, 'ITEM_SEALING_KEY'));
+            if (targets.length > 0) {
+                gameState.state = 'WAITING_FOR_MIRRORYU_CHOICE';
+                gameState.pendingAction = {
+                    type: 'MIRRORYU_HERO', playerToChoose: rollerId, originalActor: rollerId,
+                    sourceHeroId: heroId, allowedHeroIds: targets.map(card => card.id)
+                };
+                actionMessage = `${getPlayerName(gameState, player.id)} must choose another Hero for Mirroryu.`;
+            } else {
+                actionMessage = `Mirroryu has no other Hero effect to copy.`;
+            }
+            break;
+        }
+        case 'SKILL_ORACON': {
+            const target = targetData?.targetPlayerId && gameState.players[targetData.targetPlayerId];
+            if (target && target.id !== rollerId && target.hand.length > 0) {
+                const pulled = target.hand.splice(Math.floor(Math.random() * target.hand.length), 1)[0];
+                player.hand.push(pulled);
+                if (pulled.type === 'Modifier Card' && target.party.some(card => card.type === 'Hero Card')) {
+                    gameState.state = 'WAITING_FOR_SACRIFICE';
+                    gameState.pendingAction = {
+                        type: 'ORACON_SACRIFICE', playerToChoose: target.id,
+                        originalActor: rollerId, skillId
+                    };
+                }
+                actionMessage = `${getPlayerName(gameState, player.id)} pulled a card from ${getPlayerName(gameState, target.id)} with Oracon${pulled.type === 'Modifier Card' ? '; it was a Modifier' : ''}.`;
+            } else {
+                actionMessage = `Oracon had no card to pull.`;
+            }
+            break;
+        }
+        case 'SKILL_RENOVERN': {
+            const index = gameState.discardPile.findIndex(card => card.id === targetData?.targetCardId && card.type === 'Item Card');
+            if (index !== -1) {
+                const item = gameState.discardPile.splice(index, 1)[0];
+                player.hand.push(item);
+                gameState.state = 'WAITING_FOR_HAND_SELECTION';
+                gameState.pendingAction = {
+                    type: 'PLAY_FROM_HAND', allowedTypes: ['Item Card'], allowedCardIds: [item.id],
+                    playerToChoose: rollerId, originalActor: rollerId, expansionFreePlay: true,
+                    mandatory: true, source: heroName
+                };
+                actionMessage = `${getPlayerName(gameState, player.id)} retrieved ${item.name} and must play it immediately with Renovern.`;
+            } else {
+                actionMessage = `Renovern found no Item card to play.`;
+            }
+            break;
+        }
+        case 'SKILL_SHAMANAGA': {
+            const index = gameState.discardPile.findIndex(card => card.id === targetData?.targetCardId && card.type === 'Hero Card');
+            if (index !== -1) {
+                const summoned = gameState.discardPile.splice(index, 1)[0];
+                summoned.usedSkillThisTurn = false;
+                player.party.push(summoned);
+                gameState.pendingShamanagaSacrifice = { playerId: rollerId, heroId: summoned.id };
+                gameState.state = 'WAITING_TO_ROLL';
+                gameState.pendingAction = null;
+                gameState.pendingRoll = {
+                    type: 'HERO_SKILL', rollerId, targetHeroId: summoned.id,
+                    roll1: 0, roll2: 0, passiveBonus: 0, modifierTotal: 0,
+                    baseRoll: 0, currentRoll: 0, passedPlayers: [], apSpent: 0,
+                    shamanagaFreeRoll: true
+                };
+                actionMessage = `${getPlayerName(gameState, player.id)} brought ${summoned.name} into their Party and must roll its effect immediately with Shamanaga.`;
+            } else {
+                actionMessage = `Shamanaga found no Hero card in the discard pile.`;
+            }
+            break;
+        }
+        case 'SKILL_SMOK': {
+            const result = drawEffect(2, player, { type: 'SMOK_REVEAL', playerId: rollerId }, 'Smok');
+            if (!result.queued) {
+                const magicCards = result.drawn.filter(card => card.type === 'Magic Card');
+                if (magicCards.length > 0) {
+                    gameState.pendingSmokReveal = {
+                        playerId: rollerId, allowedCardIds: magicCards.map(card => card.id)
+                    };
+                }
+            }
+            actionMessage = `${getPlayerName(gameState, player.id)} drew 2 cards with Smok${gameState.pendingSmokReveal ? ' and may reveal a Magic card' : ''}.`;
+            break;
+        }
         // --- WARRIOR & DRUID EXPANSION ---
         case 'SKILL_BIG_BUCKLEY':
             gameState.state = 'PLAYING';
@@ -1728,6 +1890,19 @@ function executeMagic(gameState, io, effectId, playerId, targetData) {
         drawCardsForEffect(gameState, io, num, p, continuation, source);
 
     switch(effectId) {
+        case 'MAGIC_EGG_OF_FORTUNE':
+            if (player.hand.length > 0) {
+                gameState.state = 'WAITING_FOR_DISCARD_PENALTY';
+                gameState.pendingAction = {
+                    type: 'EGG_OF_FORTUNE_DISCARD', playerToChoose: playerId,
+                    originalActor: playerId, amount: 1,
+                    nextAction: { type: 'EGG_OF_FORTUNE_PULLS', playerId }
+                };
+                actionMessage = `${getPlayerName(gameState, player.id)} must discard a card before Egg of Fortune pulls from every opponent.`;
+            } else {
+                actionMessage = `${getPlayerName(gameState, player.id)} had no card to discard, so Egg of Fortune ended without pulling cards.`;
+            }
+            break;
         case 'MAGIC_MASS_SACRIFICE': {
             const discarded = player.hand.splice(0);
             gameState.discardPile.push(...discarded);

@@ -47,6 +47,7 @@
     --class-warrior: #9b5962;
     --class-necromancer: #75509d;
     --class-berserker: #b84845;
+    --class-sorcerer: #d88932;
 
     /* Radii */
     --r-card: 8px;
@@ -7654,7 +7655,7 @@ body.landscape #player-win-tracker {
 }
 .party-class-grid {
     display: grid;
-    grid-template-columns: repeat(10, minmax(64px, 1fr));
+    grid-template-columns: repeat(11, minmax(58px, 1fr));
     align-items: start;
     gap: 7px;
     width: 100%;
@@ -7677,7 +7678,7 @@ body.landscape #player-win-tracker {
     margin-bottom: 6px;
     color: #f8e5ae;
     font-family: var(--font-display);
-    font-size: clamp(.46rem, .85vw, .64rem);
+    font-size: clamp(.42rem, .72vw, .54rem);
     text-transform: uppercase;
     text-shadow: 0 1px 2px #000;
 }
@@ -7730,7 +7731,7 @@ body.landscape #player-win-tracker {
 @media (max-width: 760px) {
     #party-dock { grid-template-columns: minmax(120px, 1fr) minmax(110px, 1.1fr) 62px 24px; padding: 7px 8px; }
     .party-dock-copy small { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
-    .party-class-grid { grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; }
+    .party-class-grid { grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 3px; }
     .party-class-column { padding-inline: 1px; }
     .party-class-column > header { gap: 2px; font-size: clamp(.38rem, 1.45vw, .5rem); }
 }
@@ -7914,7 +7915,7 @@ body.landscape #player-hand.cards-many::after { display: none !important; }
 #opponent-modal.own-party-view .party-class-grid {
     flex: 1 1 auto;
     min-height: 0;
-    grid-template-columns: repeat(10, minmax(0, 1fr));
+    grid-template-columns: repeat(11, minmax(0, 1fr));
     overflow: hidden;
 }
 #opponent-modal.own-party-view .party-class-column {
@@ -7965,7 +7966,7 @@ body.landscape #player-hand.cards-many::after { display: none !important; }
         padding-right: clamp(26px, 5vw, 38px) !important;
     }
     #opponent-modal.own-party-view .party-class-grid {
-        grid-template-columns: repeat(10, minmax(0, 1fr)) !important;
+        grid-template-columns: repeat(11, minmax(0, 1fr)) !important;
         gap: 3px;
     }
     #opponent-modal.own-party-view .party-class-stack .card {

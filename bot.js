@@ -18,7 +18,7 @@ let latestData = null; // last full gameStateUpdate, used by the self-recovery t
 
 const ALL_CLASSES = [
     'Fighter', 'Bard', 'Guardian', 'Ranger', 'Thief',
-    'Wizard', 'Druid', 'Warrior', 'Necromancer', 'Berserker'
+    'Wizard', 'Druid', 'Warrior', 'Necromancer', 'Berserker', 'Sorcerer'
 ];
 
 function equippedItems(hero) {
@@ -31,6 +31,11 @@ function effectiveHeroClass(hero) {
     if (mask.class) return mask.class;
     const match = /^(\w+)\s+Mask$/.exec(mask.name || '');
     return match ? match[1] : hero.class;
+}
+
+function playerHasEffectiveClass(player, className) {
+    return player?.leader?.class === className
+        || (player?.party || []).some(hero => effectiveHeroClass(hero) === className);
 }
 
 function firstPartyCardId(player, allowedTarget = 'ANY_PARTY_CARD') {
@@ -439,7 +444,8 @@ function handleGameState(data) {
                 if (!isThinking) {
                     isThinking = true;
                     setTimeout(() => {
-                        const challengeCards = (player.hand || []).filter(c => c.type === 'Challenge Card');
+                        const challengeCards = (player.hand || []).filter(card => card.type === 'Challenge Card'
+                            && (!card.required_class || playerHasEffectiveClass(player, card.required_class)));
                         const shouldChallenge = Math.random() < 0.5 && challengeCards.length > 0;
                         if (shouldChallenge) {
                             const chosenCard = challengeCards[Math.floor(Math.random() * challengeCards.length)];
@@ -513,13 +519,78 @@ function handleGameState(data) {
                 isThinking = true;
                 setTimeout(() => {
                     const requiredCount = pAction.amount || pAction.maxAmount || 1;
-                    const cardIds = (player.hand || []).slice(0, requiredCount).map(c => c.id);
+                    const cardIds = (player.hand || [])
+                        .filter(card => card.id !== pAction.excludeCardId)
+                        .slice(0, requiredCount)
+                        .map(c => c.id);
                     console.log(`[${botName}] Discard required (${data.state}): Submitting discard of ${cardIds.length} card(s)...`);
                     socket.emit('submit_penalty_discard', { cardIds });
                     isThinking = false;
                 }, delay);
             }
         }
+        return;
+    }
+
+    if (data.state === 'WAITING_FOR_DRAGALTER_CHOICE'
+        && data.pendingAction?.playerToChoose === myId && !isThinking) {
+        isThinking = true;
+        setTimeout(() => {
+            const modifier = (player.hand || []).find(card => data.pendingAction.allowedCardIds?.includes(card.id));
+            const value = modifier?.modifier_values?.find(entry => entry > 0) ?? modifier?.modifier_values?.[0];
+            if (modifier && Number.isFinite(value)) {
+                socket.emit('resolve_dragalter_choice', { cardId: modifier.id, value });
+            }
+            isThinking = false;
+        }, delay);
+        return;
+    }
+
+    if (data.state === 'WAITING_FOR_SMOK_CHOICE'
+        && data.pendingAction?.playerToChoose === myId && !isThinking) {
+        isThinking = true;
+        setTimeout(() => {
+            const cardId = data.pendingAction.allowedCardIds?.[0];
+            socket.emit('resolve_smok_choice', cardId ? { cardId } : {});
+            isThinking = false;
+        }, delay);
+        return;
+    }
+
+    if (data.state === 'WAITING_FOR_MIRRORYU_CHOICE'
+        && data.pendingAction?.playerToChoose === myId && !isThinking) {
+        isThinking = true;
+        setTimeout(() => {
+            const heroId = data.pendingAction.allowedHeroIds?.[0];
+            if (heroId) socket.emit('resolve_mirroryu_choice', { heroId });
+            isThinking = false;
+        }, delay);
+        return;
+    }
+
+    if (data.state === 'WAITING_FOR_LUUT_CHOICE'
+        && data.pendingAction?.playerToChoose === myId && !isThinking) {
+        isThinking = true;
+        setTimeout(() => {
+            if (data.pendingAction.type === 'LUUT_ITEM') {
+                const itemId = data.pendingAction.availableItems?.[0]?.itemId;
+                if (itemId) socket.emit('resolve_luut_choice', { itemId });
+            } else {
+                const heroId = data.pendingAction.destinationHeroIds?.[0];
+                if (heroId) socket.emit('resolve_luut_choice', { heroId });
+            }
+            isThinking = false;
+        }, delay);
+        return;
+    }
+
+    if (data.state === 'WAITING_FOR_CALAMITY_MONGREL_CHOICE'
+        && data.pendingAction?.playerToChoose === myId && !isThinking) {
+        isThinking = true;
+        setTimeout(() => {
+            socket.emit('resolve_calamity_mongrel_choice', { use: true });
+            isThinking = false;
+        }, delay);
         return;
     }
 
@@ -707,7 +778,8 @@ socket.on('dice_roll_pending', (data) => {
         
         const myId = socket.id;
         const player = latestPlayersState ? latestPlayersState[myId] : null;
-        const modifierCards = (player && player.hand) ? player.hand.filter(c => c.type === 'Modifier Card') : [];
+        const modifierCards = (player && player.hand) ? player.hand.filter(card => card.type === 'Modifier Card'
+            && (!card.discard_on_play || player.hand.length >= 2)) : [];
 
         const shouldPlay = Math.random() < 0.3 && modifierCards.length > 0;
         const delay = Math.floor(Math.random() * 300) + 200; // 200-500ms
