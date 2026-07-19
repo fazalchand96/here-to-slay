@@ -603,6 +603,9 @@ function resetGameForNextMatch() {
     gameState.pendingAction = null;
     gameState.pendingRoll = null;
     gameState.pendingChallenge = null;
+    gameState.pendingCard = null;
+    gameState.pendingPeek = null;
+    gameState.pendingGlobalAction = null;
     gameState.pendingPassiveDraws = [];
     gameState.pendingMonsterTriggers = [];
     gameState.pendingLumberingDraws = [];
@@ -610,22 +613,37 @@ function resetGameForNextMatch() {
     gameState.pendingEndTurnEffects = null;
     gameState.pendingShamanagaSacrifice = null;
     gameState.pendingSmokReveal = null;
+    gameState.pendingSilentShieldActorId = null;
+    gameState.freePlayQueue = [];
+    gameState.forcedEndTurnPlayerId = null;
+    gameState.waitingForInput = false;
+    gameState.modifierResponses = { actedPlayers: [], totalPlayers: 0 };
     gameState.activePlayerSocketId = null;
     gameState.winner = null;
+    if (modifierTimer) clearTimeout(modifierTimer);
+    modifierTimer = null;
     clearChallengeTimer();
     clearRexMajorChoices(gameState);
+    debugForcedRoll = null;
 
     // Reset individual player stats but keep connections and order
     for (const playerId of gameState.playerOrder) {
         const player = gameState.players[playerId];
         if (player) {
-            player.hand = [];
-            player.party = [];
-            player.slainMonsters = [];
-            player.leader = null;
-            player.ap = 0;
-            player.hasSelectedLeader = false;
-            player.hasRerolledLeader = false;
+            gameState.players[playerId] = {
+                id: player.id,
+                name: player.name,
+                hand: [],
+                party: [],
+                slainMonsters: [],
+                leader: null,
+                ap: 0,
+                connected: player.connected !== false,
+                away: Boolean(player.away),
+                disconnectedAt: player.disconnectedAt || null,
+                hasSelectedLeader: false,
+                hasRerolledLeader: false
+            };
         }
     }
 
@@ -2329,6 +2347,18 @@ io.on('connection', (socket) => {
         // Only allow reset if the game is over
         if (gameState.state !== 'GAMEOVER') return;
         resetGameForNextMatch();
+    });
+
+    socket.on('host_reset_game', (ack) => {
+        const hostId = gameState.playerOrder[0];
+        if (!hostId || socket.id !== hostId) {
+            if (typeof ack === 'function') ack({ ok: false, error: 'Only the host can reset the game.' });
+            return;
+        }
+        const hostName = getPlayerName(gameState, socket.id);
+        io.emit('message', `${hostName} reset the game and returned everyone to the lobby.`);
+        resetGameForNextMatch();
+        if (typeof ack === 'function') ack({ ok: true });
     });
 
     socket.on('play_item_action', (data) => {
@@ -4787,4 +4817,5 @@ module.exports = {
     restoreDragonWaspHero,
     completeLumberingDrawStep,
     resolveLumberingContinuation,
+    resetGameForNextMatch,
 };

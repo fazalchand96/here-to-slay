@@ -1757,6 +1757,11 @@ socket.on('gameStateUpdate', (data) => {
     latestGameState = data;
     updateWaitingOverlay(data);
 
+    const hostResetButton = document.getElementById('host-reset-game-btn');
+    if (hostResetButton) {
+        hostResetButton.classList.toggle('hidden', data.playerOrder?.[0] !== myId || data.state === 'LOBBY');
+    }
+
     // Mirror the live state onto window so other code paths (and e2e tests) can
     // read it — `let` bindings don't become window properties on their own.
     window.latestGameState = data;
@@ -5809,6 +5814,20 @@ function passModifierPhase() {
         passBtn.innerText = 'NO MODIFIERS TO PLAY';
     });
 
+}
+
+function requestHostGameReset() {
+    if (!latestGameState || latestGameState.playerOrder?.[0] !== myId) return;
+    const confirmed = window.confirm(
+        'Reset the current game? Everyone will return to the lobby and all match progress will be cleared.'
+    );
+    if (!confirmed) return;
+
+    socket.emit('host_reset_game', response => {
+        if (response?.ok === false) {
+            window.alert(response.error || 'The game could not be reset.');
+        }
+    });
 }
 
 function openGruesomeGladiatorChoice(cards, targetName) {

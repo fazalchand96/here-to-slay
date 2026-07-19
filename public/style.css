@@ -2842,6 +2842,18 @@ body.landscape #event-console #challenge-modal .challenge-buttons-container .act
     box-shadow: 0 1px 2px rgba(0, 8, 30, 0.92), inset 0 1px 1px rgba(255,255,255,0.75) !important;
 }
 
+.host-reset-game-btn {
+    flex: 0 0 auto;
+    width: calc(100% - 16px);
+    min-height: 34px;
+    margin: 5px 8px 8px;
+    padding: 6px 12px !important;
+    font-size: clamp(0.62rem, 1.7vw, 0.78rem) !important;
+    color: #fff1d2 !important;
+    border-color: #d79a56 !important;
+    filter: saturate(0.9) hue-rotate(325deg);
+}
+
 /* Each settled result has its own baked face image. This keeps the eyes crisp
    on small phones and prevents decorative layers from obscuring the outcome. */
 #event-console .die[data-roll="1"] { background-image: url('assets/skin/anim/die-blue-gold-1.webp') !important; }

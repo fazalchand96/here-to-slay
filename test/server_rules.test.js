@@ -29,10 +29,44 @@ const {
     restoreDragonWaspHero,
     completeLumberingDrawStep,
     resolveLumberingContinuation,
+    resetGameForNextMatch,
     CHALLENGE_TIMEOUT_MS,
     loadCards,
     gameState
 } = require('../server');
+
+test('emergency reset returns connected players to a clean lobby', () => {
+    const previous = { ...gameState };
+    try {
+        gameState.state = 'WAITING_FOR_MODIFIERS';
+        gameState.playerOrder = ['host'];
+        gameState.players = {
+            host: {
+                id: 'host', name: 'Host', connected: true, away: false,
+                hand: [{ id: 'card' }], party: [{ id: 'hero' }], slainMonsters: [{ id: 'monster' }],
+                leader: { id: 'leader' }, ap: 2, rollBonus: 5, cannotBeStolen: true
+            }
+        };
+        gameState.pendingAction = { type: 'DISCARD' };
+        gameState.pendingRoll = { type: 'ATTACK' };
+        gameState.pendingGlobalAction = { type: 'TEST' };
+
+        resetGameForNextMatch();
+
+        assert.equal(gameState.state, 'LOBBY');
+        assert.equal(gameState.pendingAction, null);
+        assert.equal(gameState.pendingRoll, null);
+        assert.equal(gameState.pendingGlobalAction, null);
+        assert.deepEqual(gameState.players.host.hand, []);
+        assert.deepEqual(gameState.players.host.party, []);
+        assert.equal(gameState.players.host.name, 'Host');
+        assert.equal(gameState.players.host.rollBonus, undefined);
+        assert.equal(gameState.players.host.cannotBeStolen, undefined);
+    } finally {
+        for (const key of Object.keys(gameState)) delete gameState[key];
+        Object.assign(gameState, previous);
+    }
+});
 
 // ---------------------------------------------------------------------------
 // Tiny factories
