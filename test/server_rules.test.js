@@ -30,10 +30,49 @@ const {
     completeLumberingDrawStep,
     resolveLumberingContinuation,
     resetGameForNextMatch,
+    resolvePendingCard,
     CHALLENGE_TIMEOUT_MS,
     loadCards,
     gameState
 } = require('../server');
+
+test('Lightning Labrys keeps its variable-discard phase after card resolution', () => {
+    const previous = { ...gameState };
+    try {
+        const labrys = {
+            id: 'labrys',
+            name: 'Lightning Labrys',
+            type: 'Magic Card',
+            effect_id: 'MAGIC_LIGHTNING_LABRYS'
+        };
+        gameState.state = 'WAITING_FOR_CHALLENGES';
+        gameState.playerOrder = ['caster'];
+        gameState.players = {
+            caster: {
+                id: 'caster', name: 'Caster', connected: true,
+                hand: [{ id: 'one' }, { id: 'two' }], party: [], slainMonsters: [], ap: 2
+            }
+        };
+        gameState.discardPile = [];
+        gameState.pendingChallenge = { rollerId: 'caster', card: labrys, passedPlayers: [] };
+        gameState.pendingAction = null;
+
+        resolvePendingCard();
+
+        assert.equal(gameState.state, 'WAITING_FOR_VARIABLE_DISCARD');
+        assert.deepEqual(gameState.pendingAction, {
+            type: 'LIGHTNING_LABRYS_DISCARD',
+            playerToChoose: 'caster',
+            originalActor: 'caster',
+            maxAmount: 2,
+            optional: true
+        });
+        assert.equal(gameState.discardPile.some(card => card.id === 'labrys'), true);
+    } finally {
+        for (const key of Object.keys(gameState)) delete gameState[key];
+        Object.assign(gameState, previous);
+    }
+});
 
 test('emergency reset returns connected players to a clean lobby', () => {
     const previous = { ...gameState };

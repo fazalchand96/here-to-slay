@@ -1373,7 +1373,11 @@ function resolvePendingCard() {
                 // A Magic card set up a follow-up targeting action (e.g. Forced
                 // Exchange / Entangling Trap / Winds of Change). Return to PLAYING
                 // but keep the pendingAction — resetToPlayingState would null it.
-                gameState.state = 'PLAYING';
+                // Preserve dedicated follow-up states set by Magic effects, such
+                // as Lightning Labrys' variable discard selection.
+                if (gameState.state === 'WAITING_FOR_CHALLENGES') {
+                    gameState.state = 'PLAYING';
+                }
             } else if (gameState.state !== 'WAITING_FOR_ACTION_TARGET' && gameState.state !== 'PROMPT_SKILL_ROLL') {
                 resetToPlayingState();
             }
@@ -4818,4 +4822,5 @@ module.exports = {
     completeLumberingDrawStep,
     resolveLumberingContinuation,
     resetGameForNextMatch,
+    resolvePendingCard,
 };
