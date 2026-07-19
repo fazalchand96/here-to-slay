@@ -494,17 +494,24 @@ function attackCostAllowedTypes(attackCost) {
     return [attackCost.discard];
 }
 
-function startMonsterAttackRoll(playerId, monsterId) {
+function canPayMonsterAttackCost(player, monster) {
+    const cost = monster?.attack_cost;
+    if (!cost?.count) return true;
+    const allowedTypes = attackCostAllowedTypes(cost);
+    return (player?.hand || []).filter(card => !allowedTypes || allowedTypes.includes(card.type)).length >= cost.count;
+}
+
+function startMonsterAttackRoll(playerId, monsterId, { freeAttack = false } = {}) {
     const player = gameState.players[playerId];
     const monster = gameState.activeMonsters.find(card => card.id === monsterId);
-    if (!player || !monster || player.ap < 2 || !meetsMonsterRequirements(player, monster.requirement)) return false;
-    player.ap -= 2;
+    if (!player || !monster || (!freeAttack && player.ap < 2) || !meetsMonsterRequirements(player, monster.requirement)) return false;
+    if (!freeAttack) player.ap -= 2;
     gameState.state = 'WAITING_TO_ROLL';
     gameState.pendingAction = null;
     gameState.pendingRoll = {
         type: 'ATTACK', rollerId: playerId, targetId: monster.id,
         roll1: 0, roll2: 0, passiveBonus: 0, modifierTotal: 0,
-        baseRoll: 0, currentRoll: 0, passedPlayers: []
+        baseRoll: 0, currentRoll: 0, passedPlayers: [], freeAttack
     };
     return true;
 }
@@ -3011,8 +3018,7 @@ io.on('connection', (socket) => {
         const cost = monster.attack_cost;
         if (cost?.count > 0) {
             const allowedTypes = attackCostAllowedTypes(cost);
-            const eligible = player.hand.filter(card => !allowedTypes || allowedTypes.includes(card.type));
-            if (eligible.length < cost.count) {
+            if (!canPayMonsterAttackCost(player, monster)) {
                 io.to(socket.id).emit('message', `You need ${cost.count} ${cost.discard === 'ANY' ? '' : cost.discard + ' '}card${cost.count === 1 ? '' : 's'} to attack ${monster.name}.`);
                 return;
             }
@@ -4275,14 +4281,23 @@ socket.on('resolve_immediate_play', (data) => {
         if (pAction.type === 'FREE_ATTACK') {
             const monster = gameState.activeMonsters.find(card => card.id === targetId);
             if (!monster || !meetsMonsterRequirements(player, monster.requirement)) return;
-            gameState.pendingAction = null;
-            gameState.state = 'WAITING_TO_ROLL';
-            gameState.pendingRoll = {
-                type: 'ATTACK', rollerId: socket.id, targetId: monster.id,
-                roll1: 0, roll2: 0, passiveBonus: 0, modifierTotal: 0,
-                baseRoll: 0, currentRoll: 0, passedPlayers: [], freeAttack: true
-            };
-            io.emit('message', `${getPlayerName(gameState, socket.id)} selected ${monster.name} for Big Buckley's free attack.`);
+            const cost = monster.attack_cost;
+            if (cost?.count > 0) {
+                if (!canPayMonsterAttackCost(player, monster)) {
+                    io.to(socket.id).emit('message', `You need ${cost.count} ${cost.discard === 'ANY' ? '' : cost.discard + ' '}card${cost.count === 1 ? '' : 's'} to attack ${monster.name}.`);
+                    return;
+                }
+                gameState.pendingAction = {
+                    type: 'DISCARD', playerToChoose: socket.id, originalActor: socket.id,
+                    amount: cost.count, allowedTypes: attackCostAllowedTypes(cost),
+                    nextAction: { type: 'START_FREE_MONSTER_ATTACK', monsterId: monster.id, playerId: socket.id }
+                };
+                io.emit('message', `${getPlayerName(gameState, socket.id)} must pay ${monster.name}'s discard cost before the free attack.`);
+            } else {
+                gameState.pendingAction = null;
+                startMonsterAttackRoll(socket.id, monster.id, { freeAttack: true });
+                io.emit('message', `${getPlayerName(gameState, socket.id)} selected ${monster.name} for Big Buckley's free attack.`);
+            }
             broadcastState();
             return;
         }
@@ -4332,9 +4347,9 @@ socket.on('resolve_immediate_play', (data) => {
                                 io.emit('message', `${getPlayerName(gameState, actor.id)} prevents every other player from playing Modifiers until the end of the turn.`);
                             }
                             resetToPlayingState();
-                        } else if (next.type === 'START_MONSTER_ATTACK') {
+                        } else if (next.type === 'START_MONSTER_ATTACK' || next.type === 'START_FREE_MONSTER_ATTACK') {
                             gameState.pendingAction = null;
-                            if (!startMonsterAttackRoll(next.playerId, next.monsterId)) {
+                            if (!startMonsterAttackRoll(next.playerId, next.monsterId, { freeAttack: next.type === 'START_FREE_MONSTER_ATTACK' })) {
                                 resetToPlayingState();
                                 io.emit('message', `The Monster attack could not start after its cost was paid.`);
                             }
@@ -4767,6 +4782,7 @@ module.exports = {
     queuePassiveDraw,
     triggerPlayedCardMonsterPassives,
     attackCostAllowedTypes,
+    canPayMonsterAttackCost,
     eligibleEndTurnMonsterEffects,
     restoreDragonWaspHero,
     completeLumberingDrawStep,

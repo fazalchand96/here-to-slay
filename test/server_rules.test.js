@@ -24,6 +24,7 @@ const {
     queueLightningLabrysSacrifice,
     triggerPlayedCardMonsterPassives,
     attackCostAllowedTypes,
+    canPayMonsterAttackCost,
     eligibleEndTurnMonsterEffects,
     restoreDragonWaspHero,
     completeLumberingDrawStep,
@@ -177,6 +178,13 @@ test('Monster attack costs accept the exact printed discard categories', () => {
     assert.deepEqual(attackCostAllowedTypes({ discard: 'Item Card', count: 1, include_cursed: true }), [
         'Item Card', 'Cursed Item Card'
     ]);
+});
+
+test('Voltclaw Lion requires a Magic card for normal and free attacks', () => {
+    const voltclaw = { attack_cost: { discard: 'Magic Card', count: 1 } };
+    assert.equal(canPayMonsterAttackCost({ hand: [] }, voltclaw), false);
+    assert.equal(canPayMonsterAttackCost({ hand: [{ type: 'Modifier Card' }] }, voltclaw), false);
+    assert.equal(canPayMonsterAttackCost({ hand: [{ type: 'Magic Card' }] }, voltclaw), true);
 });
 
 test('empty-hand end-turn Monster effects are queued in deterministic order', () => {

@@ -648,6 +648,28 @@ function meetsMonsterRequirements(playerData, reqString) {
 
 }
 
+function monsterAttackCostAllowedTypes(attackCost) {
+    if (!attackCost?.discard || attackCost.discard === 'ANY') return null;
+    if (attackCost.discard === 'Item Card' && attackCost.include_cursed) {
+        return ['Item Card', 'Cursed Item Card'];
+    }
+    return [attackCost.discard];
+}
+
+function canPayMonsterAttackCost(playerData, monster) {
+    const cost = monster?.attack_cost;
+    if (!cost?.count) return true;
+    const allowedTypes = monsterAttackCostAllowedTypes(cost);
+    return (playerData?.hand || []).filter(card => !allowedTypes || allowedTypes.includes(card.type)).length >= cost.count;
+}
+
+function monsterAttackCostLabel(monster) {
+    const cost = monster?.attack_cost;
+    if (!cost?.count) return '';
+    const cardType = cost.discard === 'ANY' ? 'Card' : cost.discard;
+    return `Discard ${cost.count} ${cardType}${cost.count === 1 ? '' : 's'}`;
+}
+
 
 
 // DOM Elements
@@ -1289,7 +1311,8 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
 
     if (isMonster && isMyTurn && !isTargetMode && !isSkillTargeting && !isMultiTargeting && !isLocalTargeting && latestGameState && latestGameState.state === 'PLAYING') {
 
-        const canAttack = meetsMonsterRequirements(latestGameState.players[myId], card.requirement);
+        const canAttack = meetsMonsterRequirements(latestGameState.players[myId], card.requirement)
+            && canPayMonsterAttackCost(latestGameState.players[myId], card);
 
         if (canAttack) {
 
@@ -1300,7 +1323,9 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
     }
 
     if (isMonster && myTargetMode && ['FREE_ATTACK', 'FREE_SLAY'].includes(currentPendingAction?.type)
-        && (currentPendingAction.type === 'FREE_SLAY' || meetsMonsterRequirements(latestGameState.players[myId], card.requirement))) {
+        && (currentPendingAction.type === 'FREE_SLAY'
+            || (meetsMonsterRequirements(latestGameState.players[myId], card.requirement)
+                && canPayMonsterAttackCost(latestGameState.players[myId], card)))) {
         glowClass += ' attackable-monster valid-target';
     }
 
@@ -6279,8 +6304,10 @@ window.inspectCard = function(cardId, scopedContext = null) {
     if (context.location === 'monsters' && myTargetMode && ['FREE_ATTACK', 'FREE_SLAY'].includes(currentPendingAction?.type)) {
         const btn = document.createElement('button');
         btn.className = 'action-btn attack';
-        btn.innerText = 'ATTACK FOR FREE';
-        btn.disabled = !meetsMonsterRequirements(latestGameState.players[myId], card.requirement);
+        const attackCostLabel = monsterAttackCostLabel(card);
+        btn.innerText = attackCostLabel ? `ATTACK FOR FREE + ${attackCostLabel.toUpperCase()}` : 'ATTACK FOR FREE';
+        btn.disabled = !meetsMonsterRequirements(latestGameState.players[myId], card.requirement)
+            || !canPayMonsterAttackCost(latestGameState.players[myId], card);
         btn.onclick = () => { selectTarget(card.id); closeInspectorModal(); };
         modalActions.appendChild(btn);
     } else if (context.location === 'monsters' && !isTargetMode) {
@@ -6293,17 +6320,19 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
             btn.style.background = '#ef4444';
 
-            btn.innerText = 'Attack Monster (2 AP)';
+            const attackCostLabel = monsterAttackCostLabel(card);
+            btn.innerText = attackCostLabel ? `Attack Monster (2 AP + ${attackCostLabel})` : 'Attack Monster (2 AP)';
 
             
 
             const canAttack = meetsMonsterRequirements(latestGameState.players[myId], card.requirement);
+            const canPayCost = canPayMonsterAttackCost(latestGameState.players[myId], card);
 
             const myAp = latestGameState.players[myId]?.ap || 0;
 
             
 
-            if (myAp >= 2 && canAttack) {
+            if (myAp >= 2 && canAttack && canPayCost) {
 
                 btn.onclick = () => {
 
@@ -6326,6 +6355,11 @@ window.inspectCard = function(cardId, scopedContext = null) {
                     btn.title = "You do not meet party requirements to attack this monster.";
 
                     btn.innerText = "Locked: Requirements Unmet";
+
+                } else if (!canPayCost) {
+
+                    btn.title = `You must ${attackCostLabel.toLowerCase()} to attack this monster.`;
+                    btn.innerText = `Locked: ${attackCostLabel}`;
 
                 } else {
 
@@ -6374,7 +6408,7 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
             else if (['PENALTY', 'DRUID_SKILL_SACRIFICE', 'LIGHTNING_LABRYS_SACRIFICE', 'DRAGONS_BILE_SACRIFICE', 'ORACON_SACRIFICE'].includes(type) && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE' && !inHand && isMine && card.type === 'Hero Card') isValid = true;
 
-            else if (type === 'FREE_ATTACK' && context.location === 'monsters') isValid = meetsMonsterRequirements(latestGameState.players[myId], card.requirement);
+            else if (type === 'FREE_ATTACK' && context.location === 'monsters') isValid = meetsMonsterRequirements(latestGameState.players[myId], card.requirement) && canPayMonsterAttackCost(latestGameState.players[myId], card);
             else if (type === 'FREE_SLAY' && context.location === 'monsters') isValid = true;
 
         } else if (isLocalTargeting) {
@@ -6674,7 +6708,7 @@ function handleTargetingClick(cardEl, cardId) {
 
             else if (['PENALTY', 'DRUID_SKILL_SACRIFICE', 'LIGHTNING_LABRYS_SACRIFICE', 'DRAGONS_BILE_SACRIFICE', 'ORACON_SACRIFICE'].includes(type) && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE' && !inHand && isMine && card.type === 'Hero Card') isValid = true;
 
-            else if (type === 'FREE_ATTACK' && context.location === 'monsters') isValid = meetsMonsterRequirements(latestGameState.players[myId], card.requirement);
+            else if (type === 'FREE_ATTACK' && context.location === 'monsters') isValid = meetsMonsterRequirements(latestGameState.players[myId], card.requirement) && canPayMonsterAttackCost(latestGameState.players[myId], card);
             else if (type === 'FREE_SLAY' && context.location === 'monsters') isValid = true;
 
             
