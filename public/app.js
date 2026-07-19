@@ -6282,7 +6282,7 @@ window.inspectCard = function(cardId, scopedContext = null) {
         btn.innerText = 'ATTACK FOR FREE';
         btn.disabled = !meetsMonsterRequirements(latestGameState.players[myId], card.requirement);
         btn.onclick = () => { selectTarget(card.id); closeInspectorModal(); };
-        actions.appendChild(btn);
+        modalActions.appendChild(btn);
     } else if (context.location === 'monsters' && !isTargetMode) {
 
         if (isMyTurn && isPlayingState) {
