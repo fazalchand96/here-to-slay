@@ -186,7 +186,6 @@ test('all extra Monster attack costs recognize their legal payments', () => {
         { type: 'Challenge Card' },
         { type: 'Cursed Item Card' }
     ];
-    assert.equal(canPayMonsterAttackCost({ hand: [] }, { attack_cost: { discard: 'HAND' } }), true);
     assert.equal(canPayMonsterAttackCost({ hand }, { attack_cost: { discard: 'ANY', count: 2 } }), true);
     assert.equal(canPayMonsterAttackCost({ hand }, { attack_cost: { discard: 'Magic Card', count: 1 } }), true);
     assert.equal(canPayMonsterAttackCost({ hand }, { attack_cost: { discard: 'Challenge Card', count: 1 } }), true);

@@ -496,7 +496,6 @@ function attackCostAllowedTypes(attackCost) {
 
 function canPayMonsterAttackCost(player, monster) {
     const cost = monster?.attack_cost;
-    if (cost?.discard === 'HAND') return true;
     if (!cost?.count) return true;
     const allowedTypes = attackCostAllowedTypes(cost);
     return (player?.hand || []).filter(card => !allowedTypes || allowedTypes.includes(card.type)).length >= cost.count;
@@ -3017,14 +3016,6 @@ io.on('connection', (socket) => {
         if (!meetsMonsterRequirements(player, monster.requirement)) return socket.emit('error', 'Requirements not met');
         
         const cost = monster.attack_cost;
-        if (cost?.discard === 'HAND') {
-            const discardedCount = player.hand.length;
-            gameState.discardPile.push(...player.hand.splice(0));
-            io.emit('message', `${getPlayerName(gameState, socket.id)} discarded ${discardedCount} card${discardedCount === 1 ? '' : 's'} from their hand to attack ${monster.name}.`);
-            startMonsterAttackRoll(socket.id, monster.id);
-            broadcastState();
-            return;
-        }
         if (cost?.count > 0) {
             const allowedTypes = attackCostAllowedTypes(cost);
             if (!canPayMonsterAttackCost(player, monster)) {
@@ -4291,13 +4282,7 @@ socket.on('resolve_immediate_play', (data) => {
             const monster = gameState.activeMonsters.find(card => card.id === targetId);
             if (!monster || !meetsMonsterRequirements(player, monster.requirement)) return;
             const cost = monster.attack_cost;
-            if (cost?.discard === 'HAND') {
-                const discardedCount = player.hand.length;
-                gameState.discardPile.push(...player.hand.splice(0));
-                gameState.pendingAction = null;
-                startMonsterAttackRoll(socket.id, monster.id, { freeAttack: true });
-                io.emit('message', `${getPlayerName(gameState, socket.id)} discarded ${discardedCount} card${discardedCount === 1 ? '' : 's'} from their hand for Big Buckley's free attack on ${monster.name}.`);
-            } else if (cost?.count > 0) {
+            if (cost?.count > 0) {
                 if (!canPayMonsterAttackCost(player, monster)) {
                     io.to(socket.id).emit('message', `You need ${cost.count} ${cost.discard === 'ANY' ? '' : cost.discard + ' '}card${cost.count === 1 ? '' : 's'} to attack ${monster.name}.`);
                     return;

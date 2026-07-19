@@ -67,6 +67,27 @@ test('Monster Expansion contains all 13 unique physical monsters', () => {
     assert.ok(monsterExpansion.every(card => card.effect_id?.startsWith('MONSTER_')));
 });
 
+test('Monster discard requirements are distinct from failed-roll penalties', () => {
+    const byName = name => cards.find(card => card.name === name);
+    const doombringer = byName('Doombringer');
+    assert.equal(doombringer.attack_cost, undefined);
+    assert.equal(doombringer.penaltyAction, 'DISCARD_HAND');
+
+    const requiredDiscards = {
+        'Ancient Megashark': ['ANY', 1],
+        'Dragon Wasp': ['ANY', 2],
+        'Possessed Plush': ['Challenge Card', 1],
+        'Voltclaw Lion': ['Magic Card', 1],
+        'Wicked Sea Serpent': ['Item Card', 1]
+    };
+    for (const [name, [discard, count]] of Object.entries(requiredDiscards)) {
+        const monster = byName(name);
+        assert.equal(monster.attack_cost.discard, discard);
+        assert.equal(monster.attack_cost.count, count);
+        assert.equal(monster.penaltyAction, 'SACRIFICE_HERO');
+    }
+});
+
 test('all repository card IDs remain unique after both expansions', () => {
     assert.equal(new Set(cards.map(card => card.id)).size, cards.length);
 });

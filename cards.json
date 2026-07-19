@@ -2180,7 +2180,6 @@
     "name": "Doombringer",
     "type": "Monster Card",
     "requirement": "1 Necromancer, 1 Hero",
-    "attack_cost": { "discard": "HAND" },
     "effect": "Each time you SACRIFICE a card, you may choose a card from the discard pile and add it to your hand.",
     "imageUrl": "",
     "slayRoll": 8,

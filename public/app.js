@@ -658,7 +658,6 @@ function monsterAttackCostAllowedTypes(attackCost) {
 
 function canPayMonsterAttackCost(playerData, monster) {
     const cost = monster?.attack_cost;
-    if (cost?.discard === 'HAND') return true;
     if (!cost?.count) return true;
     const allowedTypes = monsterAttackCostAllowedTypes(cost);
     return (playerData?.hand || []).filter(card => !allowedTypes || allowedTypes.includes(card.type)).length >= cost.count;
@@ -666,7 +665,6 @@ function canPayMonsterAttackCost(playerData, monster) {
 
 function monsterAttackCostLabel(monster) {
     const cost = monster?.attack_cost;
-    if (cost?.discard === 'HAND') return 'Discard your hand';
     if (!cost?.count) return '';
     const cardType = cost.discard === 'ANY' ? 'Card' : cost.discard;
     return `Discard ${cost.count} ${cardType}${cost.count === 1 ? '' : 's'}`;
