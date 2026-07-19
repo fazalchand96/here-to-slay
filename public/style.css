@@ -2800,7 +2800,7 @@ body.landscape #event-console #challenge-modal .challenge-buttons-container .act
 #event-console .die {
     width: 65px !important;
     height: 65px !important;
-    background: url('assets/skin/anim/die-blue-gold-face.png') center / contain no-repeat !important;
+    background: url('assets/skin/anim/die-blue-gold-face.webp') center / contain no-repeat !important;
     border: 0 !important;
     border-radius: 0 !important;
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.42) !important;
@@ -2843,12 +2843,12 @@ body.landscape #event-console #challenge-modal .challenge-buttons-container .act
 
 /* Each settled result has its own baked face image. This keeps the eyes crisp
    on small phones and prevents decorative layers from obscuring the outcome. */
-#event-console .die[data-roll="1"] { background-image: url('assets/skin/anim/die-blue-gold-1.png') !important; }
-#event-console .die[data-roll="2"] { background-image: url('assets/skin/anim/die-blue-gold-2.png') !important; }
-#event-console .die[data-roll="3"] { background-image: url('assets/skin/anim/die-blue-gold-3.png') !important; }
-#event-console .die[data-roll="4"] { background-image: url('assets/skin/anim/die-blue-gold-4.png') !important; }
-#event-console .die[data-roll="5"] { background-image: url('assets/skin/anim/die-blue-gold-5.png') !important; }
-#event-console .die[data-roll="6"] { background-image: url('assets/skin/anim/die-blue-gold-6.png') !important; }
+#event-console .die[data-roll="1"] { background-image: url('assets/skin/anim/die-blue-gold-1.webp') !important; }
+#event-console .die[data-roll="2"] { background-image: url('assets/skin/anim/die-blue-gold-2.webp') !important; }
+#event-console .die[data-roll="3"] { background-image: url('assets/skin/anim/die-blue-gold-3.webp') !important; }
+#event-console .die[data-roll="4"] { background-image: url('assets/skin/anim/die-blue-gold-4.webp') !important; }
+#event-console .die[data-roll="5"] { background-image: url('assets/skin/anim/die-blue-gold-5.webp') !important; }
+#event-console .die[data-roll="6"] { background-image: url('assets/skin/anim/die-blue-gold-6.webp') !important; }
 #event-console .die[data-roll="1"] .pip,
 #event-console .die[data-roll="2"] .pip,
 #event-console .die[data-roll="3"] .pip,
@@ -4394,13 +4394,13 @@ body {
     background-color: #160f0b !important;
     background:
         radial-gradient(circle at 50% 48%, rgba(255, 210, 130, 0.1), rgba(0, 0, 0, 0.25) 45%, rgba(0, 0, 0, 0.92) 100%),
-        url('assets/skin/premium-tabletop-landscape.png') center / cover no-repeat !important;
+        url('assets/skin/premium-tabletop-landscape.webp') center / cover no-repeat !important;
 }
 
 body.portrait {
     background:
         radial-gradient(circle at 50% 42%, rgba(255, 210, 130, 0.12), rgba(0, 0, 0, 0.22) 45%, rgba(0, 0, 0, 0.9) 100%),
-        url('assets/skin/premium-tabletop-portrait.png') center / cover no-repeat !important;
+        url('assets/skin/premium-tabletop-portrait.webp') center / cover no-repeat !important;
 }
 
 #app-container,
@@ -4541,7 +4541,7 @@ button.action-btn,
 .glass-panel .action-btn {
     background:
         linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.18)),
-        url('assets/skin/buttons/primary.png') center / 100% 100% no-repeat !important;
+        url('assets/skin/buttons/primary.webp') center / 100% 100% no-repeat !important;
     border-color: transparent !important;
 }
 
@@ -4550,7 +4550,7 @@ button.action-btn,
 .action-btn.attack {
     background:
         linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.18)),
-        url('assets/skin/buttons/danger-red.png') center / 100% 100% no-repeat !important;
+        url('assets/skin/buttons/danger-red.webp') center / 100% 100% no-repeat !important;
     border-color: rgba(255, 192, 143, 0.7) !important;
     color: #fff7e8 !important;
     text-shadow: 0 1px 2px rgba(0,0,0,0.62) !important;
@@ -4559,7 +4559,7 @@ button.action-btn,
 #draw-card-btn {
     background:
         linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.18)),
-        url('assets/skin/buttons/draw-blue.png') center / 100% 100% no-repeat !important;
+        url('assets/skin/buttons/draw-blue.webp') center / 100% 100% no-repeat !important;
     color: #f6fbff !important;
     text-shadow: 0 1px 2px rgba(0,0,0,0.72) !important;
 }
@@ -4567,14 +4567,14 @@ button.action-btn,
 #discard-draw-btn {
     background:
         linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.18)),
-        url('assets/skin/buttons/reload-amber.png') center / 100% 100% no-repeat !important;
+        url('assets/skin/buttons/reload-amber.webp') center / 100% 100% no-repeat !important;
 }
 
 .action-btn:disabled,
 .action-bar .action-btn:disabled {
     background:
         linear-gradient(180deg, rgba(0,0,0,0.12), rgba(0,0,0,0.34)),
-        url('assets/skin/buttons/disabled-dark.png') center / 100% 100% no-repeat !important;
+        url('assets/skin/buttons/disabled-dark.webp') center / 100% 100% no-repeat !important;
     border-color: rgba(128, 98, 58, 0.65) !important;
     color: rgba(255, 236, 196, 0.38) !important;
     box-shadow: inset 0 2px 8px rgba(0,0,0,0.5) !important;
@@ -4616,7 +4616,7 @@ button.action-btn,
     border-width: 2px !important;
     background:
         linear-gradient(180deg, rgba(255, 248, 228, 0.62), rgba(234, 215, 174, 0.78)),
-        url('assets/skin/textures/parchment.png') center / cover no-repeat !important;
+        url('assets/skin/textures/parchment.webp') center / cover no-repeat !important;
     box-shadow:
         inset 0 0 0 1px rgba(255,255,255,0.38),
         inset 0 -9px 16px rgba(97, 57, 23, 0.12) !important;
@@ -4830,7 +4830,7 @@ button.action-btn,
 .card.card-monster .card-face {
     background:
         linear-gradient(180deg, rgba(44, 22, 32, 0.86), rgba(19, 8, 13, 0.92)),
-        url('assets/skin/textures/monster-leather.png') center / cover no-repeat !important;
+        url('assets/skin/textures/monster-leather.webp') center / cover no-repeat !important;
     border-color: #ff6f75 !important;
 }
 
@@ -4857,7 +4857,7 @@ button.action-btn,
 #main-deck {
     background:
         linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.18)),
-        url('assets/skin/cards/back-hidden.png') center / cover no-repeat !important;
+        url('assets/skin/cards/back-hidden.webp') center / cover no-repeat !important;
     border: 2px solid var(--skin-brass-hot) !important;
     box-shadow:
         inset 0 0 0 2px rgba(47, 24, 10, 0.52),
@@ -4868,7 +4868,7 @@ button.action-btn,
 #main-deck {
     background:
         linear-gradient(180deg, rgba(0,0,0,0.04), rgba(0,0,0,0.16)),
-        url('assets/skin/cards/back-main.png') center / cover no-repeat !important;
+        url('assets/skin/cards/back-main.webp') center / cover no-repeat !important;
     color: #fff3c2 !important;
     text-shadow: 0 2px 4px rgba(0,0,0,0.85), 0 0 6px rgba(0,0,0,0.7) !important;
 }
@@ -5066,32 +5066,32 @@ body.landscape #player-party.cards-crowded .card {
 /* Asset-backed card frames, crests and control icons. */
 .card.type-hero-card {
     background:
-        var(--hero-frame, url('assets/skin/frames/hero.png')) center / 100% 100% no-repeat,
+        var(--hero-frame, url('assets/skin/frames/hero.webp')) center / 100% 100% no-repeat,
         linear-gradient(135deg, rgba(255, 232, 160, 0.9), rgba(89, 51, 24, 0.95) 52%, rgba(32, 20, 13, 0.96)) !important;
 }
-.card.type-hero-card.class-fighter  { --hero-frame: url('assets/skin/frames/hero-fighter.png'); }
-.card.type-hero-card.class-bard     { --hero-frame: url('assets/skin/frames/hero-bard.png'); }
-.card.type-hero-card.class-guardian { --hero-frame: url('assets/skin/frames/hero-guardian.png'); }
-.card.type-hero-card.class-ranger   { --hero-frame: url('assets/skin/frames/hero-ranger.png'); }
-.card.type-hero-card.class-thief    { --hero-frame: url('assets/skin/frames/hero-thief.png'); }
-.card.type-hero-card.class-wizard   { --hero-frame: url('assets/skin/frames/hero-wizard.png'); }
+.card.type-hero-card.class-fighter  { --hero-frame: url('assets/skin/frames/hero-fighter.webp'); }
+.card.type-hero-card.class-bard     { --hero-frame: url('assets/skin/frames/hero-bard.webp'); }
+.card.type-hero-card.class-guardian { --hero-frame: url('assets/skin/frames/hero-guardian.webp'); }
+.card.type-hero-card.class-ranger   { --hero-frame: url('assets/skin/frames/hero-ranger.webp'); }
+.card.type-hero-card.class-thief    { --hero-frame: url('assets/skin/frames/hero-thief.webp'); }
+.card.type-hero-card.class-wizard   { --hero-frame: url('assets/skin/frames/hero-wizard.webp'); }
 
 .card.type-monster-card,
 .card.card-monster {
     background:
-        url('assets/skin/frames/monster.png') center / 100% 100% no-repeat,
+        url('assets/skin/frames/monster.webp') center / 100% 100% no-repeat,
         linear-gradient(135deg, #ff8d7d, #5b151f 48%, #1b090c) !important;
 }
 
 .card.type-magic-card {
     background:
-        url('assets/skin/frames/magic.png') center / 100% 100% no-repeat,
+        url('assets/skin/frames/magic.webp') center / 100% 100% no-repeat,
         linear-gradient(135deg, #d4b4ff, #5a2b86 48%, #1e1030) !important;
 }
 
 .card.type-item-card {
     background:
-        url('assets/skin/frames/item.png') center / 100% 100% no-repeat,
+        url('assets/skin/frames/item.webp') center / 100% 100% no-repeat,
         linear-gradient(135deg, #f6d27b, #69441e 48%, #20130b) !important;
 }
 
@@ -5099,29 +5099,29 @@ body.landscape #player-party.cards-crowded .card {
    from a boon at a glance. They get their own corrupted frame. */
 .card.type-cursed-item-card {
     background:
-        url('assets/skin/frames/cursed.png') center / 100% 100% no-repeat,
+        url('assets/skin/frames/cursed.webp') center / 100% 100% no-repeat,
         linear-gradient(135deg, #8fd48a, #244a20 48%, #0b1508) !important;
 }
 
 .card.type-modifier-card {
     background:
-        url('assets/skin/frames/modifier.png') center / 100% 100% no-repeat,
+        url('assets/skin/frames/modifier.webp') center / 100% 100% no-repeat,
         linear-gradient(135deg, #9ee6ff, #1e6d91 48%, #0c2635) !important;
 }
 
 .card.type-challenge-card {
     background:
-        url('assets/skin/frames/challenge.png') center / 100% 100% no-repeat,
+        url('assets/skin/frames/challenge.webp') center / 100% 100% no-repeat,
         linear-gradient(135deg, #ff9a54, #9b3a18 48%, #2a1009) !important;
 }
 
-/* The leader was using cards/back-leader.png — a card BACK, which has no art
+/* The leader was using cards/back-leader.webp — a card BACK, which has no art
    window — so a Party Leader read as a blank ornate slab rather than a framed
    card. It gets the regal leader frame like every other type. */
 .card.card-leader,
 .card.type-party-leader {
     background:
-        url('assets/skin/frames/leader.png') center / 100% 100% no-repeat,
+        url('assets/skin/frames/leader.webp') center / 100% 100% no-repeat,
         linear-gradient(135deg, #ffe48c, #c6577b 48%, #4b1527) !important;
 }
 
@@ -5144,12 +5144,12 @@ body.landscape #player-party.cards-crowded .card {
    "shadow" icon. crest-v2 is one badge per class, showing that class's animal —
    the same animal used in the card art (Fighter=bear, Bard=squirrel,
    Guardian=unicorn, Ranger=fox, Thief=cat, Wizard=rabbit). */
-.class-fighter  { --class-crest: url('assets/skin/icons/crest-v2/fighter.png'); }
-.class-bard     { --class-crest: url('assets/skin/icons/crest-v2/bard.png'); }
-.class-guardian { --class-crest: url('assets/skin/icons/crest-v2/guardian.png'); }
-.class-ranger   { --class-crest: url('assets/skin/icons/crest-v2/ranger.png'); }
-.class-thief    { --class-crest: url('assets/skin/icons/crest-v2/thief.png'); }
-.class-wizard   { --class-crest: url('assets/skin/icons/crest-v2/wizard.png'); }
+.class-fighter  { --class-crest: url('assets/skin/icons/crest-v2/fighter.webp'); }
+.class-bard     { --class-crest: url('assets/skin/icons/crest-v2/bard.webp'); }
+.class-guardian { --class-crest: url('assets/skin/icons/crest-v2/guardian.webp'); }
+.class-ranger   { --class-crest: url('assets/skin/icons/crest-v2/ranger.webp'); }
+.class-thief    { --class-crest: url('assets/skin/icons/crest-v2/thief.webp'); }
+.class-wizard   { --class-crest: url('assets/skin/icons/crest-v2/wizard.webp'); }
 
 /* A Party Leader must show WHICH class it leads. The leader frame's top medallion
    is an intentionally empty heraldic disc; drop the class crest into it. (The old
@@ -5176,7 +5176,7 @@ body.landscape #player-party.cards-crowded .card {
     font-size: 0 !important;
     background:
         linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.2)),
-        url('assets/skin/buttons/icon-round.png') center / 100% 100% no-repeat !important;
+        url('assets/skin/buttons/icon-round.webp') center / 100% 100% no-repeat !important;
 }
 
 #mute-btn::after,
@@ -5191,14 +5191,14 @@ body.landscape #player-party.cards-crowded .card {
     filter: drop-shadow(0 1px 2px rgba(0,0,0,0.7));
 }
 
-#mute-btn::after { background-image: url('assets/skin/icons/sound.png'); }
-#game-menu-btn::after { background-image: url('assets/skin/icons/menu.png'); }
-.close-btn::after { background-image: url('assets/skin/icons/close.png'); }
+#mute-btn::after { background-image: url('assets/skin/icons/sound.webp'); }
+#game-menu-btn::after { background-image: url('assets/skin/icons/menu.webp'); }
+.close-btn::after { background-image: url('assets/skin/icons/close.webp'); }
 
 .empty-slot {
     background:
         linear-gradient(180deg, rgba(15, 11, 8, 0.22), rgba(15, 11, 8, 0.42)),
-        url('assets/skin/icons/discard.png') center / 48% auto no-repeat !important;
+        url('assets/skin/icons/discard.webp') center / 48% auto no-repeat !important;
     color: rgba(222, 237, 255, 0.7) !important;
 }
 
@@ -5207,7 +5207,7 @@ body.landscape #player-party.cards-crowded .card {
     width: 28px;
     height: 28px;
     margin-bottom: 3px;
-    background: url('assets/skin/icons/deck.png') center / contain no-repeat;
+    background: url('assets/skin/icons/deck.webp') center / contain no-repeat;
     filter: drop-shadow(0 1px 2px rgba(0,0,0,0.7));
 }
 
@@ -5215,26 +5215,26 @@ body.landscape #landscape-tray-bg,
 #game-board.portrait #hand-zone {
     background:
         linear-gradient(180deg, rgba(109, 58, 33, 0.32), rgba(23, 13, 9, 0.76)),
-        url('assets/skin/textures/leather.png') center / cover no-repeat !important;
+        url('assets/skin/textures/leather.webp') center / cover no-repeat !important;
 }
 
 body.landscape #party-zone,
 #game-board.portrait #party-zone {
     background:
         linear-gradient(180deg, rgba(44, 27, 19, 0.18), rgba(10, 7, 6, 0.2)) padding-box,
-        url('assets/skin/textures/emerald-leather.png') center / cover no-repeat padding-box,
+        url('assets/skin/textures/emerald-leather.webp') center / cover no-repeat padding-box,
         linear-gradient(135deg, rgba(246, 207, 114, 0.8), rgba(83, 48, 20, 0.35), rgba(246, 207, 114, 0.45)) border-box !important;
 }
 
 #game-board.portrait #player-controls {
     background:
         linear-gradient(180deg, rgba(91, 51, 35, 0.24), rgba(17, 10, 8, 0.72)),
-        url('assets/skin/textures/blackened-iron.png') center / cover no-repeat !important;
+        url('assets/skin/textures/blackened-iron.webp') center / cover no-repeat !important;
 }
 
 /* ============================================================================
    BOARD ALIGNED TO THE CARVED BACKGROUND (landscape)
-   The premium-tabletop-landscape.png already has the zones carved into it (deck
+   The premium-tabletop-landscape.webp already has the zones carved into it (deck
    slot, discard slot, monsters parchment, party panel, right AP track, hand
    tray). So we stretch the bg to fill the board exactly (100% 100% → % coords map
    1:1 to the carved slots), drop every CSS panel we used to paint on top, and
@@ -5242,7 +5242,7 @@ body.landscape #party-zone,
    tuned against the bg art. Landscape only.
    ============================================================================ */
 body.landscape #game-board {
-    background: url('assets/skin/premium-tabletop-landscape.png') center / 100% 100% no-repeat !important;
+    background: url('assets/skin/premium-tabletop-landscape.webp') center / 100% 100% no-repeat !important;
     display: block !important;
     position: relative !important;
     width: 100vw !important;
@@ -5399,7 +5399,7 @@ body.landscape #opponents-bar .opponent-chip {
     max-width: 210px !important;
     min-height: 30px !important;
     padding: 3px 16px !important;
-    background: url('assets/skin/buttons/disabled-dark.png') center / 100% 100% no-repeat !important;
+    background: url('assets/skin/buttons/disabled-dark.webp') center / 100% 100% no-repeat !important;
     border: none !important;
     box-shadow: none !important;
 }
@@ -5417,7 +5417,7 @@ body.landscape #party-zone .area-label {
     width: auto !important;
     white-space: nowrap !important;
     padding: 3px 20px !important;
-    background: url('assets/skin/buttons/secondary-parchment.png') center / 100% 100% no-repeat !important;
+    background: url('assets/skin/buttons/secondary-parchment.webp') center / 100% 100% no-repeat !important;
     border: none !important;
     box-shadow: none !important;
     color: #3a2412 !important;
@@ -5430,7 +5430,7 @@ body.landscape #party-zone .area-label {
 
 /* ============================================================================
    BOARD ALIGNED TO THE CARVED BACKGROUND (portrait)
-   Same idea as the landscape block: premium-tabletop-portrait.png already has the
+   Same idea as the landscape block: premium-tabletop-portrait.webp already has the
    zones carved in (top plaque, two deck squares, red monsters panel, green party
    panel, leather hand tray, bottom controls plaque, green side rails). So we
    stretch the bg to fill the board exactly (100% 100% → % coords map 1:1 to the
@@ -5439,7 +5439,7 @@ body.landscape #party-zone .area-label {
    source order (appended last) at equal specificity. Portrait only.
    ============================================================================ */
 #game-board.portrait {
-    background: url('assets/skin/premium-tabletop-portrait.png') center / 100% 100% no-repeat !important;
+    background: url('assets/skin/premium-tabletop-portrait.webp') center / 100% 100% no-repeat !important;
     display: block !important;
     position: relative !important;
     width: 100vw !important;
@@ -5507,7 +5507,7 @@ body.landscape #party-zone .area-label {
     width: 100% !important; height: 100% !important;
 }
 /* Show the deck card-back art clean — drop the icon + "MAIN DECK" label overlay
-   (both orientations; back-main.png already reads as the deck). */
+   (both orientations; back-main.webp already reads as the deck). */
 #main-deck::before { display: none !important; }
 #main-deck > span { display: none !important; }
 
@@ -5532,7 +5532,7 @@ body.landscape #party-zone .area-label {
     box-sizing: border-box !important;
     border-radius: 7px;
     border: 1.5px solid rgba(88, 59, 21, 0.95);
-    background: url('assets/skin/cards/back-main.png') center / 100% 100% no-repeat;
+    background: url('assets/skin/cards/back-main.webp') center / 100% 100% no-repeat;
 }
 #main-deck .deck-layer-3 { transform: translate(2.4%, 1.8%);  filter: brightness(0.46); }
 #main-deck .deck-layer-2 { transform: translate(-0.8%, -0.6%); filter: brightness(0.7); }
@@ -5610,7 +5610,7 @@ body.landscape #party-zone .area-label {
     z-index: -1;
     border-radius: 7px;
     border: 1.5px solid rgba(88, 59, 21, 0.95);
-    background: url('assets/skin/cards/back-hidden.png') center / 100% 100% no-repeat;
+    background: url('assets/skin/cards/back-hidden.webp') center / 100% 100% no-repeat;
     pointer-events: none;
 }
 #discard-pile:has(.card:not(.empty-slot))::before { transform: translate(2.4%, 1.8%); filter: brightness(0.46); }
@@ -5735,7 +5735,7 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
     max-width: 100% !important;
     min-height: 22px !important;
     padding: 2px 9px !important;
-    background: url('assets/skin/buttons/disabled-dark.png') center / 100% 100% no-repeat !important;
+    background: url('assets/skin/buttons/disabled-dark.webp') center / 100% 100% no-repeat !important;
     border: none !important; box-shadow: none !important;
     font-size: clamp(0.46rem, 1.4vh, 0.66rem) !important;
     overflow: hidden !important;
@@ -5898,7 +5898,7 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
 }
 
 #inspector-modal #inspector-modal-actions .action-btn {
-    background-image: url('assets/skin/buttons/inspector-action.png') !important;
+    background-image: url('assets/skin/buttons/inspector-action.webp') !important;
     color: #f7fbff !important;
     text-shadow:
         0 2px 2px rgba(0, 18, 48, 0.95),
@@ -5906,7 +5906,7 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
 }
 
 #inspector-modal #inspector-modal-actions .action-btn.inspector-close-action {
-    background-image: url('assets/skin/buttons/inspector-close.png') !important;
+    background-image: url('assets/skin/buttons/inspector-close.webp') !important;
     color: #fff8ff !important;
     text-shadow:
         0 2px 2px rgba(12, 5, 28, 0.98),
@@ -5914,7 +5914,7 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
 }
 
 #inspector-modal.full-card-art-inspector #inspector-modal-actions .action-btn:disabled {
-    background-image: url('assets/skin/buttons/inspector-close.png') !important;
+    background-image: url('assets/skin/buttons/inspector-close.webp') !important;
     color: rgba(245, 242, 255, 0.78) !important;
     opacity: 0.78 !important;
 }
@@ -6190,7 +6190,7 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    background: url('assets/skin/buttons/inspector-action.png') center / 100% 100% no-repeat !important;
+    background: url('assets/skin/buttons/inspector-action.webp') center / 100% 100% no-repeat !important;
     border: 0 !important;
     box-shadow: none !important;
     color: #f7fbff !important;
@@ -6209,7 +6209,7 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
     aspect-ratio: 385 / 190 !important;
     min-height: 0 !important;
     padding: 0 14px !important;
-    background: url('assets/skin/buttons/inspector-close.png') center / 100% 100% no-repeat !important;
+    background: url('assets/skin/buttons/inspector-close.webp') center / 100% 100% no-repeat !important;
     border: 0 !important;
     box-shadow: none !important;
     color: #fff8ff !important;
@@ -6266,7 +6266,7 @@ body.landscape #party-zone .area-label,
     box-sizing: border-box !important;
     padding: 3px 16px !important;
     border: 0 !important;
-    background: url('assets/skin/buttons/secondary-parchment.png') center / 100% 100% no-repeat !important;
+    background: url('assets/skin/buttons/secondary-parchment.webp') center / 100% 100% no-repeat !important;
     color: #35200f !important;
     font-family: var(--font-display) !important;
     font-size: clamp(7px, 1.25vh, 10px) !important;
@@ -7101,7 +7101,7 @@ body.landscape #party-zone > .area-label,
     padding: 9px 18px !important;
     border: 0 !important;
     border-radius: 10px !important;
-    background: url('assets/skin/buttons/inspector-action.png') center/100% 100% no-repeat !important;
+    background: url('assets/skin/buttons/inspector-action.webp') center/100% 100% no-repeat !important;
     background-color: transparent !important;
     color: #f7fbff !important;
     font-family: var(--font-display) !important;
@@ -7113,10 +7113,10 @@ body.landscape #party-zone > .area-label,
     animation: none !important;
 }
 #lobby-modal .start-btn {
-    background-image: url('assets/skin/buttons/inspector-action.png') !important;
+    background-image: url('assets/skin/buttons/inspector-action.webp') !important;
 }
 #lobby-modal .lobby-reroll-btn {
-    background-image: url('assets/skin/buttons/inspector-close.png') !important;
+    background-image: url('assets/skin/buttons/inspector-close.webp') !important;
     color: #fff8ff !important;
     text-shadow: 0 2px 2px rgba(12, 5, 28, .98), 0 0 5px rgba(8, 2, 24, .9) !important;
 }
@@ -7128,7 +7128,7 @@ body.landscape #party-zone > .area-label,
 
 #event-console #dice-overlay #modifier-decision-row .modifier-pass-btn {
     display: none;
-    background: url('assets/skin/buttons/inspector-action.png') center/100% 100% no-repeat !important;
+    background: url('assets/skin/buttons/inspector-action.webp') center/100% 100% no-repeat !important;
     color: #f7fbff !important;
     text-shadow: 0 2px 2px rgba(0, 18, 48, .95), 0 0 5px rgba(0, 10, 32, .85) !important;
 }
@@ -7152,7 +7152,7 @@ body.landscape #party-zone > .area-label,
     margin: 0 !important;
     padding: 6px 12px !important;
     border: 0 !important;
-    background: url('assets/skin/buttons/inspector-action.png') center/100% 100% no-repeat !important;
+    background: url('assets/skin/buttons/inspector-action.webp') center/100% 100% no-repeat !important;
     color: #f7fbff !important;
     font-family: var(--font-display) !important;
     font-size: clamp(.62rem, 1.6vh, .78rem) !important;
@@ -7753,7 +7753,7 @@ body.landscape #player-win-tracker {
     padding: 7px 14px !important;
     border: 0 !important;
     border-radius: 0 !important;
-    background: url('assets/skin/buttons/inspector-action.png') center / 100% 100% no-repeat !important;
+    background: url('assets/skin/buttons/inspector-action.webp') center / 100% 100% no-repeat !important;
     box-shadow: none !important;
     color: #f7fbff !important;
     font-family: var(--font-display) !important;
@@ -7769,13 +7769,13 @@ body.landscape #player-win-tracker {
 .rex-major-choice-prompt .action-btn.secondary,
 .overlay .glass-panel .picker-close-action,
 #target-banner .action-btn.modal-secondary-action {
-    background-image: url('assets/skin/buttons/inspector-close.png') !important;
+    background-image: url('assets/skin/buttons/inspector-close.webp') !important;
     color: #fff8ff !important;
     text-shadow: 0 2px 2px rgba(12,5,28,.98), 0 0 5px rgba(8,2,24,.9) !important;
 }
 #event-console .action-btn:not(.inline):disabled,
 .overlay .glass-panel .action-btn:not(.inline):disabled {
-    background-image: url('assets/skin/buttons/inspector-close.png') !important;
+    background-image: url('assets/skin/buttons/inspector-close.webp') !important;
     color: rgba(245,242,255,.65) !important;
     opacity: .72 !important;
 }

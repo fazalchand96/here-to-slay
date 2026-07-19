@@ -10,6 +10,7 @@
     "test:e2e": "playwright test",
     "test:e2e:cards": "playwright test test/e2e/cards/",
     "test:e2e:mobile": "playwright test test/e2e/mobile/",
+    "optimize:images": "node scripts/optimize-runtime-images.js",
     "test:simulation": "concurrently --kill-others \"npm run start\" \"node -e setTimeout(Object,2000) && npm run bot\" \"node -e setTimeout(Object,4000) && npm run bot\""
   },
   "keywords": [],

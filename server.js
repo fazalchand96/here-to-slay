@@ -23,7 +23,21 @@ const io = new Server(server, {
     pingTimeout: 60_000,
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
+const STATIC_MEDIA_EXTENSIONS = new Set([
+    '.avif', '.gif', '.ico', '.jpeg', '.jpg', '.ogg', '.png', '.svg', '.webp', '.woff', '.woff2'
+]);
+
+app.use(express.static(path.join(__dirname, 'public'), {
+    setHeaders(res, filePath) {
+        const extension = path.extname(filePath).toLowerCase();
+        if (STATIC_MEDIA_EXTENSIONS.has(extension)) {
+            res.setHeader('Cache-Control', 'public, max-age=2592000, stale-while-revalidate=604800');
+            return;
+        }
+
+        res.setHeader('Cache-Control', 'no-cache');
+    }
+}));
 // Game State
 let gameState = {
     state: 'LOBBY', // LOBBY, PLAYING, WAITING_FOR_MODIFIERS, WAITING_FOR_CHALLENGES, GAMEOVER
@@ -277,7 +291,7 @@ function loadCards() {
     const cards = JSON.parse(rawData);
     const artIds = loadCardAssetIds('assets/skin/cards/art-web', '.webp');
     const fullArtSources = {
-        'Monster Card': loadFullCardArtSource('monster-fullgen-v1', ['.png', '.webp']),
+        'Monster Card': loadFullCardArtSource('monster-fullgen-v1', ['.webp']),
         'Party Leader': loadFullCardArtSource('leader-fullgen-v1', ['.webp']),
         'Item Card': loadFullCardArtSource('item-fullgen-v1', ['.webp']),
         'Cursed Item Card': loadFullCardArtSource('cursed-item-fullgen-v1', ['.webp']),

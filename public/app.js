@@ -451,18 +451,18 @@ checkOrientationAndLayout(); // Call initially
 
 const PREMIUM_BOARD_BACKGROUNDS = Object.freeze({
     landscape: Object.freeze([
-        'assets/skin/premium-tabletop-landscape.png',
-        'assets/skin/premium-tabletop-landscape-ap1-v80.png',
-        'assets/skin/premium-tabletop-landscape-ap2-v80.png',
-        'assets/skin/premium-tabletop-landscape-ap3-v80.png',
-        'assets/skin/premium-tabletop-landscape-ap4-v80.png'
+        'assets/skin/premium-tabletop-landscape.webp',
+        'assets/skin/premium-tabletop-landscape-ap1-v80.webp',
+        'assets/skin/premium-tabletop-landscape-ap2-v80.webp',
+        'assets/skin/premium-tabletop-landscape-ap3-v80.webp',
+        'assets/skin/premium-tabletop-landscape-ap4-v80.webp'
     ]),
     portrait: Object.freeze([
-        'assets/skin/premium-tabletop-portrait.png',
-        'assets/skin/premium-tabletop-portrait-ap1-v80.png',
-        'assets/skin/premium-tabletop-portrait-ap2-v80.png',
-        'assets/skin/premium-tabletop-portrait-ap3-v80.png',
-        'assets/skin/premium-tabletop-portrait-ap4-v80.png'
+        'assets/skin/premium-tabletop-portrait.webp',
+        'assets/skin/premium-tabletop-portrait-ap1-v80.webp',
+        'assets/skin/premium-tabletop-portrait-ap2-v80.webp',
+        'assets/skin/premium-tabletop-portrait-ap3-v80.webp',
+        'assets/skin/premium-tabletop-portrait-ap4-v80.webp'
     ])
 });
 
@@ -808,7 +808,7 @@ function startDiceSprite() {
     const container = document.getElementById('dice-container');
     activeDiceSprite?.stop();
     activeDiceSprite = window.playSpriteAnim?.(container, {
-        sheetUrl: 'assets/skin/anim/dice-roll-blue-gold.png',
+        sheetUrl: 'assets/skin/anim/dice-roll-blue-gold.webp',
         frames: 8,
         fps: 12,
         width: 128,
@@ -832,7 +832,7 @@ function playHeroSkillCast({ heroId, heroClass }) {
         .find(el => el.dataset.id === heroId);
     if (!card) return;
     window.playSpriteAnim?.(card, {
-        sheetUrl: `assets/skin/anim/cast-${slug}.png`,
+        sheetUrl: `assets/skin/anim/cast-${slug}.webp`,
         frames: 8,
         fps: 12,
         width: 128,
@@ -861,7 +861,7 @@ function playMonsterAttackAnim(monsterEl, monsterId) {
     // sheet cannot leave a required target/penalty prompt deferred.
     window.monsterStrikeUiTimer = setTimeout(restoreStrikeUi, 725);
     window.playSpriteAnim?.(monsterEl, {
-        sheetUrl: `assets/skin/anim/monster-${monsterId}.png`,
+        sheetUrl: `assets/skin/anim/monster-${monsterId}.webp`,
         frames: 8,
         fps: 12,
         width: 128,
@@ -884,7 +884,7 @@ const MAGIC_BURST_MAP = {
 function playResolutionBurst(targetEl, kind = 'buff', options = {}) {
     if (!targetEl) return null;
     return window.playSpriteAnim?.(targetEl, {
-        sheetUrl: `assets/skin/anim/burst-${kind}.png`, frames: 8, fps: 12,
+        sheetUrl: `assets/skin/anim/burst-${kind}.webp`, frames: 8, fps: 12,
         width: 128, height: 128, loop: false,
         layers: [
             { className: `resolution-burst-glow resolution-burst-${kind}`, zIndex: 0 },
@@ -907,7 +907,7 @@ function playMagicResolution(card) {
 function playGameoverFinale() {
     if (!victoryModal) return;
     window.playSpriteAnim?.(victoryModal, {
-        sheetUrl: 'assets/skin/anim/gameover-finale.png', frames: 8, fps: 10,
+        sheetUrl: 'assets/skin/anim/gameover-finale.webp', frames: 8, fps: 10,
         width: 128, height: 128, loop: false,
         layers: [
             { className: 'finale-glow', zIndex: 0 },

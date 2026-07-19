@@ -17,7 +17,7 @@ body.landscape #board-stage {
     --ap-track-rotate: -4deg;
 }
 body.landscape #game-board {
-    background-image: url('assets/skin/premium-tabletop-landscape.png') !important;
+    background-image: url('assets/skin/premium-tabletop-landscape.webp') !important;
 }
 
 body.portrait #board-stage {
@@ -38,5 +38,5 @@ body.portrait #board-stage {
     --ap-track-rotate: -4deg;
 }
 body.portrait #game-board {
-    background-image: url('assets/skin/premium-tabletop-portrait-deck-baked.png') !important;
+    background-image: url('assets/skin/premium-tabletop-portrait-deck-baked.webp') !important;
 }
