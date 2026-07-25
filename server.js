@@ -349,13 +349,20 @@ function loadFullCardArtSource(directory, extensions) {
 // fully baked card faces; those are rendered whole on the board.
 function applyGeneratedCardArt(card, artIds, fullArtSources) {
     if (!card) return;
-    if (artIds.has(card.id)) {
-        card.illustrationArtUrl = `assets/skin/cards/art-web/${card.id}.webp`;
+    // The base deck contains fourteen identical Challenge cards. They share one
+    // illustration and one baked card face so clients download each asset once.
+    const artId = card.type === 'Challenge Card'
+        && card.name === 'Challenge'
+        && !card.expansion
+        ? 'card_117'
+        : card.id;
+    if (artIds.has(artId)) {
+        card.illustrationArtUrl = `assets/skin/cards/art-web/${artId}.webp`;
     }
     const fullArtSource = fullArtSources[card.type];
-    const fullArtExtension = fullArtSource?.extensionById.get(card.id);
+    const fullArtExtension = fullArtSource?.extensionById.get(artId);
     if (fullArtSource && fullArtExtension) {
-        card.fullCardArtUrl = `assets/skin/cards/${fullArtSource.directory}/${card.id}.${fullArtExtension}`;
+        card.fullCardArtUrl = `assets/skin/cards/${fullArtSource.directory}/${artId}.${fullArtExtension}`;
         card.artUrl = card.fullCardArtUrl;
         return;
     }

@@ -787,3 +787,22 @@ test('only expansion cards with full card art enter live decks', () => {
         ['Druid Challenge', 'Warrior Challenge']
     );
 });
+
+test('base Challenge copies share one integrated card face and illustration', () => {
+    loadCards();
+    const challenges = gameState.mainDeck.filter(card =>
+        card.type === 'Challenge Card'
+        && card.name === 'Challenge'
+        && !card.expansion
+    );
+
+    assert.equal(challenges.length, 14);
+    assert.deepEqual(
+        [...new Set(challenges.map(card => card.fullCardArtUrl))],
+        ['assets/skin/cards/challenge-fullgen-v1/card_117.webp']
+    );
+    assert.deepEqual(
+        [...new Set(challenges.map(card => card.illustrationArtUrl))],
+        ['assets/skin/cards/art-web/card_117.webp']
+    );
+});
