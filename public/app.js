@@ -3460,6 +3460,9 @@ function renderBoard(data) {
                     ? `THE FEARLESS FLAME: DISCARD 1 CARD FOR +1 TO YOUR ROLL
                         <button class="action-btn inline attack" onclick="submitPenaltyDiscard()">DISCARD FOR +1</button>
                         <button class="action-btn inline" onclick="socket.emit('resolve_fearless_flame_choice',{use:false})">SKIP</button>`
+                    : data.pendingAction.type === 'ENTANGLING_TRAP_DISCARD'
+                    ? `ENTANGLING TRAP: SELECT ${amt} CARD(S) TO DISCARD
+                        <button class="action-btn inline attack" style="margin-left:15px; font-size:16px;" onclick="submitPenaltyDiscard()">CONFIRM DISCARD</button>`
                     : `SELECT ${amt} CARD(S) TO DISCARD AS A PENALTY <button class="action-btn inline attack" style="margin-left:15px; font-size:16px;" onclick="submitPenaltyDiscard()">Confirm</button>`;
 
                 if (!isMultiTargeting || multiTargetMax !== amt) {

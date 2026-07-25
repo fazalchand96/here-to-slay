@@ -4203,6 +4203,19 @@ socket.on('resolve_immediate_play', (data) => {
                 return;
             }
             const nextAction = gameState.pendingAction.nextAction;
+            if (gameState.pendingAction.type === 'ENTANGLING_TRAP_DISCARD') {
+                if (nextAction?.type === 'STEAL' && hasStealOrDestroyTarget(socket.id, 'STEAL')) {
+                    gameState.state = 'PLAYING';
+                    gameState.pendingAction = nextAction;
+                    io.emit('message', `${getPlayerName(gameState, socket.id)} discarded ${cardIds.length} card(s) and may now steal a Hero with Entangling Trap.`);
+                } else {
+                    gameState.pendingAction = null;
+                    resetToPlayingState();
+                    io.emit('message', `There is no valid Hero to steal with Entangling Trap.`);
+                }
+                broadcastState();
+                return;
+            }
             if (nextAction?.type === 'EGG_OF_FORTUNE_PULLS') {
                 const actor = gameState.players[nextAction.playerId];
                 let pulled = 0;

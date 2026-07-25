@@ -2002,8 +2002,9 @@ function executeMagic(gameState, io, effectId, playerId, targetData) {
             const discardAmount = Math.min(2, player.hand.length);
 
             if (discardAmount > 0) {
+                gameState.state = 'WAITING_FOR_DISCARD_PENALTY';
                 gameState.pendingAction = {
-                    type: 'DISCARD',
+                    type: 'ENTANGLING_TRAP_DISCARD',
                     playerToChoose: playerId,
                     amount: discardAmount,
                     originalActor: playerId,

@@ -666,6 +666,19 @@ test('MAGIC_ENTANGLING with an empty hand skips straight to the steal step', () 
     assert.equal(gs.pendingAction.type, 'STEAL');
 });
 
+test('MAGIC_ENTANGLING batches two hand discards before the steal step', () => {
+    const alice = player('alice', {
+        hand: [card('First cost', 'Modifier Card'), card('Second cost', 'Magic Card')]
+    });
+    const bob = player('bob', { party: [hero('Victim', { id: 'v1' })] });
+    const gs = makeState([alice, bob]);
+    executeMagic(gs, makeIo(), 'MAGIC_ENTANGLING', 'alice', null);
+    assert.equal(gs.state, 'WAITING_FOR_DISCARD_PENALTY');
+    assert.equal(gs.pendingAction.type, 'ENTANGLING_TRAP_DISCARD');
+    assert.equal(gs.pendingAction.amount, 2);
+    assert.equal(gs.pendingAction.nextAction.type, 'STEAL');
+});
+
 test('MAGIC_EXCHANGE queues an EXCHANGE_STEP_1 targeting action', () => {
     const p = player('alice');
     const gs = makeState([p]);

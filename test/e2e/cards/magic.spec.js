@@ -120,15 +120,37 @@ test('Entangling Trap (card_111): discard then steal target flow', async ({ brow
 
     await setupP2Hero(host, p2);
 
-    await injectCard(host, 'card_111');
+    await setHand(host, ['card_111', 'card_020', 'card_040']);
     await playCardFromHand(host, 'card_111');
     await passChallenge(p2);
 
-    // Entangling Trap: caster discards, then steals — the banner must appear with
-    // the DISCARD (or STEAL, if hand was empty) prompt.
-    await expect(host.locator('#target-banner')).not.toHaveClass(/hidden/, { timeout: 8_000 });
-    const bannerText = await host.locator('#target-banner-text').textContent();
-    expect(bannerText).toMatch(/DISCARD|STEAL/);
+    await expect.poll(() => host.evaluate(() => ({
+        state: window.latestGameState?.state,
+        type: window.latestGameState?.pendingAction?.type,
+        amount: window.latestGameState?.pendingAction?.amount,
+    }))).toEqual({
+        state: 'WAITING_FOR_DISCARD_PENALTY',
+        type: 'ENTANGLING_TRAP_DISCARD',
+        amount: 2,
+    });
+
+    for (const cardId of ['card_020', 'card_040']) {
+        await host.locator(`#player-hand [data-id="${cardId}"]`).click({ force: true });
+        const selectButton = host.locator('#inspector-modal-actions button')
+            .filter({ hasText: /SELECT TARGET/i })
+            .first();
+        await expect(selectButton).toBeVisible();
+        await selectButton.click();
+    }
+
+    const confirmButton = host.locator('#target-banner button')
+        .filter({ hasText: /CONFIRM DISCARD/i });
+    await expect(confirmButton).toBeVisible();
+    await confirmButton.click();
+
+    await expect.poll(() => host.evaluate(() => window.latestGameState?.pendingAction?.type))
+        .toBe('STEAL');
+    await expect(host.locator('#target-banner-text')).toContainText(/STEAL/i);
     expect(errors).toEqual([]);
     await ctx1.close(); await ctx2.close();
 });
