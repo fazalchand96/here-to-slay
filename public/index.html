@@ -22,12 +22,32 @@
     <link rel="stylesheet" href="deck-stage.generated.css">
 </head>
 <body>
+    <!-- Room Gate -->
+    <div id="room-modal" class="overlay">
+        <div class="glass-panel room-panel">
+            <h1 class="tavern-title">Choose Your Table</h1>
+            <p class="tavern-subtitle">Create a private lobby or join friends with their four-character code.</p>
+            <button id="create-room-btn" class="action-btn room-primary-action" type="button">CREATE LOBBY</button>
+            <div class="room-divider"><span>or join a lobby</span></div>
+            <div class="room-join-row">
+                <input id="room-code-input" class="tavern-input room-code-input" type="text" maxlength="4"
+                    inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false"
+                    placeholder="CODE" aria-label="Four-character lobby code">
+                <button id="join-room-btn" class="action-btn" type="button">JOIN</button>
+            </div>
+            <p id="room-error" class="room-error hidden" role="alert"></p>
+        </div>
+    </div>
+
     <!-- Lobby Screen -->
-    <div id="lobby-modal" class="overlay">
+    <div id="lobby-modal" class="overlay hidden">
         <div class="glass-panel lobby-panel">
             <div class="lobby-col lobby-col-left">
                 <h1 class="tavern-title">The Prancing Pony</h1>
                 <p class="tavern-subtitle">Take a seat, grab an ale, and prepare to slay.</p>
+                <button id="lobby-room-code" class="lobby-room-code" type="button" title="Copy lobby code">
+                    LOBBY <strong>----</strong><small>tap to copy</small>
+                </button>
                 <div id="lobby-players" class="tavern-board"></div>
                 <input type="text" id="player-name-input" placeholder="Enter your hero's name..." class="tavern-input">
             </div>

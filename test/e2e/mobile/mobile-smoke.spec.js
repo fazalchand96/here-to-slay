@@ -2,7 +2,7 @@
 
 const { test, expect } = require('../helpers/fixtures');
 const { startMobileGame, isWithinViewport, MOBILE_VIEWPORT, rollLeader } = require('./mobileSetup');
-const { injectCard, addToDiscard, passChallenge, rollDice, passModifiers, passOpponentModifiers, trackContext } = require('../helpers/gameSetup');
+const { injectCard, addToDiscard, passChallenge, rollDice, passModifiers, passOpponentModifiers, trackContext, createRoom, joinRoom } = require('../helpers/gameSetup');
 
 // ---------------------------------------------------------------------------
 // 1. Orientation unlock (Phase 5): the rotation lock is removed. The overlay
@@ -26,8 +26,8 @@ test('Rotation lock overlay never blocks — portrait and landscape both playabl
     expect(overlayPortrait, 'Rotation lock overlay must stay hidden in portrait').toBe(false);
     await expect(page.locator('#game-board')).toHaveClass(/portrait/);
 
-    // Lobby must be reachable in portrait (no blocking overlay).
-    await expect(page.locator('#lobby-modal')).toBeVisible({ timeout: 5_000 });
+    // Room gate must be reachable in portrait (no blocking overlay).
+    await expect(page.locator('#room-modal')).toBeVisible({ timeout: 5_000 });
 
     // Resize to landscape: overlay still hidden, board flips to .landscape.
     await page.setViewportSize({ width: 844, height: 390 });
@@ -39,7 +39,7 @@ test('Rotation lock overlay never blocks — portrait and landscape both playabl
     expect(overlayLandscape, 'Rotation lock overlay should be hidden in landscape').toBe(false);
     await expect(page.locator('#game-board')).toHaveClass(/landscape/);
 
-    await expect(page.locator('#lobby-modal')).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator('#room-modal')).toBeVisible({ timeout: 5_000 });
     await ctx.close();
 });
 
@@ -54,6 +54,8 @@ test('Lobby: name input, ROLL FOR LEADER, and leader assignment work on mobile',
 
     await host.goto('/', { waitUntil: 'domcontentloaded' });
     await p2.goto('/',   { waitUntil: 'domcontentloaded' });
+    const roomCode = await createRoom(host);
+    await joinRoom(p2, roomCode);
 
     await rollLeader(host, 'MbLobbyHost');
     await rollLeader(p2,   'MbLobbyGuest');

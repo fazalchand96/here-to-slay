@@ -1,6 +1,8 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const { AsyncLocalStorage } = require('async_hooks');
+const { randomBytes } = require('crypto');
 const { createReconnectManager, RECONNECT_GRACE_MS } = require('./reconnect');
 const fs = require('fs');
 const path = require('path');
@@ -18,7 +20,7 @@ const ALL_CARDS = require('./cards.json');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
+const ioServer = new Server(server, {
     pingInterval: 25_000,
     pingTimeout: 60_000,
 });
@@ -38,8 +40,8 @@ app.use(express.static(path.join(__dirname, 'public'), {
         res.setHeader('Cache-Control', 'no-cache');
     }
 }));
-// Game State
-let gameState = {
+function createInitialGameState() {
+    return {
     state: 'LOBBY', // LOBBY, PLAYING, WAITING_FOR_MODIFIERS, WAITING_FOR_CHALLENGES, GAMEOVER
     players: {}, // socketId -> playerData
     playerOrder: [], // array of socketIds
@@ -60,24 +62,67 @@ let gameState = {
         actedPlayers: [],
         totalPlayers: 0
     }
+    };
+}
+
+const roomContext = new AsyncLocalStorage();
+const roomSessions = new Map();
+const rootSession = {
+    roomCode: null,
+    state: createInitialGameState(),
+    socketIds: new Set(),
+    modifierTimer: null,
+    challengeTimer: null,
+    actionPointTimer: null,
+    actionPointTimerKey: null,
+    actionPointTimerRemainingMs: 45_000,
+    actionPointTimerStartedAt: null,
+    debugForcedRoll: null,
+    reconnectManager: null,
 };
 
-let modifierTimer = null;
-let challengeTimer = null;
+function currentSession() {
+    return roomContext.getStore() || rootSession;
+}
+
+// Existing rule functions can keep using `gameState`; the proxy resolves every
+// read/write against the room whose socket callback or timer is currently active.
+const gameState = new Proxy({}, {
+    get: (_target, property) => currentSession().state[property],
+    set: (_target, property, value) => {
+        currentSession().state[property] = value;
+        return true;
+    },
+    ownKeys: () => Reflect.ownKeys(currentSession().state),
+    getOwnPropertyDescriptor: (_target, property) => ({
+        configurable: true,
+        enumerable: true,
+        writable: true,
+        value: currentSession().state[property],
+    }),
+});
+
+// Game events are room-scoped by default. Direct socket emissions remain global
+// by socket id, which is safe because Socket.IO ids are unique server-wide.
+const io = {
+    emit(eventName, ...args) {
+        const session = currentSession();
+        return session.roomCode
+            ? ioServer.to(session.roomCode).emit(eventName, ...args)
+            : ioServer.emit(eventName, ...args);
+    },
+    to(target) {
+        return ioServer.to(target);
+    },
+};
+
 const CHALLENGE_TIMEOUT_MS = 15_000;
 const ACTION_POINT_TIMEOUT_MS = 45_000;
-let actionPointTimer = null;
-let actionPointTimerKey = null;
-let actionPointTimerRemainingMs = ACTION_POINT_TIMEOUT_MS;
-let actionPointTimerStartedAt = null;
-
-// Test-only: when set, the next skill/attack roll uses these dice instead of
-// random ones, so e2e tests asserting on success/failure are deterministic.
-let debugForcedRoll = null;
 
 function startModifierTimer() {
-    if (modifierTimer) clearTimeout(modifierTimer);
-    modifierTimer = setTimeout(() => {
+    const session = currentSession();
+    if (session.modifierTimer) clearTimeout(session.modifierTimer);
+    session.modifierTimer = setTimeout(() => {
         if (gameState.state === 'WAITING_FOR_MODIFIERS') {
             resolvePendingRoll();
         }
@@ -174,9 +219,10 @@ function finishFearlessFlameChoice(useBonus, emitter = io) {
 }
 
 function clearChallengeTimer() {
-    if (!challengeTimer) return;
-    clearTimeout(challengeTimer);
-    challengeTimer = null;
+    const session = currentSession();
+    if (!session.challengeTimer) return;
+    clearTimeout(session.challengeTimer);
+    session.challengeTimer = null;
 }
 
 function getConnectedChallengeOpponentIds(state, connectedSocketIds = null) {
@@ -201,7 +247,7 @@ function haveAllConnectedChallengeOpponentsPassed(state, connectedSocketIds = nu
 
 function settleUnchallengedCardIfComplete(message) {
     if (gameState.state !== 'WAITING_FOR_CHALLENGES' || !gameState.pendingChallenge) return false;
-    const connectedSocketIds = Array.from(io.sockets.sockets.keys());
+    const connectedSocketIds = Array.from(currentSession().socketIds);
     if (!haveAllConnectedChallengeOpponentsPassed(gameState, connectedSocketIds)) return false;
 
     clearChallengeTimer();
@@ -213,11 +259,12 @@ function settleUnchallengedCardIfComplete(message) {
 }
 
 function ensureChallengeTimer() {
-    if (challengeTimer || gameState.state !== 'WAITING_FOR_CHALLENGES' || !gameState.pendingChallenge) return;
+    const session = currentSession();
+    if (session.challengeTimer || gameState.state !== 'WAITING_FOR_CHALLENGES' || !gameState.pendingChallenge) return;
     gameState.pendingChallenge.expiresAt = Date.now() + CHALLENGE_TIMEOUT_MS;
     const pendingAtStart = gameState.pendingChallenge;
-    challengeTimer = setTimeout(() => {
-        challengeTimer = null;
+    session.challengeTimer = setTimeout(() => {
+        session.challengeTimer = null;
         if (gameState.state !== 'WAITING_FOR_CHALLENGES' || gameState.pendingChallenge !== pendingAtStart) return;
         io.emit('challenge_resolved', {
             message: `Challenge window expired. ${pendingAtStart.card.name} resolves normally.`
@@ -638,64 +685,66 @@ function actionPointTimerKeyForState(state) {
 }
 
 function resetActionPointTimerTracking() {
-    if (actionPointTimer) clearTimeout(actionPointTimer);
-    actionPointTimer = null;
-    actionPointTimerKey = null;
-    actionPointTimerRemainingMs = ACTION_POINT_TIMEOUT_MS;
-    actionPointTimerStartedAt = null;
+    const session = currentSession();
+    if (session.actionPointTimer) clearTimeout(session.actionPointTimer);
+    session.actionPointTimer = null;
+    session.actionPointTimerKey = null;
+    session.actionPointTimerRemainingMs = ACTION_POINT_TIMEOUT_MS;
+    session.actionPointTimerStartedAt = null;
     gameState.actionPointDeadline = null;
 }
 
 function syncActionPointTimer() {
+    const session = currentSession();
     const nextKey = actionPointTimerKeyForState(gameState);
     if (!nextKey) {
         resetActionPointTimerTracking();
         return;
     }
 
-    if (nextKey !== actionPointTimerKey) {
-        if (actionPointTimer) clearTimeout(actionPointTimer);
-        actionPointTimer = null;
-        actionPointTimerKey = nextKey;
-        actionPointTimerRemainingMs = ACTION_POINT_TIMEOUT_MS;
-        actionPointTimerStartedAt = null;
+    if (nextKey !== session.actionPointTimerKey) {
+        if (session.actionPointTimer) clearTimeout(session.actionPointTimer);
+        session.actionPointTimer = null;
+        session.actionPointTimerKey = nextKey;
+        session.actionPointTimerRemainingMs = ACTION_POINT_TIMEOUT_MS;
+        session.actionPointTimerStartedAt = null;
         gameState.actionPointDeadline = null;
     }
 
     if (!isActionPointTimerEligible(gameState)) {
-        if (actionPointTimer && actionPointTimerStartedAt) {
-            actionPointTimerRemainingMs = Math.max(
+        if (session.actionPointTimer && session.actionPointTimerStartedAt) {
+            session.actionPointTimerRemainingMs = Math.max(
                 1,
-                actionPointTimerRemainingMs - (Date.now() - actionPointTimerStartedAt)
+                session.actionPointTimerRemainingMs - (Date.now() - session.actionPointTimerStartedAt)
             );
         }
-        if (actionPointTimer) clearTimeout(actionPointTimer);
-        actionPointTimer = null;
-        actionPointTimerStartedAt = null;
+        if (session.actionPointTimer) clearTimeout(session.actionPointTimer);
+        session.actionPointTimer = null;
+        session.actionPointTimerStartedAt = null;
         gameState.actionPointDeadline = null;
         return;
     }
 
-    if (actionPointTimer) return;
+    if (session.actionPointTimer) return;
 
     const playerId = gameState.activePlayerSocketId;
-    const scheduledKey = actionPointTimerKey;
-    actionPointTimerStartedAt = Date.now();
-    gameState.actionPointDeadline = actionPointTimerStartedAt + actionPointTimerRemainingMs;
-    actionPointTimer = setTimeout(() => {
-        actionPointTimer = null;
-        actionPointTimerStartedAt = null;
+    const scheduledKey = session.actionPointTimerKey;
+    session.actionPointTimerStartedAt = Date.now();
+    gameState.actionPointDeadline = session.actionPointTimerStartedAt + session.actionPointTimerRemainingMs;
+    session.actionPointTimer = setTimeout(() => {
+        session.actionPointTimer = null;
+        session.actionPointTimerStartedAt = null;
         gameState.actionPointDeadline = null;
 
-        if (scheduledKey !== actionPointTimerKey || !isActionPointTimerEligible(gameState)) {
+        if (scheduledKey !== session.actionPointTimerKey || !isActionPointTimerEligible(gameState)) {
             syncActionPointTimer();
             broadcastState();
             return;
         }
 
         const result = expireActionPoint(gameState, playerId);
-        actionPointTimerKey = null;
-        actionPointTimerRemainingMs = ACTION_POINT_TIMEOUT_MS;
+        session.actionPointTimerKey = null;
+        session.actionPointTimerRemainingMs = ACTION_POINT_TIMEOUT_MS;
         if (result.expired) {
             const playerName = getPlayerName(gameState, playerId);
             io.emit('message', `${playerName}'s 45 seconds expired: 1 action point was lost.`);
@@ -703,8 +752,8 @@ function syncActionPointTimer() {
             if (result.shouldEndTurn) beginEndTurn(playerId);
         }
         broadcastState();
-    }, actionPointTimerRemainingMs);
-    actionPointTimer.unref?.();
+    }, session.actionPointTimerRemainingMs);
+    session.actionPointTimer.unref?.();
 }
 
 function resetGameForNextMatch() {
@@ -732,12 +781,13 @@ function resetGameForNextMatch() {
     gameState.activePlayerSocketId = null;
     gameState.actionPointTurnId = 0;
     gameState.winner = null;
-    if (modifierTimer) clearTimeout(modifierTimer);
-    modifierTimer = null;
+    const session = currentSession();
+    if (session.modifierTimer) clearTimeout(session.modifierTimer);
+    session.modifierTimer = null;
     clearChallengeTimer();
     resetActionPointTimerTracking();
     clearRexMajorChoices(gameState);
-    debugForcedRoll = null;
+    session.debugForcedRoll = null;
 
     // Reset individual player stats but keep connections and order
     for (const playerId of gameState.playerOrder) {
@@ -828,7 +878,7 @@ function advanceTurn(currentPlayerId) {
     gameState.pendingAction = null;
     gameState.waitingForInput = false;
     gameState.forcedEndTurnPlayerId = null;
-    if (modifierTimer) clearTimeout(modifierTimer);
+    if (currentSession().modifierTimer) clearTimeout(currentSession().modifierTimer);
 
     const currentPlayer = gameState.players[currentPlayerId];
     if (currentPlayer) {
@@ -1402,7 +1452,10 @@ function broadcastState() {
     console.log(`[DEBUG] broadcastState -> active=${gameState.activePlayerSocketId ? gameState.activePlayerSocketId.substring(0,4) : 'none'}, pendingAction=${gameState.pendingAction ? gameState.pendingAction.type : 'none'}, pendingRoll=${gameState.pendingRoll ? gameState.pendingRoll.type : 'none'}, pendingChallenge=${gameState.pendingChallenge ? 'yes' : 'no'}, pendingGlobal=${gameState.pendingGlobalAction ? gameState.pendingGlobalAction.type : 'none'}`);
     
     // We will send customized state to each player
-    console.log('[DEBUG] broadcastState: Hand sizes: ' + Object.values(gameState.players).map(p => p.hand.length).join(', ')); io.sockets.sockets.forEach((socket) => {
+    console.log('[DEBUG] broadcastState: Hand sizes: ' + Object.values(gameState.players).map(p => p.hand.length).join(', '));
+    currentSession().socketIds.forEach(socketId => {
+        const socket = ioServer.sockets.sockets.get(socketId);
+        if (!socket) return;
         const playerState = JSON.parse(JSON.stringify(gameState));
         
         // Mask other players' hands
@@ -1749,7 +1802,7 @@ function prepareMinusFourRetrievals(pendingRoll, finalForEntry) {
 
 function resolvePendingRoll() {
     if (!gameState.pendingRoll) return;
-    if (modifierTimer) clearTimeout(modifierTimer);
+    if (currentSession().modifierTimer) clearTimeout(currentSession().modifierTimer);
     // Always clear pass tracking when a roll resolves (incl. the 15s-timer path,
     // which doesn't go through the all-passed branch) so the next window is clean.
     gameState.passedModifiers = [];
@@ -2187,8 +2240,11 @@ function removePlayerAndResetMatch(socketId) {
         gameState.mainDeck = [];
         gameState.monsterDeck = [];
         gameState.availableLeaders = [...PARTY_LEADERS];
-        debugForcedRoll = null;
-        if (modifierTimer) { clearTimeout(modifierTimer); modifierTimer = null; }
+        currentSession().debugForcedRoll = null;
+        if (currentSession().modifierTimer) {
+            clearTimeout(currentSession().modifierTimer);
+            currentSession().modifierTimer = null;
+        }
         clearChallengeTimer();
         resetActionPointTimerTracking();
     };
@@ -2222,67 +2278,142 @@ function removePlayerAndResetMatch(socketId) {
     broadcastState();
 }
 
-const reconnectManager = createReconnectManager({
-    gameState,
-    graceMs: RECONNECT_GRACE_MS,
-    onPlayerExpired: removePlayerAndResetMatch,
-    onPlayerAway: player => {
-        io.emit('message', `${getPlayerName(gameState, player.id)} is away. Waiting up to ${RECONNECT_GRACE_MS / 1000} seconds for them to reconnect.`);
-        if (!settleUnchallengedCardIfComplete()) broadcastState();
-    },
-    onPlayerRestored: player => {
-        io.emit('message', `${getPlayerName(gameState, player.id)} reconnected.`);
-        broadcastState();
-    },
-});
+const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
-io.on('connection', (socket) => {
+function normalizeRoomCode(value) {
+    return String(value || '').trim().toUpperCase().replace(/[^A-Z2-9]/g, '').slice(0, 4);
+}
+
+function generateRoomCode() {
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+        const bytes = randomBytes(4);
+        let code = '';
+        for (let i = 0; i < 4; i += 1) code += ROOM_CODE_ALPHABET[bytes[i] % ROOM_CODE_ALPHABET.length];
+        if (!roomSessions.has(code)) return code;
+    }
+    throw new Error('Unable to allocate a unique room code.');
+}
+
+function createRoomSession(roomCode) {
+    const session = {
+        roomCode,
+        state: createInitialGameState(),
+        socketIds: new Set(),
+        modifierTimer: null,
+        challengeTimer: null,
+        actionPointTimer: null,
+        actionPointTimerKey: null,
+        actionPointTimerRemainingMs: ACTION_POINT_TIMEOUT_MS,
+        actionPointTimerStartedAt: null,
+        debugForcedRoll: null,
+        reconnectManager: null,
+    };
+    session.state.availableLeaders = [...PARTY_LEADERS];
+    session.reconnectManager = createReconnectManager({
+        gameState: session.state,
+        graceMs: RECONNECT_GRACE_MS,
+        onPlayerExpired: socketId => roomContext.run(session, () => {
+            removePlayerAndResetMatch(socketId);
+            if (session.state.playerOrder.length === 0 && session.socketIds.size === 0) {
+                roomSessions.delete(session.roomCode);
+            }
+        }),
+        onPlayerAway: player => roomContext.run(session, () => {
+            io.emit('message', `${getPlayerName(gameState, player.id)} is away. Waiting up to ${RECONNECT_GRACE_MS / 1000} seconds for them to reconnect.`);
+            if (!settleUnchallengedCardIfComplete()) broadcastState();
+        }),
+        onPlayerRestored: (player, oldSocketId, newSocketId) => roomContext.run(session, () => {
+            session.socketIds.delete(oldSocketId);
+            session.socketIds.add(newSocketId);
+            io.emit('message', `${getPlayerName(gameState, player.id)} reconnected.`);
+            broadcastState();
+        }),
+    });
+    roomSessions.set(roomCode, session);
+    return session;
+}
+
+function joinSocketToSession(socket, session, requestedSessionToken) {
+    if (socket.data.roomCode) return { ok: false, reason: 'You already joined a room.' };
+
+    return roomContext.run(session, () => {
+        const restoredSession = session.reconnectManager.restore(socket.id, requestedSessionToken);
+        if (!restoredSession && (gameState.state !== 'LOBBY' || gameState.playerOrder.length >= 6)) {
+            return { ok: false, reason: gameState.state !== 'LOBBY' ? 'This game has already started.' : 'This room is full.' };
+        }
+
+        socket.join(session.roomCode);
+        socket.data.roomCode = session.roomCode;
+        session.socketIds.add(socket.id);
+
+        let sessionToken = requestedSessionToken;
+        if (!restoredSession) {
+            gameState.players[socket.id] = {
+                id: socket.id,
+                name: '',
+                hand: [],
+                party: [],
+                slainMonsters: [],
+                leader: null,
+                ap: 0,
+                connected: true,
+                away: false,
+                disconnectedAt: null,
+                hasSelectedLeader: false,
+                hasRerolledLeader: false
+            };
+            gameState.playerOrder.push(socket.id);
+            sessionToken = session.reconnectManager.register(socket.id, requestedSessionToken);
+        } else {
+            sessionToken = String(requestedSessionToken || '').trim();
+        }
+
+        socket.emit('room_joined', { roomCode: session.roomCode, reconnected: Boolean(restoredSession) });
+        socket.emit('session_token', { roomCode: session.roomCode, token: sessionToken });
+        socket.emit('lobby_data_update', { leaders: PARTY_LEADERS, state: gameState.state, roomCode: session.roomCode });
+        if (gameState.state === 'LOBBY') {
+            socket.emit('lobby_data', {
+                roomCode: session.roomCode,
+                availableLeaders: gameState.availableLeaders.length ? gameState.availableLeaders : PARTY_LEADERS,
+                playerOrder: gameState.playerOrder,
+                players: gameState.players
+            });
+        }
+        broadcastState();
+        return { ok: true, roomCode: session.roomCode, reconnected: Boolean(restoredSession) };
+    });
+}
+
+ioServer.on('connection', (socket) => {
     console.log('Player connected:', socket.id);
 
-    const requestedSessionToken = socket.handshake.auth && socket.handshake.auth.sessionToken;
-    const restoredSession = reconnectManager.restore(socket.id, requestedSessionToken);
-
-    // Force send lobby data upon connection
-    socket.emit('lobby_data_update', {
-        leaders: PARTY_LEADERS,
-        state: gameState.state
+    const rawOn = socket.on.bind(socket);
+    rawOn('create_room', ({ sessionToken } = {}, acknowledge) => {
+        let result;
+        try {
+            const session = createRoomSession(generateRoomCode());
+            result = joinSocketToSession(socket, session, sessionToken);
+        } catch (error) {
+            result = { ok: false, reason: 'The room could not be created.' };
+        }
+        if (typeof acknowledge === 'function') acknowledge(result);
+    });
+    rawOn('join_room', ({ roomCode, sessionToken } = {}, acknowledge) => {
+        const code = normalizeRoomCode(roomCode);
+        const session = roomSessions.get(code);
+        const result = session
+            ? joinSocketToSession(socket, session, sessionToken)
+            : { ok: false, reason: 'Room not found. Check the four-character code.' };
+        if (typeof acknowledge === 'function') acknowledge(result);
     });
 
-    if (restoredSession) {
-        socket.emit('session_token', requestedSessionToken.trim());
-    } else if (gameState.state === 'LOBBY' && gameState.playerOrder.length < 6) {
-        gameState.players[socket.id] = {
-            id: socket.id,
-            name: '',
-            hand: [],
-            party: [],
-            slainMonsters: [],
-            leader: null,
-            ap: 0,
-            connected: true,
-            away: false,
-            disconnectedAt: null,
-            hasSelectedLeader: false,
-            hasRerolledLeader: false
-        };
-        gameState.playerOrder.push(socket.id);
-        const sessionToken = reconnectManager.register(socket.id, requestedSessionToken);
-        socket.emit('session_token', sessionToken);
-    } else {
-        // Observers not fully supported, but let them connect
-        socket.emit('message', 'Game is full or already in progress.');
-    }
-
-    // Emergency Reset sync if connection happens in LOBBY state
-    if (gameState.state === 'LOBBY') {
-        socket.emit('lobby_data', {
-            availableLeaders: (gameState.availableLeaders && gameState.availableLeaders.length > 0) ? gameState.availableLeaders : PARTY_LEADERS,
-            playerOrder: gameState.playerOrder,
-            players: gameState.players
-        });
-    }
-
-    broadcastState();
+    // Every existing gameplay handler below automatically runs inside the room
+    // selected by this socket. This also propagates into timers created there.
+    socket.on = (eventName, handler) => rawOn(eventName, (...args) => {
+        const session = roomSessions.get(socket.data.roomCode);
+        if (!session) return;
+        return roomContext.run(session, () => handler(...args));
+    });
 
 /* --- CORE ACTIONS --- */
     socket.on('request_lobby_data', () => {
@@ -2316,7 +2447,7 @@ io.on('connection', (socket) => {
     // clients/test harnesses can explicitly abandon a seat without waiting out
     // the reconnect grace timer.
     socket.on('leave_game', acknowledgement => {
-        reconnectManager.leaveNow(socket.id);
+        currentSession().reconnectManager.leaveNow(socket.id);
         if (typeof acknowledgement === 'function') acknowledgement();
         socket.disconnect(true);
     });
@@ -2473,7 +2604,7 @@ io.on('connection', (socket) => {
     // Test-only: force the next skill/attack roll to specific dice (defaults to
     // 6+6=12) so effect-asserting e2e tests don't depend on random roll success.
     socket.on('debug_force_next_roll', ({ roll1 = 6, roll2 = 6 } = {}) => {
-        debugForcedRoll = { roll1, roll2 };
+        currentSession().debugForcedRoll = { roll1, roll2 };
     });
 
     socket.on('request_game_reset', () => {
@@ -3212,10 +3343,10 @@ io.on('connection', (socket) => {
             if (type === 'ATTACK') targetCard = gameState.activeMonsters.find(monster => monster.id === gameState.pendingRoll.targetId);
 
             let roll1, roll2;
-            if (debugForcedRoll) {
-                roll1 = debugForcedRoll.roll1;
-                roll2 = debugForcedRoll.roll2;
-                debugForcedRoll = null;
+            if (currentSession().debugForcedRoll) {
+                roll1 = currentSession().debugForcedRoll.roll1;
+                roll2 = currentSession().debugForcedRoll.roll2;
+                currentSession().debugForcedRoll = null;
             } else {
                 roll1 = Math.floor(Math.random() * 6) + 1;
                 roll2 = Math.floor(Math.random() * 6) + 1;
@@ -3417,7 +3548,7 @@ io.on('connection', (socket) => {
             .find(entry => entry.playerId === socket.id);
         if (!eligible) return;
 
-        if (modifierTimer) clearTimeout(modifierTimer);
+        if (currentSession().modifierTimer) clearTimeout(currentSession().modifierTimer);
         gameState.state = 'WAITING_FOR_DISCARD_PENALTY';
         gameState.pendingAction = {
             type: 'FEARLESS_FLAME_DISCARD',
@@ -3483,7 +3614,7 @@ io.on('connection', (socket) => {
         const hero = player?.party?.find(card => card.id === roll.targetHeroId);
         if (!hero || !hasEquippedEffect(hero, 'ITEM_BIGGEST_RING')) return;
         roll.biggestRingUsed = true;
-        if (modifierTimer) clearTimeout(modifierTimer);
+        if (currentSession().modifierTimer) clearTimeout(currentSession().modifierTimer);
         gameState.state = 'WAITING_FOR_VARIABLE_DISCARD';
         gameState.pendingAction = {
             type: 'BIGGEST_RING_DISCARD', playerToChoose: socket.id, originalActor: socket.id,
@@ -3556,7 +3687,7 @@ io.on('connection', (socket) => {
                         return;
                     }
                     if (gameState.pendingRoll.type === 'CHALLENGE' && !['ACTIVE', 'CHALLENGER'].includes(data.targetRoll)) return;
-                    if (modifierTimer) clearTimeout(modifierTimer);
+                    if (currentSession().modifierTimer) clearTimeout(currentSession().modifierTimer);
                     gameState.state = 'WAITING_FOR_DISCARD_PENALTY';
                     gameState.pendingAction = {
                         type: 'MODIFIER_DISCARD_COST', playerToChoose: socket.id,
@@ -3660,7 +3791,7 @@ io.on('connection', (socket) => {
         // Seats in the reconnect grace period cannot respond and must not force
         // the connected players to wait for the full modifier timer.
         const connectedPlayerIds = Object.keys(gameState.players)
-            .filter(playerId => io.sockets.sockets.has(playerId));
+            .filter(playerId => currentSession().socketIds.has(playerId));
         const everyonePassed = connectedPlayerIds.length > 0
             && connectedPlayerIds.every(playerId => gameState.passedModifiers.includes(playerId));
 
@@ -3668,7 +3799,7 @@ io.on('connection', (socket) => {
 
             // End the phase
             gameState.passedModifiers = []; // Reset for future rolls
-            if (modifierTimer) clearTimeout(modifierTimer);
+            if (currentSession().modifierTimer) clearTimeout(currentSession().modifierTimer);
             
             resolvePendingRoll(); 
         } else {
@@ -4925,7 +5056,12 @@ socket.on('resolve_immediate_play', (data) => {
 /* --- CONNECTION --- */
     socket.on('disconnect', () => {
         console.log('Player disconnected:', socket.id);
-        reconnectManager.disconnect(socket.id);
+        const session = currentSession();
+        session.socketIds.delete(socket.id);
+        session.reconnectManager.disconnect(socket.id);
+        if (session.state.playerOrder.length === 0 && session.socketIds.size === 0) {
+            roomSessions.delete(session.roomCode);
+        }
     });
 });
 
@@ -4944,7 +5080,7 @@ function startGame() {
     gameState.pendingEndTurnEffects = null;
     gameState.pendingShamanagaSacrifice = null;
     gameState.pendingSmokReveal = null;
-    if (modifierTimer) clearTimeout(modifierTimer);
+    if (currentSession().modifierTimer) clearTimeout(currentSession().modifierTimer);
     clearChallengeTimer();
     resetActionPointTimerTracking();
 

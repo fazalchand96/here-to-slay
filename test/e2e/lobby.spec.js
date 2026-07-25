@@ -4,7 +4,7 @@
 // Playwright runs two separate browser contexts to simulate two real players.
 
 const { test, expect } = require('./helpers/fixtures');
-const { newTrackedContext } = require('./helpers/gameSetup');
+const { newTrackedContext, createRoom, joinRoom } = require('./helpers/gameSetup');
 
 // ---------------------------------------------------------------------------
 // Shared helper
@@ -23,14 +23,17 @@ async function rollLeader(page, name = 'TestPlayer') {
 // Tests
 // ---------------------------------------------------------------------------
 
-test('lobby overlay is visible on load and game board is hidden', async ({ page }) => {
+test('room gate is visible on load and game board is hidden', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('#lobby-modal')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#room-modal')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#lobby-modal')).toHaveClass(/hidden/);
     await expect(page.locator('#app-container')).toHaveClass(/hidden/);
 });
 
-test('ROLL FOR LEADER button appears once player is registered', async ({ page }) => {
+test('creating a lobby shows its code and registers the host', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
+    const roomCode = await createRoom(page);
+    await expect(page.locator('#lobby-room-code strong')).toHaveText(roomCode);
     // The button is rendered dynamically inside the leader-selection-container
     await expect(page.locator('#leader-selection-container')).toBeVisible();
     await expect(page.getByText('ROLL FOR LEADER')).toBeVisible();
@@ -40,6 +43,7 @@ test('start button stays hidden with only one player', async ({ browser }) => {
     const ctx = await newTrackedContext(browser);
     const page = await ctx.newPage();
     await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await createRoom(page);
     await rollLeader(page, 'Solo');
     // Even after selecting a leader, the button must not appear (need ≥2 players)
     await page.waitForTimeout(1_000);
@@ -55,6 +59,8 @@ test('start button hidden for non-host even when both have leaders', async ({ br
 
     await host.goto('/', { waitUntil: 'domcontentloaded' });
     await p2.goto('/', { waitUntil: 'domcontentloaded' });
+    const roomCode = await createRoom(host);
+    await joinRoom(p2, roomCode);
 
     await rollLeader(host, 'Host');
     await rollLeader(p2, 'Guest');
@@ -77,6 +83,8 @@ test('start button appears for host once both players have a leader', async ({ b
 
     await host.goto('/', { waitUntil: 'domcontentloaded' });
     await p2.goto('/', { waitUntil: 'domcontentloaded' });
+    const roomCode = await createRoom(host);
+    await joinRoom(p2, roomCode);
 
     await rollLeader(host, 'HostPlayer');
     await rollLeader(p2, 'GuestPlayer');
@@ -100,6 +108,8 @@ test('happy path: two players start the game and reach PLAYING state', async ({ 
 
     await host.goto('/', { waitUntil: 'domcontentloaded' });
     await p2.goto('/', { waitUntil: 'domcontentloaded' });
+    const roomCode = await createRoom(host);
+    await joinRoom(p2, roomCode);
 
     await rollLeader(host, 'AliceHost');
     await rollLeader(p2, 'BobGuest');

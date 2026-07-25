@@ -1,7 +1,7 @@
 'use strict';
 
 const { expect } = require('@playwright/test');
-const { newTrackedContext } = require('../helpers/gameSetup');
+const { newTrackedContext, createRoom, joinRoom } = require('../helpers/gameSetup');
 
 const MOBILE_VIEWPORT = { width: 844, height: 390 };
 
@@ -25,6 +25,9 @@ async function startMobileGame(browser) {
 
     await host.goto('/', { waitUntil: 'domcontentloaded' });
     await p2.goto('/',   { waitUntil: 'domcontentloaded' });
+
+    const roomCode = await createRoom(host);
+    await joinRoom(p2, roomCode);
 
     await rollLeader(host, 'MobileHost');
     await rollLeader(p2,   'MobileGuest');

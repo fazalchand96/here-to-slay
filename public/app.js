@@ -20,16 +20,20 @@ function getPlayerName(id) {
 
 
 
-const SESSION_TOKEN_KEY = 'hts-player-session-token';
+const SESSION_TOKEN_PREFIX = 'hts-player-session-token:';
+const LAST_ROOM_CODE_KEY = 'hts-last-room-code';
+let activeRoomCode = '';
+window.activeRoomCode = '';
 
-function getOrCreateSessionToken() {
+function getOrCreateSessionToken(roomCode) {
+    const key = `${SESSION_TOKEN_PREFIX}${String(roomCode || 'new').toUpperCase()}`;
     try {
-        let token = localStorage.getItem(SESSION_TOKEN_KEY);
+        let token = localStorage.getItem(key);
         if (!token) {
             token = window.crypto && typeof window.crypto.randomUUID === 'function'
                 ? window.crypto.randomUUID()
                 : `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
-            localStorage.setItem(SESSION_TOKEN_KEY, token);
+            localStorage.setItem(key, token);
         }
         return token;
     } catch (e) {
@@ -37,14 +41,14 @@ function getOrCreateSessionToken() {
     }
 }
 
-const playerSessionToken = getOrCreateSessionToken();
-const socket = io({ auth: { sessionToken: playerSessionToken } });
+const socket = io();
 window._socket = socket;
 
-socket.on('session_token', token => {
-    if (typeof token !== 'string' || !token) return;
-    socket.auth.sessionToken = token;
-    try { localStorage.setItem(SESSION_TOKEN_KEY, token); } catch (e) {}
+socket.on('session_token', payload => {
+    const roomCode = typeof payload === 'object' ? payload.roomCode : activeRoomCode;
+    const token = typeof payload === 'object' ? payload.token : payload;
+    if (typeof token !== 'string' || !token || !roomCode) return;
+    try { localStorage.setItem(`${SESSION_TOKEN_PREFIX}${roomCode}`, token); } catch (e) {}
 });
 
 // --- AUDIO MANAGER ---
@@ -1717,10 +1721,115 @@ window.closeDiscardViewer = function() {
 
 // Socket Events
 
-socket.on('connect', () => {
+function normalizeRoomCodeInput(value) {
+    return String(value || '').toUpperCase().replace(/[^A-Z2-9]/g, '').slice(0, 4);
+}
 
+function setRoomError(message = '') {
+    const error = document.getElementById('room-error');
+    if (!error) return;
+    error.textContent = message;
+    error.classList.toggle('hidden', !message);
+}
+
+function setRoomControlsBusy(busy) {
+    const create = document.getElementById('create-room-btn');
+    const join = document.getElementById('join-room-btn');
+    if (create) create.disabled = busy;
+    if (join) join.disabled = busy;
+}
+
+function enterJoinedRoom(roomCode) {
+    activeRoomCode = normalizeRoomCodeInput(roomCode);
+    window.activeRoomCode = activeRoomCode;
+    try { localStorage.setItem(LAST_ROOM_CODE_KEY, activeRoomCode); } catch (e) {}
+    document.getElementById('room-modal')?.classList.add('hidden');
+    lobbyScreen?.classList.remove('hidden');
+    const badge = document.getElementById('lobby-room-code');
+    const strong = badge?.querySelector('strong');
+    if (strong) strong.textContent = activeRoomCode;
+    setRoomControlsBusy(false);
+    setRoomError('');
     socket.emit('request_lobby_data');
+}
 
+function submitJoinRoom(roomCode, { automatic = false } = {}) {
+    const code = normalizeRoomCodeInput(roomCode);
+    if (code.length !== 4) {
+        if (!automatic) setRoomError('Enter the complete four-character lobby code.');
+        return;
+    }
+    setRoomControlsBusy(true);
+    socket.emit('join_room', { roomCode: code, sessionToken: getOrCreateSessionToken(code) }, response => {
+        setRoomControlsBusy(false);
+        if (response?.ok) {
+            enterJoinedRoom(response.roomCode);
+            return;
+        }
+        activeRoomCode = '';
+        window.activeRoomCode = '';
+        document.getElementById('room-modal')?.classList.remove('hidden');
+        lobbyScreen?.classList.add('hidden');
+        if (!automatic || response?.reason) setRoomError(response?.reason || 'The lobby could not be joined.');
+    });
+}
+
+window.createLobbyRoom = function() {
+    setRoomError('');
+    setRoomControlsBusy(true);
+    socket.emit('create_room', { sessionToken: getOrCreateSessionToken('new') }, response => {
+        setRoomControlsBusy(false);
+        if (!response?.ok) {
+            setRoomError(response?.reason || 'The lobby could not be created.');
+            return;
+        }
+        const provisionalToken = getOrCreateSessionToken('new');
+        try {
+            if (!localStorage.getItem(`${SESSION_TOKEN_PREFIX}${response.roomCode}`)) {
+                localStorage.setItem(`${SESSION_TOKEN_PREFIX}${response.roomCode}`, provisionalToken);
+            }
+        } catch (e) {}
+        enterJoinedRoom(response.roomCode);
+    });
+};
+
+window.joinLobbyRoom = function() {
+    submitJoinRoom(document.getElementById('room-code-input')?.value);
+};
+
+document.getElementById('create-room-btn')?.addEventListener('click', window.createLobbyRoom);
+document.getElementById('join-room-btn')?.addEventListener('click', window.joinLobbyRoom);
+document.getElementById('room-code-input')?.addEventListener('input', event => {
+    event.target.value = normalizeRoomCodeInput(event.target.value);
+    setRoomError('');
+});
+document.getElementById('room-code-input')?.addEventListener('keydown', event => {
+    if (event.key === 'Enter') window.joinLobbyRoom();
+});
+document.getElementById('lobby-room-code')?.addEventListener('click', async () => {
+    if (!activeRoomCode) return;
+    try {
+        await navigator.clipboard.writeText(activeRoomCode);
+        showNotification(`Lobby code ${activeRoomCode} copied.`);
+    } catch (e) {
+        showNotification(`Lobby code: ${activeRoomCode}`);
+    }
+});
+
+socket.on('connect', () => {
+    const rememberedCode = activeRoomCode || (() => {
+        try { return localStorage.getItem(LAST_ROOM_CODE_KEY) || ''; } catch (e) { return ''; }
+    })();
+    if (rememberedCode) {
+        submitJoinRoom(rememberedCode, { automatic: true });
+    } else {
+        document.getElementById('room-modal')?.classList.remove('hidden');
+        lobbyScreen?.classList.add('hidden');
+    }
+});
+
+socket.on('room_joined', ({ roomCode } = {}) => {
+    if (roomCode) enterJoinedRoom(roomCode);
 });
 
 

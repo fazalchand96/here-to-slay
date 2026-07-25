@@ -10,7 +10,8 @@ test('a new page in the same browser context restores its mid-match seat', async
         const me = window.latestGameState.players[window.myId];
         return {
             socketId: window.myId,
-            token: localStorage.getItem('hts-player-session-token'),
+            roomCode: window.activeRoomCode,
+            token: localStorage.getItem(`hts-player-session-token:${window.activeRoomCode}`),
             name: me.name,
             handIds: me.hand.map(card => card.id),
             partyIds: me.party.map(card => card.id),
@@ -35,7 +36,8 @@ test('a new page in the same browser context restores its mid-match seat', async
         const me = window.latestGameState.players[window.myId];
         return {
             socketId: window.myId,
-            token: localStorage.getItem('hts-player-session-token'),
+            roomCode: window.activeRoomCode,
+            token: localStorage.getItem(`hts-player-session-token:${window.activeRoomCode}`),
             name: me.name,
             handIds: me.hand.map(card => card.id),
             partyIds: me.party.map(card => card.id),

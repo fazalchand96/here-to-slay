@@ -7,7 +7,7 @@ const { test, expect } = require('../helpers/fixtures');
 const { rollLeader } = require('../mobile/mobileSetup');
 const {
     newTrackedContext, injectCard, playCardFromHand, passChallenge,
-    rollDice, passModifiers, clickFirstValidTarget,
+    rollDice, passModifiers, clickFirstValidTarget, createRoom, joinRoom,
 } = require('../helpers/gameSetup');
 
 const TIPSY = 'card_031';
@@ -24,10 +24,11 @@ test('Tipsy Tootie (3 players): selecting an opponent hero resolves', async ({ b
     const p3 = await c3.newPage();
     host.on('pageerror', e => errors.push(e.message));
 
-    for (const [pg, name] of [[host, 'Host'], [p2, 'Guest2'], [p3, 'Guest3']]) {
-        await pg.goto('/', { waitUntil: 'domcontentloaded' });
-        await rollLeader(pg, name);
-    }
+    for (const pg of [host, p2, p3]) await pg.goto('/', { waitUntil: 'domcontentloaded' });
+    const roomCode = await createRoom(host);
+    await joinRoom(p2, roomCode);
+    await joinRoom(p3, roomCode);
+    for (const [pg, name] of [[host, 'Host'], [p2, 'Guest2'], [p3, 'Guest3']]) await rollLeader(pg, name);
     await expect(host.locator('#start-game-btn')).not.toHaveClass(/hidden/, { timeout: 10_000 });
     await host.click('#start-game-btn', { force: true });
     await expect(host.locator('#app-container')).not.toHaveClass(/hidden/, { timeout: 12_000 });

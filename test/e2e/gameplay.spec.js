@@ -4,7 +4,7 @@
 // renderBoard crash guard, challenge UI, and hand-privacy masking.
 
 const { test, expect } = require('./helpers/fixtures');
-const { newTrackedContext } = require('./helpers/gameSetup');
+const { newTrackedContext, createRoom, joinRoom } = require('./helpers/gameSetup');
 
 // ---------------------------------------------------------------------------
 // Shared fixture: start a 2-player game and return both pages
@@ -18,6 +18,8 @@ async function startTwoPlayerGame(browser) {
 
     await host.goto('/', { waitUntil: 'domcontentloaded' });
     await p2.goto('/', { waitUntil: 'domcontentloaded' });
+    const roomCode = await createRoom(host);
+    await joinRoom(p2, roomCode);
 
     // Roll leaders for both players
     async function rollLeader(page, name) {
@@ -96,6 +98,8 @@ test('no JS errors thrown during game start and initial render (renderBoard cras
 
     await host.goto('/', { waitUntil: 'domcontentloaded' });
     await p2.goto('/', { waitUntil: 'domcontentloaded' });
+    const roomCode = await createRoom(host);
+    await joinRoom(p2, roomCode);
 
     async function rollLeader(page, name) {
         await page.fill('#player-name-input', name);
@@ -140,6 +144,8 @@ test('opponent hand cards are masked (type === Hidden) in gameStateUpdate', asyn
 
     await host.goto('/', { waitUntil: 'domcontentloaded' });
     await p2.goto('/', { waitUntil: 'domcontentloaded' });
+    const roomCode = await createRoom(host);
+    await joinRoom(p2, roomCode);
 
     async function rollLeader(page, name) {
         await page.fill('#player-name-input', name);

@@ -228,6 +228,88 @@ body {
 /* lobby has its own dark tavern background (!important) — keep its text light. */
 .lobby-panel { color: var(--text-main); }
 
+.room-panel {
+    width: min(92vw, 560px);
+    padding: clamp(24px, 5vw, 46px);
+    text-align: center;
+    color: var(--text-main);
+}
+
+.room-primary-action {
+    width: min(100%, 340px);
+    margin: 24px auto 10px;
+    font-size: 1.15rem;
+}
+
+.room-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 20px 0 14px;
+    color: rgba(255,255,255,.68);
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    font-size: .72rem;
+}
+
+.room-divider::before,
+.room-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(212,168,67,.6));
+}
+
+.room-divider::after { transform: scaleX(-1); }
+
+.room-join-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+}
+
+.room-code-input {
+    margin: 0 !important;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: .35em;
+    font-family: "Cinzel", serif;
+    font-size: 1.35rem !important;
+    font-weight: 700;
+}
+
+.room-error {
+    margin-top: 12px;
+    color: #fca5a5;
+    font-weight: 700;
+}
+
+.lobby-room-code {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: 4px 0 10px;
+    padding: 6px 12px;
+    border: 1px solid rgba(212,168,67,.55);
+    border-radius: 999px;
+    background: rgba(14,10,8,.55);
+    color: #f8d77a;
+    cursor: pointer;
+    font: 700 .72rem/1 "Outfit", sans-serif;
+    letter-spacing: .08em;
+}
+
+.lobby-room-code strong {
+    font: 700 1rem/1 "Cinzel", serif;
+    letter-spacing: .18em;
+}
+
+.lobby-room-code small {
+    color: rgba(255,255,255,.58);
+    font-size: .62rem;
+    letter-spacing: 0;
+}
+
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }

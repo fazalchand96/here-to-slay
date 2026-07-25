@@ -14,6 +14,18 @@ async function rollLeader(page, name) {
     await expect(page.locator('#player-name-input')).toBeHidden({ timeout: 10_000 });
 }
 
+async function createRoom(page) {
+    await page.locator('#create-room-btn').click();
+    await expect.poll(() => page.evaluate(() => window.activeRoomCode || '')).toMatch(/^[A-Z2-9]{4}$/);
+    return page.evaluate(() => window.activeRoomCode);
+}
+
+async function joinRoom(page, roomCode) {
+    await page.locator('#room-code-input').fill(roomCode);
+    await page.locator('#join-room-btn').click();
+    await expect.poll(() => page.evaluate(() => window.activeRoomCode || '')).toBe(roomCode);
+}
+
 // Every context created for a test, so the auto-cleanup fixture can close them
 // all on teardown — even when a test fails before its own ctx.close() runs. The
 // server keeps one global gameState and adds each socket to playerOrder on
@@ -72,6 +84,9 @@ async function startGame(browser) {
     await host.goto('/', { waitUntil: 'domcontentloaded' });
     await p2.goto('/', { waitUntil: 'domcontentloaded' });
 
+    const roomCode = await createRoom(host);
+    await joinRoom(p2, roomCode);
+
     await rollLeader(host, 'HostPlayer');
     await rollLeader(p2,   'GuestPlayer');
 
@@ -95,10 +110,14 @@ async function startGameNPlayers(browser, n = 6) {
         const ctx = await newTrackedContext(browser);
         const page = await ctx.newPage();
         await page.goto('/', { waitUntil: 'domcontentloaded' });
-        await rollLeader(page, i === 0 ? 'HostPlayer' : `Guest${i}`);
         pages.push(page);
     }
     const host = pages[0];
+    const roomCode = await createRoom(host);
+    for (const page of pages.slice(1)) await joinRoom(page, roomCode);
+    for (let i = 0; i < pages.length; i++) {
+        await rollLeader(pages[i], i === 0 ? 'HostPlayer' : `Guest${i}`);
+    }
     await expect(host.locator('#start-game-btn')).not.toHaveClass(/hidden/, { timeout: 12_000 });
     await host.click('#start-game-btn', { force: true });
     for (const page of pages) {
@@ -289,6 +308,8 @@ async function ensureP2HasHero(p2Page, heroCardId = 'card_016') {
 module.exports = {
     startGame,
     startGameNPlayers,
+    createRoom,
+    joinRoom,
     newTrackedContext,
     trackContext,
     closeTrackedContexts,

@@ -7,7 +7,7 @@
 // critical control — the END TURN button — stays within the viewport. Screenshots
 // land in screenshots/fit/ for eyeballing.
 const { test, expect } = require('../helpers/fixtures');
-const { trackContext } = require('../helpers/gameSetup');
+const { trackContext, createRoom, joinRoom } = require('../helpers/gameSetup');
 const fs = require('fs');
 const path = require('path');
 
@@ -45,6 +45,8 @@ for (const vp of VIEWPORTS) {
 
         await host.goto('/', { waitUntil: 'domcontentloaded' });
         await p2.goto('/', { waitUntil: 'domcontentloaded' });
+        const roomCode = await createRoom(host);
+        await joinRoom(p2, roomCode);
         await rollLeader(host, 'Host');
         await rollLeader(p2, 'Guest');
         await expect(host.locator('#start-game-btn')).not.toHaveClass(/hidden/, { timeout: 10_000 });

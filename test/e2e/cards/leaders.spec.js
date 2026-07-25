@@ -1,7 +1,7 @@
 'use strict';
 
 const { test, expect } = require('../helpers/fixtures');
-const { newTrackedContext } = require('../helpers/gameSetup');
+const { newTrackedContext, createRoom, joinRoom } = require('../helpers/gameSetup');
 
 async function rollLeader(page, name) {
     await page.fill('#player-name-input', name);
@@ -21,6 +21,8 @@ test('Party leaders: game starts with whichever leader was assigned, no crash', 
 
     await host.goto('/', { waitUntil: 'domcontentloaded' });
     await p2.goto('/', { waitUntil: 'domcontentloaded' });
+    const roomCode = await createRoom(host);
+    await joinRoom(p2, roomCode);
 
     await rollLeader(host, 'LeaderHost');
     await rollLeader(p2,   'LeaderGuest');
@@ -51,6 +53,8 @@ test('Leader reroll works and game can still start', async ({ browser }) => {
 
     await host.goto('/', { waitUntil: 'domcontentloaded' });
     await p2.goto('/', { waitUntil: 'domcontentloaded' });
+    const roomCode = await createRoom(host);
+    await joinRoom(p2, roomCode);
 
     await rollLeader(host, 'RerollHost');
     const rerollBtn = host.getByText('REROLL (1 LEFT)');
