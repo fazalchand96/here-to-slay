@@ -31,10 +31,43 @@ const {
     resolveLumberingContinuation,
     resetGameForNextMatch,
     resolvePendingCard,
+    finishFearlessFlameChoice,
+    completeShadowSaintDiscard,
     CHALLENGE_TIMEOUT_MS,
     loadCards,
     gameState
 } = require('../server');
+
+test('Shadow Saint completes its Modifier discard and returns the game to the turn', () => {
+    const previous = { ...gameState };
+    try {
+        gameState.state = 'WAITING_FOR_DISCARD_PENALTY';
+        gameState.players = {
+            saint: {
+                id: 'saint',
+                name: 'Saint',
+                blocksOpponentModifiersThisTurn: false
+            }
+        };
+        gameState.pendingAction = {
+            type: 'DISCARD',
+            playerToChoose: 'saint',
+            amount: 1,
+            nextAction: { type: 'APPLY_SHADOW_SAINT', originalActor: 'saint' }
+        };
+
+        assert.equal(
+            completeShadowSaintDiscard(gameState.pendingAction.nextAction),
+            true
+        );
+        assert.equal(gameState.players.saint.blocksOpponentModifiersThisTurn, true);
+        assert.equal(gameState.state, 'PLAYING');
+        assert.equal(gameState.pendingAction, null);
+    } finally {
+        for (const key of Object.keys(gameState)) delete gameState[key];
+        Object.assign(gameState, previous);
+    }
+});
 
 test('Lightning Labrys keeps its variable-discard phase after card resolution', () => {
     const previous = { ...gameState };
@@ -356,6 +389,91 @@ test('challenge quorum keeps waiting for every connected opponent', () => {
 // ===========================================================================
 // calculateRollDetails — passive roll bonuses
 // ===========================================================================
+
+test('declining Fearless Flame re-emits settled skill and Challenge rolls', () => {
+    const previous = {
+        players: gameState.players,
+        pendingRoll: gameState.pendingRoll,
+        pendingAction: gameState.pendingAction,
+        state: gameState.state,
+    };
+    const events = [];
+    const emitter = { emit: (name, payload) => events.push({ name, payload }) };
+    const flameLeader = { name: 'The Fearless Flame', effect_id: 'LEADER_SORCERER' };
+
+    try {
+        gameState.players = {
+            flame: { id: 'flame', name: 'Flame', leader: flameLeader, hand: [{ id: 'cost' }] },
+            next: { id: 'next', name: 'Next', leader: flameLeader, hand: [{ id: 'next-cost' }] },
+        };
+        gameState.state = 'WAITING_FOR_DISCARD_PENALTY';
+        gameState.pendingAction = {
+            type: 'FEARLESS_FLAME_DISCARD',
+            playerToChoose: 'flame',
+            rollSide: 'ROLL',
+        };
+        gameState.pendingRoll = {
+            type: 'HERO_SKILL',
+            rollerId: 'flame',
+            roll1: 3,
+            roll2: 5,
+            passiveBonus: 0,
+            baseRoll: 8,
+            currentRoll: 8,
+            modifierTotal: 0,
+            breakdown: [{ source: 'Base Dice', value: 8 }],
+            fearlessFlameQueue: [
+                { playerId: 'flame', rollSide: 'ROLL' },
+                { playerId: 'next', rollSide: 'ROLL' },
+            ],
+        };
+
+        finishFearlessFlameChoice(false, emitter);
+        let update = events.find(event => event.name === 'dice_roll_pending')?.payload;
+        assert.equal(update.isRollUpdate, true);
+        assert.equal(update.finalTotal, 8);
+        assert.equal(gameState.pendingRoll.currentRoll, 8);
+
+        events.length = 0;
+        gameState.state = 'WAITING_FOR_DISCARD_PENALTY';
+        gameState.pendingAction = {
+            type: 'FEARLESS_FLAME_DISCARD',
+            playerToChoose: 'flame',
+            rollSide: 'ACTIVE',
+        };
+        gameState.pendingRoll = {
+            type: 'CHALLENGE',
+            activeId: 'flame',
+            challengerId: 'opponent',
+            activeRoll1: 4,
+            activeRoll2: 4,
+            activeBase: 8,
+            activeBreakdown: [{ source: 'Base Dice', value: 8 }],
+            activeModifiers: 0,
+            challengerRoll1: 3,
+            challengerRoll2: 4,
+            challengerBase: 7,
+            challengerBreakdown: [{ source: 'Base Dice', value: 7 }],
+            challengerModifiers: 0,
+            fearlessFlameQueue: [
+                { playerId: 'flame', rollSide: 'ACTIVE' },
+                { playerId: 'next', rollSide: 'CHALLENGER' },
+            ],
+        };
+
+        finishFearlessFlameChoice(false, emitter);
+        update = events.find(event => event.name === 'dice_roll_pending')?.payload;
+        assert.equal(update.isRollUpdate, true);
+        assert.equal(update.isChallenge, true);
+        assert.equal(update.activeFinalTotal, 8);
+        assert.equal(update.challengerFinalTotal, 7);
+    } finally {
+        gameState.players = previous.players;
+        gameState.pendingRoll = previous.pendingRoll;
+        gameState.pendingAction = previous.pendingAction;
+        gameState.state = previous.state;
+    }
+});
 
 test('calculateRollDetails returns the base roll with no modifiers', () => {
     const { total, breakdown } = calculateRollDetails(pl(), 7, 'HERO_SKILL');

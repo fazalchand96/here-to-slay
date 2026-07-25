@@ -125,7 +125,7 @@ function startNextFearlessFlameChoice() {
     return true;
 }
 
-function finishFearlessFlameChoice(useBonus) {
+function finishFearlessFlameChoice(useBonus, emitter = io) {
     const action = gameState.pendingAction;
     const roll = gameState.pendingRoll;
     if (!roll || action?.type !== 'FEARLESS_FLAME_DISCARD') return;
@@ -144,29 +144,33 @@ function finishFearlessFlameChoice(useBonus) {
             roll.passiveBonus += 1;
             (roll.breakdown = roll.breakdown || []).push({ source: 'The Fearless Flame', value: 1 });
         }
-        io.emit('message', `${getPlayerName(gameState, action.playerToChoose)} gained +1 from The Fearless Flame.`);
-        if (roll.type === 'CHALLENGE') {
-            io.emit('dice_roll_pending', {
-                isChallenge: true, type: 'CHALLENGE',
-                activeId: roll.activeId, activeName: getPlayerName(gameState, roll.activeId),
-                activeRoll1: roll.activeRoll1, activeRoll2: roll.activeRoll2, activeBreakdown: roll.activeBreakdown,
-                activeTotal: roll.activeBase, activeModifierTotal: roll.activeModifiers || 0,
-                activeFinalTotal: roll.activeBase + (roll.activeModifiers || 0),
-                challengerId: roll.challengerId, challengerName: getPlayerName(gameState, roll.challengerId),
-                challengerRoll1: roll.challengerRoll1, challengerRoll2: roll.challengerRoll2,
-                challengerBreakdown: roll.challengerBreakdown, challengerTotal: roll.challengerBase,
-                challengerModifierTotal: roll.challengerModifiers || 0,
-                challengerFinalTotal: roll.challengerBase + (roll.challengerModifiers || 0), reason: 'for a CHALLENGE!'
-            });
-        } else {
-            io.emit('dice_roll_pending', {
-                rollerId: roll.rollerId, rollerName: getPlayerName(gameState, roll.rollerId),
-                roll1: roll.roll1, roll2: roll.roll2, passiveBonus: roll.passiveBonus,
-                breakdown: roll.breakdown, modifierTotal: roll.modifierTotal || 0,
-                finalTotal: roll.currentRoll, total: roll.currentRoll,
-                reason: roll.type === 'ATTACK' ? 'to attack a monster' : 'for a skill'
-            });
-        }
+        emitter.emit('message', `${getPlayerName(gameState, action.playerToChoose)} gained +1 from The Fearless Flame.`);
+    }
+    // Re-show the settled roll after either decision. Previously only using the
+    // bonus emitted this update, so SKIP left the dice overlay closed and made
+    // the roll/challenge appear to resolve without its modifier phase.
+    if (roll.type === 'CHALLENGE') {
+        emitter.emit('dice_roll_pending', {
+            isRollUpdate: true, isChallenge: true, type: 'CHALLENGE',
+            activeId: roll.activeId, activeName: getPlayerName(gameState, roll.activeId),
+            activeRoll1: roll.activeRoll1, activeRoll2: roll.activeRoll2, activeBreakdown: roll.activeBreakdown,
+            activeTotal: roll.activeBase, activeModifierTotal: roll.activeModifiers || 0,
+            activeFinalTotal: roll.activeBase + (roll.activeModifiers || 0),
+            challengerId: roll.challengerId, challengerName: getPlayerName(gameState, roll.challengerId),
+            challengerRoll1: roll.challengerRoll1, challengerRoll2: roll.challengerRoll2,
+            challengerBreakdown: roll.challengerBreakdown, challengerTotal: roll.challengerBase,
+            challengerModifierTotal: roll.challengerModifiers || 0,
+            challengerFinalTotal: roll.challengerBase + (roll.challengerModifiers || 0), reason: 'for a CHALLENGE!'
+        });
+    } else {
+        emitter.emit('dice_roll_pending', {
+            isRollUpdate: true,
+            rollerId: roll.rollerId, rollerName: getPlayerName(gameState, roll.rollerId),
+            roll1: roll.roll1, roll2: roll.roll2, passiveBonus: roll.passiveBonus,
+            breakdown: roll.breakdown, modifierTotal: roll.modifierTotal || 0,
+            finalTotal: roll.currentRoll, total: roll.currentRoll,
+            reason: roll.type === 'ATTACK' ? 'to attack a monster' : 'for a skill'
+        });
     }
     roll.fearlessFlameQueue.shift();
     startNextFearlessFlameChoice();
@@ -667,6 +671,16 @@ function resetToPlayingState() {
     gameState.challengePhase = false;
     gameState.modifierPhase = false;
     gameState.pendingChallenge = null;
+}
+
+function completeShadowSaintDiscard(nextAction) {
+    const actor = gameState.players[nextAction?.originalActor];
+    if (actor) {
+        actor.blocksOpponentModifiersThisTurn = true;
+        io.emit('message', `${getPlayerName(gameState, actor.id)} prevents every other player from playing Modifiers until the end of the turn.`);
+    }
+    resetToPlayingState();
+    return Boolean(actor);
 }
 
 function queuePassiveDraw(playerId, count, source) {
@@ -1272,7 +1286,7 @@ function broadcastState() {
         clearChallengeTimer();
     }
     // Hide hands of other players before sending
-    const stateToSend = JSON.parse(JSON.stringify(gameState)); console.log(`[DEBUG] broadcastState: playerOrder=${gameState.playerOrder.join(", ")}, players:`, Object.keys(gameState.players).map(k => `${k} has ${gameState.players[k].hand.length} cards`));
+    console.log(`[DEBUG] broadcastState: playerOrder=${gameState.playerOrder.join(", ")}, players:`, Object.keys(gameState.players).map(k => `${k} has ${gameState.players[k].hand.length} cards`));
     console.log(`[DEBUG] broadcastState -> state=${gameState.state}, mainDeck=${gameState.mainDeck.length}, monsterDeck=${gameState.monsterDeck.length}, activeMonsters=${gameState.activeMonsters.length}`);
     console.log(`[DEBUG] broadcastState -> active=${gameState.activePlayerSocketId ? gameState.activePlayerSocketId.substring(0,4) : 'none'}, pendingAction=${gameState.pendingAction ? gameState.pendingAction.type : 'none'}, pendingRoll=${gameState.pendingRoll ? gameState.pendingRoll.type : 'none'}, pendingChallenge=${gameState.pendingChallenge ? 'yes' : 'no'}, pendingGlobal=${gameState.pendingGlobalAction ? gameState.pendingGlobalAction.type : 'none'}`);
     
@@ -4099,6 +4113,11 @@ socket.on('resolve_immediate_play', (data) => {
                 broadcastState();
                 return;
             }
+            if (nextAction?.type === 'APPLY_SHADOW_SAINT') {
+                completeShadowSaintDiscard(nextAction);
+                broadcastState();
+                return;
+            }
             resetToPlayingState();
             broadcastState();
         } else if (gameState.state === 'WAITING_FOR_MULTIPLE_DISCARDS') {
@@ -4374,13 +4393,7 @@ socket.on('resolve_immediate_play', (data) => {
                                 resetToPlayingState();
                             }
                         } else if (next.type === 'APPLY_SHADOW_SAINT') {
-                            const actor = gameState.players[next.originalActor];
-                            gameState.pendingAction = null;
-                            if (actor) {
-                                actor.blocksOpponentModifiersThisTurn = true;
-                                io.emit('message', `${getPlayerName(gameState, actor.id)} prevents every other player from playing Modifiers until the end of the turn.`);
-                            }
-                            resetToPlayingState();
+                            completeShadowSaintDiscard(next);
                         } else if (next.type === 'START_MONSTER_ATTACK' || next.type === 'START_FREE_MONSTER_ATTACK') {
                             gameState.pendingAction = null;
                             if (!startMonsterAttackRoll(next.playerId, next.monsterId, { freeAttack: next.type === 'START_FREE_MONSTER_ATTACK' })) {
@@ -4823,4 +4836,6 @@ module.exports = {
     resolveLumberingContinuation,
     resetGameForNextMatch,
     resolvePendingCard,
+    finishFearlessFlameChoice,
+    completeShadowSaintDiscard,
 };

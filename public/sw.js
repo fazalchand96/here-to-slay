@@ -1,10 +1,10 @@
 // Service Worker for Here To Slay Mobile PWA
 // App code changes often, while card and board art rarely changes. Keeping those
 // caches separate prevents every code deployment from downloading all art again.
-const SHELL_CACHE = 'hts-shell-v138';
+const SHELL_CACHE = 'hts-shell-v142';
 // Keep this stable across code-only deploys. Bump it only when an existing
 // image/audio URL is replaced with different content.
-const MEDIA_CACHE = 'hts-media-v1';
+const MEDIA_CACHE = 'hts-media-v2';
 
 const PRECACHE_ASSETS = [
   '/',
@@ -29,6 +29,7 @@ self.addEventListener('activate', (event) => {
       cacheNames
         .filter((name) => (
           (name.startsWith('hts-shell-') && name !== SHELL_CACHE) ||
+          (name.startsWith('hts-media-') && name !== MEDIA_CACHE) ||
           name.startsWith('hts-v')
         ))
         .map((name) => caches.delete(name))

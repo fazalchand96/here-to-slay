@@ -785,8 +785,6 @@ function buildClassPartyGrid(player, isOwn) {
         </section>`;
 }
 
-
-
 const notificationArea = document.getElementById('notification-area');
 
 
@@ -1347,7 +1345,13 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
     const detailTitle = (isMonster || card.type === 'Monster Card')
         ? `${card.rollType === 'LOW_ROLL' ? `Slay ≤${card.slayRoll} · Fail ${card.penaltyRoll}+` : `Slay ${card.slayRoll}+ · Fail ${card.penaltyRoll}-`} · Needs ${card.requirement || '—'}`
         : (card.requirement || card.name || '');
-    const monsterRequirement = !isFullCardArt && (isMonster || card.type === 'Monster Card')
+    // The newest generated Monster art has a deliberately blank requirement
+    // plaque. Older full-card art already has this text baked into the image.
+    const needsMonsterRequirementOverlay = isFullCardArt
+        && (isMonster || card.type === 'Monster Card')
+        && ['Berserkers & Necromancers', 'Monster Expansion'].includes(card.expansion);
+    const monsterRequirement = (!isFullCardArt || needsMonsterRequirementOverlay)
+        && (isMonster || card.type === 'Monster Card')
         ? `<div class="monster-requirement-badge">Req: ${card.requirement || 'None'}</div>`
         : '';
     const boardCardName = !isFullCardArt && (isMonster || card.type === 'Monster Card' || card.type === 'Hero Card')
@@ -1410,7 +1414,7 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
     // names are intact: data-id on root, .card-img/.card-info/.card-name/.card-type/
     // .card-class/.card-req/.equipped-item-thumb, and every targeting glow class.
     return `
-        <div class="card${variantClass} type-${typeSlug}${classSlug ? ` class-${classSlug}` : ''}${artClass(card)}${fullCardArtClass(card)} ${glowClass}" id="${card.id}" data-id="${card.id}" title="${detailTitle}" style="--cc:${cardTint}; ${card.artUrl ? '' : artCropStyle(card.id)} ${inlineStyle}">
+        <div class="card${variantClass} type-${typeSlug}${classSlug ? ` class-${classSlug}` : ''}${artClass(card)}${fullCardArtClass(card)}${needsMonsterRequirementOverlay ? ' needs-requirement-overlay' : ''} ${glowClass}" id="${card.id}" data-id="${card.id}" title="${detailTitle}" style="--cc:${cardTint}; ${card.artUrl ? '' : artCropStyle(card.id)} ${inlineStyle}">
             <div class="card-req">${badgeVal}</div>
             ${monsterRequirement}
             ${boardCardName}
@@ -1576,7 +1580,6 @@ window.closeOpponentModal = function() {
         delete modal.dataset.view;
 
     }
-
 };
 
 // Read-only viewer for the full discard pile (most recent first).
@@ -2216,6 +2219,7 @@ function buildBoardParts(data, ctx) {
         if (!opp) return;
 
         const isAway = opp.connected === false;
+        const isActiveOpponent = data.activePlayerSocketId === id;
         const displayName = `${getPlayerName(id)}${isAway ? ' · AWAY' : ''}`;
         const stats = calculateWinStats(opp);
 
@@ -2233,10 +2237,14 @@ function buildBoardParts(data, ctx) {
         // scroll: name on top, a single status line below. Denominators are dropped
         // to save width; the full breakdown is in the opponent modal.
         if (isAway) chipClass += " is-away";
+        if (isActiveOpponent) chipClass += " is-active-turn";
 
         oppHtml += `
-                <div class="${chipClass}" ${chipClick} ${chipTitle}>
-                    <span class="opponent-chip-name">${displayName}</span>
+                <div class="${chipClass}" ${chipClick} ${chipTitle}${isActiveOpponent ? ' aria-current="true"' : ''}>
+                    <span class="opponent-chip-name">
+                        ${isActiveOpponent ? '<span class="opponent-turn-label">TURN</span>' : ''}
+                        <span class="opponent-name-text">${displayName}</span>
+                    </span>
                     <span class="opponent-chip-stats">
                         <span class="opponent-stat" title="Cards in hand"><span class="opponent-stat-label">HAND</span><span class="opponent-stat-value">${opp.hand.length}</span></span>
                         <span class="opponent-stat" title="Slain monsters"><span class="opponent-stat-label">SLAY</span><span class="opponent-stat-value win-stat-highlight">${stats.monsters}</span></span>
@@ -2378,6 +2386,12 @@ function renderBoard(data) {
     // button being pushed below the console's visible area.
     const diceOverlayEl = document.getElementById('dice-overlay');
     if (diceOverlayEl) diceOverlayEl.classList.toggle('mod-compact', data.state === 'WAITING_FOR_MODIFIERS');
+    const isFearlessFlameChoice = data.state === 'WAITING_FOR_DISCARD_PENALTY'
+        && data.pendingAction?.type === 'FEARLESS_FLAME_DISCARD';
+    if (!isFearlessFlameChoice && window._fearlessFlamePromptTimer) {
+        clearTimeout(window._fearlessFlamePromptTimer);
+        window._fearlessFlamePromptTimer = null;
+    }
 
 
 
@@ -3363,6 +3377,21 @@ function renderBoard(data) {
             }
 
         }
+        // The server has already rolled at this point. Let the one-second dice
+        // animation settle before revealing Fearless Flame's optional discard,
+        // so the choice is visibly made after seeing the result.
+        if (isFearlessFlameChoice) {
+            targetBanner?.classList.add('hidden');
+            clearTimeout(window._fearlessFlamePromptTimer);
+            window._fearlessFlamePromptTimer = setTimeout(() => {
+                const current = window.latestGameState;
+                if (current?.state === 'WAITING_FOR_DISCARD_PENALTY'
+                    && current.pendingAction?.type === 'FEARLESS_FLAME_DISCARD') {
+                    targetBanner?.classList.remove('hidden');
+                }
+                window._fearlessFlamePromptTimer = null;
+            }, 1100);
+        }
 
     } else if (isLocalTargeting || isSelfItemTargeting) {
 
@@ -3532,6 +3561,8 @@ function renderBoard(data) {
         const actNowStates = ['WAITING_FOR_DISCARD_PENALTY', 'WAITING_FOR_MULTIPLE_DISCARDS', 'WAITING_FOR_VARIABLE_DISCARD',
             'WAITING_FOR_SACRIFICE', 'WAITING_FOR_HAND_SELECTION', 'WAITING_FOR_GLOBAL_ACTION',
             'WAITING_FOR_IMMEDIATE_PLAY', 'WAITING_FOR_SKILL_TARGET'];
+        const fearlessFlameChoice = data.state === 'WAITING_FOR_DISCARD_PENALTY'
+            && data.pendingAction?.type === 'FEARLESS_FLAME_DISCARD';
         const hideNow = () => {
             if (diceOv) {
                 diceOv.classList.add('hidden');
@@ -3539,7 +3570,17 @@ function renderBoard(data) {
             }
         };
         if (diceOv && !diceOv.classList.contains('hidden')) {
-            if (actNowStates.includes(data.state)) {
+            if (fearlessFlameChoice) {
+                clearTimeout(window._diceStaleTimer);
+                window._diceStaleTimer = setTimeout(() => {
+                    const current = window.latestGameState;
+                    if (current?.state === 'WAITING_FOR_DISCARD_PENALTY'
+                        && current.pendingAction?.type === 'FEARLESS_FLAME_DISCARD') {
+                        hideNow();
+                    }
+                    window._diceStaleTimer = null;
+                }, 1100);
+            } else if (actNowStates.includes(data.state)) {
                 hideNow();
             } else if (!data.pendingRoll && !rollingStates.includes(data.state)) {
                 clearTimeout(window._diceStaleTimer);
@@ -3681,9 +3722,18 @@ socket.on('dice_roll_pending', (data) => {
 
         const stagingArea = document.getElementById('modifier-staging-area');
 
+        if (data.isRollUpdate) {
+            if (window.diceRollInterval) {
+                clearInterval(window.diceRollInterval);
+                window.diceRollInterval = null;
+            }
+            stopDiceSprite();
+            die1?.classList.remove('rolling');
+            die2?.classList.remove('rolling');
+            overlay?.classList.remove('hidden');
+        }
 
-
-        if (window.currentRollSignature !== signature || overlay?.classList.contains('hidden')) {
+        if (!data.isRollUpdate && (window.currentRollSignature !== signature || overlay?.classList.contains('hidden'))) {
 
             window.currentRollSignature = signature;
 
@@ -3810,9 +3860,20 @@ socket.on('dice_roll_pending', (data) => {
                 
                 resultDisplay.innerText = `Active: ${data.activeFinalTotal} | Challenger: ${data.challengerFinalTotal}`;
             } else {
+                const r1 = data.roll1 || 1;
+                const r2 = data.roll2 || 1;
+                if (die1) {
+                    die1.setAttribute('data-roll', r1);
+                    die1.innerHTML = renderDicePips(r1);
+                }
+                if (die2) {
+                    die2.setAttribute('data-roll', r2);
+                    die2.innerHTML = renderDicePips(r2);
+                }
                 banner.innerHTML = buildRollEquationHTML(data);
                 resultDisplay.innerText = `Final Total: ${data.finalTotal}`;
             }
+            resultDisplay.style.opacity = '1';
         }
 
         // Keep the pass control visible; sizing and artwork are owned by CSS.

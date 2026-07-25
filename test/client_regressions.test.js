@@ -13,3 +13,39 @@ test('free Monster target actions use the inspector action container', () => {
     assert.match(freeAttackBranch[0], /modalActions\.appendChild\(btn\)/);
     assert.doesNotMatch(freeAttackBranch[0], /(^|[^A-Za-z])actions\.appendChild\(btn\)/);
 });
+
+test('Fearless Flame waits for the settled roll and restores it after a decision', () => {
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+
+    assert.match(appSource, /isFearlessFlameChoice[\s\S]*?_fearlessFlamePromptTimer[\s\S]*?1100/);
+    assert.match(appSource, /fearlessFlameChoice[\s\S]*?_diceStaleTimer[\s\S]*?1100/);
+    assert.match(appSource, /if \(!data\.isRollUpdate && \(window\.currentRollSignature/);
+});
+
+test('new full-art Monsters receive a requirement overlay without duplicating older art', () => {
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+
+    assert.match(appSource, /const needsMonsterRequirementOverlay = isFullCardArt/);
+    assert.match(appSource, /\['Berserkers & Necromancers', 'Monster Expansion'\]\.includes\(card\.expansion\)/);
+    assert.match(appSource, /needs-requirement-overlay/);
+});
+
+test('opponent boards use dedicated art and clearly mark the active player', () => {
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const styleSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
+
+    assert.match(appSource, /const isActiveOpponent = data\.activePlayerSocketId === id/);
+    assert.match(appSource, /is-active-turn/);
+    assert.match(appSource, /opponent-turn-label/);
+    assert.match(styleSource, /assets\/skin\/boards\/opponent-board\.webp/);
+    assert.match(styleSource, /\.opponent-chip\.is-active-turn/);
+});
+
+test('the redundant DRAW control is hidden while the draw-pile hotspot remains active', () => {
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+
+    assert.match(htmlSource, /id="draw-card-btn" class="action-btn hidden"/);
+    assert.match(htmlSource, /id="main-deck" role="button"[\s\S]*?aria-label="Draw a card"/);
+    assert.match(appSource, /mainDeckHotspot\.addEventListener\('click', \(\) => drawCardBtn\.click\(\)\)/);
+});
