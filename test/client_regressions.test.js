@@ -44,8 +44,22 @@ test('opponent boards use dedicated art and clearly mark the active player', () 
 test('the redundant DRAW control is hidden while the draw-pile hotspot remains active', () => {
     const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
     const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+    const styleSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
 
     assert.match(htmlSource, /id="draw-card-btn" class="action-btn hidden"/);
     assert.match(htmlSource, /id="main-deck" role="button"[\s\S]*?aria-label="Draw a card"/);
     assert.match(appSource, /mainDeckHotspot\.addEventListener\('click', \(\) => drawCardBtn\.click\(\)\)/);
+    assert.match(appSource, /premium-tabletop-landscape-nodraw\.webp/);
+    assert.doesNotMatch(appSource, /['"]assets\/skin\/premium-tabletop-landscape\.webp['"]/);
+    assert.match(styleSource, /body\.landscape #draw-card-btn \{[\s\S]*?display: none !important;[\s\S]*?pointer-events: none !important;/);
+    [
+        'premium-tabletop-landscape-nodraw.webp',
+        ...[1, 2, 3, 4].map(ap => `premium-tabletop-landscape-nodraw-ap${ap}-v80.webp`)
+    ].forEach(file => {
+        assert.equal(
+            fs.existsSync(path.join(__dirname, '..', 'public', 'assets', 'skin', file)),
+            true,
+            `${file} should exist`
+        );
+    });
 });

@@ -4407,7 +4407,7 @@ body {
     background-color: #160f0b !important;
     background:
         radial-gradient(circle at 50% 48%, rgba(255, 210, 130, 0.1), rgba(0, 0, 0, 0.25) 45%, rgba(0, 0, 0, 0.92) 100%),
-        url('assets/skin/premium-tabletop-landscape.webp') center / cover no-repeat !important;
+        url('assets/skin/premium-tabletop-landscape-nodraw.webp') center / cover no-repeat !important;
 }
 
 body.portrait {
@@ -5247,7 +5247,7 @@ body.landscape #party-zone,
 
 /* ============================================================================
    BOARD ALIGNED TO THE CARVED BACKGROUND (landscape)
-   The premium-tabletop-landscape.webp already has the zones carved into it (deck
+   The premium-tabletop-landscape-nodraw.webp already has the zones carved into it (deck
    slot, discard slot, monsters parchment, party panel, right AP track, hand
    tray). So we stretch the bg to fill the board exactly (100% 100% → % coords map
    1:1 to the carved slots), drop every CSS panel we used to paint on top, and
@@ -5255,7 +5255,7 @@ body.landscape #party-zone,
    tuned against the bg art. Landscape only.
    ============================================================================ */
 body.landscape #game-board {
-    background: url('assets/skin/premium-tabletop-landscape.webp') center / 100% 100% no-repeat !important;
+    background: url('assets/skin/premium-tabletop-landscape-nodraw.webp') center / 100% 100% no-repeat !important;
     display: block !important;
     position: relative !important;
     width: 100vw !important;
@@ -6683,8 +6683,8 @@ body.landscape #game-menu-btn::after {
     display: none !important;
 }
 
-/* DRAW / RELOAD / END form one vertical right-rail stack. Their boxes use the
-   corresponding plaque ratios so the artwork no longer has to stretch. */
+/* RELOAD and END are baked into the landscape background. Their controls are
+   click targets only; DRAW lives exclusively on the deck itself. */
 body.landscape #draw-card-btn,
 body.landscape #discard-draw-btn,
 body.landscape #end-turn-btn {
@@ -6703,12 +6703,8 @@ body.landscape #end-turn-btn .action-icon {
     display: none !important;
 }
 body.landscape #draw-card-btn {
-    left: 85.944976% !important;
-    right: auto !important;
-    top: 73.538789% !important;
-    width: 11.124402% !important;
-    height: 6.269926% !important;
-    aspect-ratio: 390 / 190 !important;
+    display: none !important;
+    pointer-events: none !important;
 }
 body.landscape #discard-draw-btn {
     left: 85.944976% !important;

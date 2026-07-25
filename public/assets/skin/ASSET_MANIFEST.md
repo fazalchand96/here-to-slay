@@ -4,9 +4,9 @@ Generated with the built-in image generation tool for the Premium Tavern Tableto
 
 ## Board Backgrounds
 
-- `premium-tabletop-landscape.webp` - landscape board surface with carved zones.
+- `premium-tabletop-landscape-nodraw.webp` - landscape board surface with carved zones and only the live RELOAD/END controls.
 - `premium-tabletop-portrait.webp` - portrait board surface with vertical mobile zones.
-- `premium-tabletop-landscape-ap1-v80.webp` through `premium-tabletop-landscape-ap4-v80.webp` - full landscape board image edits with 1-4 AP gems lit.
+- `premium-tabletop-landscape-nodraw-ap1-v80.webp` through `premium-tabletop-landscape-nodraw-ap4-v80.webp` - DRAW-free landscape board variants with 1-4 AP gems lit.
 - `premium-tabletop-portrait-ap1-v80.webp` through `premium-tabletop-portrait-ap4-v80.webp` - full portrait board image edits with 1-4 AP gems lit.
 
 ## Source Sheets

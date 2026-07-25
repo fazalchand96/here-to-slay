@@ -451,11 +451,11 @@ checkOrientationAndLayout(); // Call initially
 
 const PREMIUM_BOARD_BACKGROUNDS = Object.freeze({
     landscape: Object.freeze([
-        'assets/skin/premium-tabletop-landscape.webp',
-        'assets/skin/premium-tabletop-landscape-ap1-v80.webp',
-        'assets/skin/premium-tabletop-landscape-ap2-v80.webp',
-        'assets/skin/premium-tabletop-landscape-ap3-v80.webp',
-        'assets/skin/premium-tabletop-landscape-ap4-v80.webp'
+        'assets/skin/premium-tabletop-landscape-nodraw.webp',
+        'assets/skin/premium-tabletop-landscape-nodraw-ap1-v80.webp',
+        'assets/skin/premium-tabletop-landscape-nodraw-ap2-v80.webp',
+        'assets/skin/premium-tabletop-landscape-nodraw-ap3-v80.webp',
+        'assets/skin/premium-tabletop-landscape-nodraw-ap4-v80.webp'
     ]),
     portrait: Object.freeze([
         'assets/skin/premium-tabletop-portrait.webp',
