@@ -13,6 +13,12 @@ test('action point countdown is visible and warns during the final seconds', () 
     assert.match(appSource, /seconds === 10 \|\| \(seconds >= 1 && seconds <= 5\)/);
     assert.match(appSource, /playSound\(seconds <= 5 \? 'timerUrgent' : 'timerWarning'\)/);
     assert.match(styleSource, /#action-point-timer\.timer-danger/);
+    assert.match(styleSource, /timer-plaque-v150\.webp/);
+    assert.match(styleSource, /body\.landscape #action-point-timer \{[\s\S]*?left: 91\.54%[\s\S]*?top: 73\.2%/);
+    assert.equal(
+        fs.existsSync(path.join(__dirname, '..', 'public', 'assets', 'skin', 'timer-plaque-v150.webp')),
+        true
+    );
 });
 
 test('Lightning Labrys confirmation uses a tappable banner and waits for server acknowledgement', () => {

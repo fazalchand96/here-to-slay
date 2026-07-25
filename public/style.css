@@ -8312,3 +8312,89 @@ body.landscape #opponents-bar .opponent-chip {
     height: clamp(32px, 4.8dvh, 46px) !important;
     padding-inline: 10px !important;
 }
+
+/* Compact timer plaque. In landscape it occupies the old DRAW control space
+   between the AP rail and RELOAD, leaving the center of the battlefield clear. */
+#action-point-timer {
+    box-sizing: border-box;
+    width: 132px;
+    min-width: 0;
+    height: 46px;
+    padding: 5px 17px 6px;
+    border: 0;
+    border-radius: 0;
+    background: url('assets/skin/timer-plaque-v150.webp') center / 100% 100% no-repeat;
+    box-shadow: none;
+    color: #f7deb0;
+}
+
+#action-point-timer::after {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    left: 13%;
+    right: 13%;
+    bottom: 7px;
+    height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #8f4d16, #f3ca69);
+    box-shadow: 0 0 4px rgba(237, 174, 62, .55);
+    transform: scaleX(var(--timer-progress));
+    transform-origin: left center;
+}
+
+#action-point-timer > * {
+    position: relative;
+    z-index: 1;
+}
+
+#action-point-timer.is-mine {
+    box-shadow: none;
+    filter: drop-shadow(0 0 4px rgba(228, 168, 57, .48));
+}
+
+#action-point-timer-player {
+    max-width: 72px;
+    font-size: .48rem;
+    letter-spacing: .025em;
+}
+
+.action-point-timer-clock {
+    min-width: 26px;
+    font-size: 1rem;
+}
+
+#action-point-timer.timer-warning {
+    color: #ffe39a;
+}
+
+#action-point-timer.timer-danger {
+    color: #ffd1c7;
+    background: url('assets/skin/timer-plaque-v150.webp') center / 100% 100% no-repeat;
+    filter: drop-shadow(0 0 5px rgba(217, 58, 35, .7));
+}
+
+body.landscape #action-point-timer {
+    left: 91.54% !important;
+    top: 73.2% !important;
+    width: 11.2% !important;
+    height: 6.8% !important;
+    padding: 0.5% 1.15% 0.7% !important;
+    transform: translateX(-50%);
+}
+
+body.landscape #action-point-timer-player {
+    max-width: 68%;
+    font-size: clamp(.38rem, .78vw, .58rem);
+}
+
+body.landscape .action-point-timer-clock {
+    min-width: 24%;
+    font-size: clamp(.72rem, 1.35vw, 1.05rem);
+}
+
+#game-board.portrait #action-point-timer {
+    top: max(8px, 1%) !important;
+    width: 128px;
+    height: 44px;
+}
