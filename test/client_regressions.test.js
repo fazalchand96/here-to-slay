@@ -37,8 +37,18 @@ test('opponent boards use dedicated art and clearly mark the active player', () 
     assert.match(appSource, /const isActiveOpponent = data\.activePlayerSocketId === id/);
     assert.match(appSource, /is-active-turn/);
     assert.match(appSource, /opponent-turn-label/);
-    assert.match(styleSource, /assets\/skin\/boards\/opponent-board\.webp/);
-    assert.match(styleSource, /\.opponent-chip\.is-active-turn/);
+    assert.match(styleSource, /assets\/skin\/boards\/opponent-board-idle\.webp/);
+    assert.match(styleSource, /assets\/skin\/boards\/opponent-board-active\.webp/);
+    assert.match(styleSource, /\.opponent-chip\.is-active-turn[\s\S]*?filter: none !important/);
+    assert.doesNotMatch(styleSource, /\.opponent-chip\.is-active-turn[\s\S]*?brightness\(1\.32\)/);
+    assert.doesNotMatch(styleSource, /rgba\(255, 247, 169, \.95\)/);
+    ['opponent-board-idle.webp', 'opponent-board-active.webp'].forEach(file => {
+        assert.equal(
+            fs.existsSync(path.join(__dirname, '..', 'public', 'assets', 'skin', 'boards', file)),
+            true,
+            `${file} should exist`
+        );
+    });
 });
 
 test('the redundant DRAW control is hidden while the draw-pile hotspot remains active', () => {

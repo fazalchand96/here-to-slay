@@ -8,6 +8,7 @@ Generated with the built-in image generation tool for the Premium Tavern Tableto
 - `premium-tabletop-portrait.webp` - portrait board surface with vertical mobile zones.
 - `premium-tabletop-landscape-nodraw-ap1-v80.webp` through `premium-tabletop-landscape-nodraw-ap4-v80.webp` - DRAW-free landscape board variants with 1-4 AP gems lit.
 - `premium-tabletop-portrait-ap1-v80.webp` through `premium-tabletop-portrait-ap4-v80.webp` - full portrait board image edits with 1-4 AP gems lit.
+- `boards/opponent-board-idle.webp` and `boards/opponent-board-active.webp` - matching opponent plaques with the turn lamp off/on.
 
 ## Source Sheets
 
