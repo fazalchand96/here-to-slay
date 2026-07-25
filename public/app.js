@@ -21,9 +21,12 @@ function getPlayerName(id) {
 
 
 const SESSION_TOKEN_PREFIX = 'hts-player-session-token:';
+const ROOM_ROLE_PREFIX = 'hts-room-role:';
 const LAST_ROOM_CODE_KEY = 'hts-last-room-code';
 let activeRoomCode = '';
+let isSpectator = false;
 window.activeRoomCode = '';
+window.isSpectator = false;
 
 function getOrCreateSessionToken(roomCode) {
     const key = `${SESSION_TOKEN_PREFIX}${String(roomCode || 'new').toUpperCase()}`;
@@ -1635,7 +1638,20 @@ window.openOpponentModal = function(id) {
     const displayName = getPlayerName(id);
 
     modalTitle.innerHTML = `${displayName}'s Party <span class="own-party-title-stats">${(opp.party || []).length} Heroes &middot; ${calculateWinStats(opp).monsters}/4 Slain</span>`;
-    modalContent.innerHTML = buildClassPartyGrid(opp, false);
+    const spectatorHand = latestGameState?.spectator
+        ? `
+            <section class="spectator-hand-view">
+                <header>
+                    <strong>${displayName}'s Hand</strong>
+                    <span>${(opp.hand || []).length} card${(opp.hand || []).length === 1 ? '' : 's'}</span>
+                </header>
+                <div class="spectator-hand-cards">
+                    ${(opp.hand || []).map(card => renderCard(card, false, true, false, false)).join('')
+                        || '<p>This hand is empty.</p>'}
+                </div>
+            </section>`
+        : '';
+    modalContent.innerHTML = spectatorHand + buildClassPartyGrid(opp, false);
 
 
 
@@ -1661,6 +1677,7 @@ function oppModalSignature(id) {
         l: opp.leader ? opp.leader.id : null,
         p: (opp.party || []).map(h => `${h.id}:${h.equippedItem ? h.equippedItem.id : ''}:${h.equippedItem2 ? h.equippedItem2.id : ''}:${effectiveHeroClass(h) || ''}`),
         m: (opp.slainMonsters || []).map(monster => monster.id),
+        h: latestGameState?.spectator ? (opp.hand || []).map(card => card.id) : [],
         t: targetingActive,
         s: latestGameState ? latestGameState.state : null,
     });
@@ -1739,12 +1756,21 @@ function setRoomControlsBusy(busy) {
     if (join) join.disabled = busy;
 }
 
-function enterJoinedRoom(roomCode) {
+function enterJoinedRoom(roomCode, { spectator = false } = {}) {
     activeRoomCode = normalizeRoomCodeInput(roomCode);
+    isSpectator = spectator === true;
     window.activeRoomCode = activeRoomCode;
-    try { localStorage.setItem(LAST_ROOM_CODE_KEY, activeRoomCode); } catch (e) {}
+    window.isSpectator = isSpectator;
+    document.body?.classList.toggle('spectator-mode', isSpectator);
+    try {
+        localStorage.setItem(LAST_ROOM_CODE_KEY, activeRoomCode);
+        localStorage.setItem(`${ROOM_ROLE_PREFIX}${activeRoomCode}`, isSpectator ? 'spectator' : 'player');
+    } catch (e) {}
     document.getElementById('room-modal')?.classList.add('hidden');
-    lobbyScreen?.classList.remove('hidden');
+    lobbyScreen?.classList.toggle('hidden', isSpectator);
+    if (isSpectator && latestGameState?.state !== 'LOBBY') {
+        appContainer?.classList.remove('hidden');
+    }
     const badge = document.getElementById('lobby-room-code');
     const strong = badge?.querySelector('strong');
     if (strong) strong.textContent = activeRoomCode;
@@ -1760,14 +1786,23 @@ function submitJoinRoom(roomCode, { automatic = false } = {}) {
         return;
     }
     setRoomControlsBusy(true);
-    socket.emit('join_room', { roomCode: code, sessionToken: getOrCreateSessionToken(code) }, response => {
+    let watchOnly = false;
+    try { watchOnly = localStorage.getItem(`${ROOM_ROLE_PREFIX}${code}`) === 'spectator'; } catch (e) {}
+    socket.emit('join_room', {
+        roomCode: code,
+        sessionToken: getOrCreateSessionToken(code),
+        watchOnly
+    }, response => {
         setRoomControlsBusy(false);
         if (response?.ok) {
-            enterJoinedRoom(response.roomCode);
+            enterJoinedRoom(response.roomCode, { spectator: response.spectator });
             return;
         }
         activeRoomCode = '';
+        isSpectator = false;
         window.activeRoomCode = '';
+        window.isSpectator = false;
+        document.body?.classList.remove('spectator-mode');
         document.getElementById('room-modal')?.classList.remove('hidden');
         lobbyScreen?.classList.add('hidden');
         if (!automatic || response?.reason) setRoomError(response?.reason || 'The lobby could not be joined.');
@@ -1789,7 +1824,7 @@ window.createLobbyRoom = function() {
                 localStorage.setItem(`${SESSION_TOKEN_PREFIX}${response.roomCode}`, provisionalToken);
             }
         } catch (e) {}
-        enterJoinedRoom(response.roomCode);
+        enterJoinedRoom(response.roomCode, { spectator: false });
     });
 };
 
@@ -1828,8 +1863,8 @@ socket.on('connect', () => {
     }
 });
 
-socket.on('room_joined', ({ roomCode } = {}) => {
-    if (roomCode) enterJoinedRoom(roomCode);
+socket.on('room_joined', ({ roomCode, spectator = false } = {}) => {
+    if (roomCode) enterJoinedRoom(roomCode, { spectator });
 });
 
 
@@ -1915,6 +1950,9 @@ socket.on('lobby_data', (data) => {
 socket.on('gameStateUpdate', (data) => {
 
     previousGameState = latestGameState;
+    isSpectator = data.spectator === true;
+    window.isSpectator = isSpectator;
+    document.body?.classList.toggle('spectator-mode', isSpectator);
 
     // A resolved HERO_SKILL roll loses its pendingRoll in the next state. Capture
     // the successful hero before adopting the new state so its class animation can
@@ -2422,13 +2460,13 @@ function calculateWinStats(player) {
 // orientation, and that re-shell happens solely on a portrait<->landscape flip.
 // ---------------------------------------------------------------------------
 function buildBoardParts(data, ctx) {
-    const { me, isMyTurn, myTargetMode, currentPendingAction } = ctx;
+    const { me, isMyTurn, myTargetMode, currentPendingAction, perspectiveId, spectator } = ctx;
     const myWinStats = calculateWinStats(me);
 
     // --- Opponents bar (chips) ---
     let oppHtml = '';
     data.playerOrder.forEach(id => {
-        if (id === myId) return;
+        if (id === perspectiveId) return;
         const opp = data.players[id];
         if (!opp) return;
 
@@ -2481,7 +2519,7 @@ function buildBoardParts(data, ctx) {
 
     // --- My party leader (rendered into #leader-slot on the tray, NOT prepended
     //     to the party row) + party + slain ---
-    const leaderHtml = me.leader ? renderCard(me.leader, true, false, false, isMyTurn) : '';
+    const leaderHtml = me.leader ? renderCard(me.leader, !spectator, false, false, isMyTurn) : '';
     const classCounts = new Map();
     (me.party || []).forEach(hero => {
         const className = effectiveHeroClass(hero);
@@ -2497,12 +2535,18 @@ function buildBoardParts(data, ctx) {
         ? previewHeroes.map(hero => `<span class="party-dock-card" style="background-image:url('${cardArt(hero)}')" title="${hero.name}"></span>`).join('')
         : `<span class="party-dock-empty">Your Heroes will appear here</span>`;
     const hiddenHeroCount = Math.max(0, (me.party || []).length - previewHeroes.length);
-    const targetingParty = myTargetMode || isLocalTargeting || isSelfItemTargeting;
+    const targetingParty = !spectator && (myTargetMode || isLocalTargeting || isSelfItemTargeting);
+    const perspectiveName = getPlayerName(perspectiveId);
+    const partyTitle = spectator ? `${perspectiveName}'s Party` : 'Your Party';
+    const partyInstruction = spectator
+        ? 'Tap to view this party and hand'
+        : (targetingParty ? 'Tap to select a Hero' : 'Tap your party to view all Heroes');
+    const partyClick = spectator ? `openOpponentModal('${perspectiveId}')` : 'openOwnPartyModal()';
     const partyHtml = `
-        <button id="party-dock" class="party-dock${targetingParty ? ' valid-target' : ''}" type="button" onclick="openOwnPartyModal()" aria-label="Open your full party">
+        <button id="party-dock" class="party-dock${targetingParty ? ' valid-target' : ''}" type="button" onclick="${partyClick}" aria-label="Open ${partyTitle}">
             <span class="party-dock-copy">
-                <strong>Your Party <b>${(me.party || []).length}</b></strong>
-                <small>${targetingParty ? 'Tap to select a Hero' : 'Tap your party to view all Heroes'}</small>
+                <strong>${partyTitle} <b>${(me.party || []).length}</b></strong>
+                <small>${partyInstruction}</small>
                 <span class="party-dock-classes">${classChips || '<i>No classes yet</i>'}</span>
             </span>
             <span class="party-dock-preview">${previewCards}${hiddenHeroCount ? `<b class="party-dock-more">+${hiddenHeroCount}</b>` : ''}</span>
@@ -2522,7 +2566,7 @@ function buildBoardParts(data, ctx) {
         </span>`;
 
     // --- My hand ---
-    const handHtml = me.hand.map(c => renderCard(c, true, true, false, isMyTurn)).join('');
+    const handHtml = me.hand.map(c => renderCard(c, !spectator, true, false, isMyTurn)).join('');
 
     return { oppHtml, monstersHtml, discardHtml, partyHtml, leaderHtml, winTrackHtml, handHtml };
 }
@@ -2575,15 +2619,19 @@ function renderBoard(data) {
 
     if (!data) return;
 
-    const me = data.players[myId];
+    const spectator = data.spectator === true;
+    const perspectiveId = spectator
+        ? (data.activePlayerSocketId || data.playerOrder?.[0])
+        : myId;
+    const me = data.players[perspectiveId];
 
     if (!me) return;
 
-    const opponentId = data.playerOrder.find(id => id !== myId);
+    const opponentId = data.playerOrder.find(id => id !== perspectiveId);
 
     const opponent = opponentId ? data.players[opponentId] : null;
 
-    const isMyTurn = myId === data.activePlayerSocketId;
+    const isMyTurn = !spectator && myId === data.activePlayerSocketId;
     const becameMyTurn = isMyTurn && (!previousGameState || previousGameState.activePlayerSocketId !== myId);
     if (becameMyTurn) {
         triggerHaptic(100);
@@ -2663,7 +2711,7 @@ function renderBoard(data) {
     // one-shot socket event. A mobile browser can briefly suspend or reconnect
     // and miss `challenge_pending`; the synchronized pendingChallenge must still
     // give that player a working Challenge/Pass decision.
-    if (data.state === 'WAITING_FOR_CHALLENGES' && data.pendingChallenge) {
+    if (!spectator && data.state === 'WAITING_FOR_CHALLENGES' && data.pendingChallenge) {
         syncChallengePromptFromState(data);
     } else if (challengeModal) {
         challengePromptSignature = '';
@@ -3675,7 +3723,26 @@ function renderBoard(data) {
     // persistent panel node below. ensureBoardShell() keeps the landscape shell
     // (and, from Phase 5, swaps to portrait only on an actual orientation flip).
     ensureBoardShell();
-    const boardParts = buildBoardParts(data, { me, isMyTurn, myTargetMode, currentPendingAction });
+    const boardParts = buildBoardParts(data, {
+        me,
+        isMyTurn,
+        myTargetMode,
+        currentPendingAction,
+        perspectiveId,
+        spectator
+    });
+
+    const perspectiveName = getPlayerName(perspectiveId);
+    const handLabel = document.getElementById('hand-zone-label');
+    const partyLabel = document.getElementById('party-zone-label');
+    if (handLabel) handLabel.textContent = spectator ? `${perspectiveName}'s Hand` : 'Your Hand';
+    if (partyLabel) partyLabel.textContent = spectator ? `${perspectiveName}'s Party` : 'Your Party';
+    const spectatorBanner = document.getElementById('spectator-banner');
+    if (spectatorBanner) {
+        spectatorBanner.classList.toggle('hidden', !spectator);
+        const name = spectatorBanner.querySelector('strong');
+        if (name) name.textContent = perspectiveName;
+    }
 
     // Opponents Bar (Chips)
 

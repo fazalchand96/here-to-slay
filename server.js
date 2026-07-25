@@ -1457,11 +1457,15 @@ function broadcastState() {
         const socket = ioServer.sockets.sockets.get(socketId);
         if (!socket) return;
         const playerState = JSON.parse(JSON.stringify(gameState));
+        const isSpectator = socket.data.isSpectator === true;
         
-        // Mask other players' hands
-        for (const id in playerState.players) {
-            if (id !== socket.id) {
-                playerState.players[id].hand = playerState.players[id].hand.map(() => ({ type: 'Hidden' }));
+        // Players only see their own hand. Spectators are deliberately
+        // omniscient so a shared-screen host/commentator can follow every card.
+        if (!isSpectator) {
+            for (const id in playerState.players) {
+                if (id !== socket.id) {
+                    playerState.players[id].hand = playerState.players[id].hand.map(() => ({ type: 'Hidden' }));
+                }
             }
         }
         
@@ -1497,6 +1501,7 @@ function broadcastState() {
             actionPointDeadline: playerState.actionPointDeadline,
             actionPointDurationMs: ACTION_POINT_TIMEOUT_MS,
             me: socket.id,
+            spectator: isSpectator,
             availableLeaders: (gameState.availableLeaders && gameState.availableLeaders.length > 0) ? gameState.availableLeaders : PARTY_LEADERS // Send for selection
         });
     });
@@ -2333,21 +2338,23 @@ function createRoomSession(roomCode) {
     return session;
 }
 
-function joinSocketToSession(socket, session, requestedSessionToken) {
+function joinSocketToSession(socket, session, requestedSessionToken, { watchOnly = false } = {}) {
     if (socket.data.roomCode) return { ok: false, reason: 'You already joined a room.' };
 
     return roomContext.run(session, () => {
         const restoredSession = session.reconnectManager.restore(socket.id, requestedSessionToken);
-        if (!restoredSession && (gameState.state !== 'LOBBY' || gameState.playerOrder.length >= 6)) {
-            return { ok: false, reason: gameState.state !== 'LOBBY' ? 'This game has already started.' : 'This room is full.' };
+        const shouldSpectate = !restoredSession && (watchOnly || gameState.state !== 'LOBBY');
+        if (!restoredSession && !shouldSpectate && gameState.playerOrder.length >= 6) {
+            return { ok: false, reason: 'This room is full.' };
         }
 
         socket.join(session.roomCode);
         socket.data.roomCode = session.roomCode;
+        socket.data.isSpectator = shouldSpectate;
         session.socketIds.add(socket.id);
 
         let sessionToken = requestedSessionToken;
-        if (!restoredSession) {
+        if (!restoredSession && !shouldSpectate) {
             gameState.players[socket.id] = {
                 id: socket.id,
                 name: '',
@@ -2368,10 +2375,16 @@ function joinSocketToSession(socket, session, requestedSessionToken) {
             sessionToken = String(requestedSessionToken || '').trim();
         }
 
-        socket.emit('room_joined', { roomCode: session.roomCode, reconnected: Boolean(restoredSession) });
-        socket.emit('session_token', { roomCode: session.roomCode, token: sessionToken });
+        socket.emit('room_joined', {
+            roomCode: session.roomCode,
+            reconnected: Boolean(restoredSession),
+            spectator: shouldSpectate
+        });
+        if (!shouldSpectate) {
+            socket.emit('session_token', { roomCode: session.roomCode, token: sessionToken });
+        }
         socket.emit('lobby_data_update', { leaders: PARTY_LEADERS, state: gameState.state, roomCode: session.roomCode });
-        if (gameState.state === 'LOBBY') {
+        if (gameState.state === 'LOBBY' && !shouldSpectate) {
             socket.emit('lobby_data', {
                 roomCode: session.roomCode,
                 availableLeaders: gameState.availableLeaders.length ? gameState.availableLeaders : PARTY_LEADERS,
@@ -2380,7 +2393,12 @@ function joinSocketToSession(socket, session, requestedSessionToken) {
             });
         }
         broadcastState();
-        return { ok: true, roomCode: session.roomCode, reconnected: Boolean(restoredSession) };
+        return {
+            ok: true,
+            roomCode: session.roomCode,
+            reconnected: Boolean(restoredSession),
+            spectator: shouldSpectate
+        };
     });
 }
 
@@ -2398,11 +2416,11 @@ ioServer.on('connection', (socket) => {
         }
         if (typeof acknowledge === 'function') acknowledge(result);
     });
-    rawOn('join_room', ({ roomCode, sessionToken } = {}, acknowledge) => {
+    rawOn('join_room', ({ roomCode, sessionToken, watchOnly = false } = {}, acknowledge) => {
         const code = normalizeRoomCode(roomCode);
         const session = roomSessions.get(code);
         const result = session
-            ? joinSocketToSession(socket, session, sessionToken)
+            ? joinSocketToSession(socket, session, sessionToken, { watchOnly: watchOnly === true })
             : { ok: false, reason: 'Room not found. Check the four-character code.' };
         if (typeof acknowledge === 'function') acknowledge(result);
     });
@@ -2412,6 +2430,9 @@ ioServer.on('connection', (socket) => {
     socket.on = (eventName, handler) => rawOn(eventName, (...args) => {
         const session = roomSessions.get(socket.data.roomCode);
         if (!session) return;
+        // Spectators receive room broadcasts but can never reach gameplay
+        // handlers. Disconnect remains enabled so their socket is cleaned up.
+        if (socket.data.isSpectator === true && eventName !== 'disconnect') return;
         return roomContext.run(session, () => handler(...args));
     });
 

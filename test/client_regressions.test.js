@@ -68,7 +68,7 @@ test('Item targeting keeps both own and opponent Party boards available', () => 
     );
     assert.match(
         appSource,
-        /const targetingParty = myTargetMode \|\| isLocalTargeting \|\| isSelfItemTargeting/
+        /const targetingParty = !spectator && \(myTargetMode \|\| isLocalTargeting \|\| isSelfItemTargeting\)/
     );
     assert.match(
         appSource,

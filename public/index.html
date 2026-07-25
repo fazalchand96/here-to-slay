@@ -26,7 +26,7 @@
     <div id="room-modal" class="overlay">
         <div class="glass-panel room-panel">
             <h1 class="tavern-title">Choose Your Table</h1>
-            <p class="tavern-subtitle">Create a private lobby or join friends with their four-character code.</p>
+            <p class="tavern-subtitle">Create a private lobby or join friends with their four-character code. If their game is already running, you automatically join as a spectator.</p>
             <button id="create-room-btn" class="action-btn room-primary-action" type="button">CREATE LOBBY</button>
             <div class="room-divider"><span>or join a lobby</span></div>
             <div class="room-join-row">
@@ -184,6 +184,11 @@
 
         <!-- TOP ROW: Opponents Bar -->
         <div id="opponents-bar"></div>
+        <div id="spectator-banner" class="hidden" role="status">
+            <span>WATCHING</span>
+            <strong>Player</strong>
+            <small>All hands are visible &middot; tap a player to inspect</small>
+        </div>
 
         <!-- ON-BOARD center: monsters + deck/discard, always visible (Phase 6). -->
         <div id="board-center">
@@ -240,7 +245,7 @@
 
                 <div class="row party-zone" id="party-zone">
 
-                    <div class="area-label">Your Party</div>
+                    <div id="party-zone-label" class="area-label">Your Party</div>
 
                     <div class="card-container" id="player-party">
 
@@ -256,7 +261,7 @@
 
                 <div class="row hand-zone" id="hand-zone">
 
-                    <div class="area-label">Your Hand</div>
+                    <div id="hand-zone-label" class="area-label">Your Hand</div>
 
                     <div class="card-container hand-container" id="player-hand">
 

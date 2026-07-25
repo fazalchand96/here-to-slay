@@ -2,7 +2,7 @@
 
 const { test, expect } = require('./helpers/fixtures');
 const {
-    newTrackedContext, createRoom, joinRoom,
+    newTrackedContext, createRoom, joinRoom, startGame, setHand,
 } = require('./helpers/gameSetup');
 
 async function makePage(browser) {
@@ -48,4 +48,35 @@ test('two lobby codes keep players, broadcasts, and match state isolated', async
     await expect(bHost.locator('#lobby-modal')).not.toHaveClass(/hidden/);
     await expect(bGuest.locator('#lobby-modal')).not.toHaveClass(/hidden/);
     await expect(bHost.locator('#app-container')).toHaveClass(/hidden/);
+});
+
+test('joining a running room becomes a read-only spectator with every hand visible', async ({ browser }) => {
+    const { host, p2 } = await startGame(browser);
+    const roomCode = await host.evaluate(() => window.activeRoomCode);
+
+    await setHand(host, ['card_104']);
+    await setHand(p2, ['card_107']);
+
+    const watcher = await makePage(browser);
+    await joinRoom(watcher, roomCode);
+    await expect(watcher.locator('#app-container')).not.toHaveClass(/hidden/);
+    await expect.poll(() => watcher.evaluate(() => window.isSpectator)).toBe(true);
+
+    const spectatorState = await watcher.evaluate(() => window.latestGameState);
+    expect(spectatorState.playerOrder).toHaveLength(2);
+    expect(spectatorState.players[spectatorState.playerOrder[0]].hand[0].id).toBe('card_104');
+    expect(spectatorState.players[spectatorState.playerOrder[1]].hand[0].id).toBe('card_107');
+    expect(spectatorState.players[spectatorState.me]).toBeUndefined();
+
+    await expect(watcher.locator('#spectator-banner')).not.toHaveClass(/hidden/);
+    await expect(watcher.locator('#player-hand [data-id="card_104"]')).toBeVisible();
+    await expect(watcher.locator('#player-controls .btn-group')).toBeHidden();
+
+    await watcher.locator('#opponents-bar .opponent-chip').click();
+    await expect(watcher.locator('.spectator-hand-view [data-id="card_107"]')).toBeVisible();
+
+    const activeBefore = spectatorState.activePlayerSocketId;
+    await watcher.evaluate(() => window._socket.emit('end_turn'));
+    await watcher.waitForTimeout(250);
+    await expect.poll(() => watcher.evaluate(() => window.latestGameState.activePlayerSocketId)).toBe(activeBefore);
 });

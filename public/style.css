@@ -8371,6 +8371,107 @@ body.landscape #opponents-bar .opponent-chip,
     display: none !important;
 }
 
+/* Read-only spectator mode. A late join automatically receives this view:
+   the active player's board is the lower tray and every other full hand is
+   available by tapping that player's chip. */
+#spectator-banner {
+    position: absolute;
+    z-index: 75;
+    top: 1.4%;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: clamp(5px, .7vw, 10px);
+    max-width: min(54%, 560px);
+    padding: clamp(4px, .55vw, 8px) clamp(9px, 1.2vw, 18px);
+    border: 1px solid rgba(126, 231, 255, .55);
+    border-radius: 999px;
+    color: #eafaff;
+    background: linear-gradient(180deg, rgba(14, 47, 64, .96), rgba(5, 20, 30, .94));
+    box-shadow: 0 4px 18px rgba(0, 0, 0, .38), inset 0 1px rgba(255, 255, 255, .12);
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+#spectator-banner.hidden { display: none !important; }
+#spectator-banner > span {
+    color: #7ee7ff;
+    font-size: clamp(8px, .68vw, 11px);
+    font-weight: 900;
+    letter-spacing: .14em;
+}
+#spectator-banner > strong { font-size: clamp(10px, .9vw, 14px); }
+#spectator-banner > small {
+    overflow: hidden;
+    color: rgba(234, 250, 255, .72);
+    font-size: clamp(8px, .65vw, 11px);
+    text-overflow: ellipsis;
+}
+
+body.spectator-mode #player-controls .btn-group,
+body.spectator-mode #turn-indicator,
+body.spectator-mode #challenge-modal,
+body.spectator-mode #majestelk-choice-modal {
+    display: none !important;
+}
+
+body.spectator-mode #main-deck {
+    pointer-events: none !important;
+}
+
+body.spectator-mode :is(#event-console, #dice-overlay, #target-banner) .action-btn {
+    display: none !important;
+}
+
+.spectator-hand-view {
+    flex: 0 0 auto;
+    padding: clamp(8px, 1vw, 14px);
+    border: 1px solid rgba(126, 231, 255, .32);
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(7, 31, 45, .88), rgba(3, 16, 25, .92));
+}
+
+.spectator-hand-view > header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+    color: #f5fbff;
+}
+
+.spectator-hand-view > header span {
+    color: #7ee7ff;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+
+.spectator-hand-cards {
+    display: flex;
+    min-height: 96px;
+    gap: clamp(4px, .55vw, 8px);
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 2px 2px 7px;
+}
+
+.spectator-hand-cards .card {
+    flex: 0 0 auto;
+    height: clamp(96px, 20dvh, 132px) !important;
+    margin: 0 !important;
+}
+
+@media (orientation: portrait) {
+    #spectator-banner {
+        top: 1%;
+        max-width: 76%;
+    }
+    #spectator-banner > small { display: none; }
+}
+
 @keyframes opponent-turn-pulse {
     0%, 100% { transform: translateY(0) scale(1); }
     50% { transform: translateY(-0.5px) scale(1.012); }
