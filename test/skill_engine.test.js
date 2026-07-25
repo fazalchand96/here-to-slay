@@ -57,6 +57,9 @@ test('Druid expansion skills create their agreed follow-up actions and protectio
     executeSkill(state, io, 'SKILL_MAEGISTY', 'p1', 'maegisty');
     assert.equal(caster.maegistyActive, true);
     executeSkill(state, io, 'SKILL_MAJESTELK', 'p1', 'majestelk');
+    assert.equal(state.state, 'WAITING_FOR_SACRIFICE');
+    assert.equal(state.pendingAction.type, 'DRUID_SKILL_SACRIFICE');
+    assert.equal(state.pendingAction.playerToChoose, 'p1');
     assert.equal(state.pendingAction.skillId, 'SKILL_MAJESTELK');
     executeSkill(state, io, 'SKILL_STAGGUARD', 'p1', 'stagguard');
     assert.equal(caster.stagguardActive, true);

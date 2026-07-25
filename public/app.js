@@ -296,7 +296,7 @@ function renderDiceAttackTarget(data) {
     }
     if (hero) {
         const skillReq = (typeof hero.roll_requirement === 'number')
-            ? `<div class="dice-monster-req">Skill ${hero.roll_requirement}+</div>`
+            ? `<div class="dice-monster-req">Skill ${formatHeroRollRequirement(hero)}</div>`
             : '';
         preview.innerHTML = `${renderCard(hero, false, false, false, false)}${skillReq}`;
         return;
@@ -309,6 +309,18 @@ function renderDiceAttackTarget(data) {
         : '';
     preview.innerHTML = `${renderCard(mon, false, false, true, false)}`
         + `<div class="dice-monster-req">🗡 ${slay}${pen}</div>`;
+}
+
+function formatHeroRollRequirement(hero) {
+    if (typeof hero?.roll_requirement !== 'number') return '';
+    return `${hero.roll_requirement}${hero.rollType === 'LOW_ROLL' ? '-' : '+'}`;
+}
+
+function isSuccessfulHeroRoll(hero, roll) {
+    const requirement = Number(hero?.roll_requirement);
+    const total = Number(roll);
+    if (!Number.isFinite(requirement) || !Number.isFinite(total)) return false;
+    return hero.rollType === 'LOW_ROLL' ? total <= requirement : total >= requirement;
 }
 
 // One-shot landing bounce when a die stops tumbling and shows its final face.
@@ -1716,7 +1728,7 @@ socket.on('gameStateUpdate', (data) => {
         const roller = previousGameState.players?.[priorRoll.rollerId];
         const hero = roller?.party?.find(card => card.id === priorRoll.targetHeroId);
         const finalRoll = Number(priorRoll.currentRoll ?? priorRoll.finalTotal ?? 0);
-        if (hero && finalRoll >= Number(hero.roll_requirement || Infinity)) {
+        if (hero && isSuccessfulHeroRoll(hero, finalRoll)) {
             completedHeroCast = { heroId: hero.id, heroClass: hero.class };
         }
     }
@@ -2419,6 +2431,7 @@ function renderBoard(data) {
         'WAITING_FOR_DISCARD_PENALTY',
         'WAITING_FOR_MULTIPLE_DISCARDS',
         'WAITING_FOR_VARIABLE_DISCARD',
+        'WAITING_FOR_MAJESTELK_CHOICE',
         'WAITING_FOR_CLASS_SELECTION',
         'WAITING_FOR_DRAGON_WASP_CHOICE',
         'WAITING_FOR_LUMBERING_DEMON_CHOICE',
@@ -3560,7 +3573,7 @@ function renderBoard(data) {
         const rollingStates = ['WAITING_FOR_MODIFIERS', 'WAITING_TO_ROLL', 'WAITING_TO_ROLL_CHALLENGE'];
         const actNowStates = ['WAITING_FOR_DISCARD_PENALTY', 'WAITING_FOR_MULTIPLE_DISCARDS', 'WAITING_FOR_VARIABLE_DISCARD',
             'WAITING_FOR_SACRIFICE', 'WAITING_FOR_HAND_SELECTION', 'WAITING_FOR_GLOBAL_ACTION',
-            'WAITING_FOR_IMMEDIATE_PLAY', 'WAITING_FOR_SKILL_TARGET'];
+            'WAITING_FOR_IMMEDIATE_PLAY', 'WAITING_FOR_SKILL_TARGET', 'WAITING_FOR_MAJESTELK_CHOICE'];
         const fearlessFlameChoice = data.state === 'WAITING_FOR_DISCARD_PENALTY'
             && data.pendingAction?.type === 'FEARLESS_FLAME_DISCARD';
         const hideNow = () => {

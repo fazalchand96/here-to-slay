@@ -73,3 +73,30 @@ test('the redundant DRAW control is hidden while the draw-pile hotspot remains a
         );
     });
 });
+
+test('Druid skill rolls show low-roll labels and Majestelk reaches its dedicated choice', () => {
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+
+    assert.match(
+        appSource,
+        /function formatHeroRollRequirement\(hero\)[\s\S]*?hero\.rollType === 'LOW_ROLL' \? '-' : '\+'/
+    );
+    assert.match(
+        appSource,
+        /function isSuccessfulHeroRoll\(hero, roll\)[\s\S]*?total <= requirement : total >= requirement/
+    );
+    assert.match(appSource, /Skill \$\{formatHeroRollRequirement\(hero\)\}/);
+    assert.doesNotMatch(appSource, /Skill \$\{hero\.roll_requirement\}\+/);
+
+    const dedicatedStates = appSource.match(/const dedicatedStates = \[[\s\S]*?\];/);
+    assert.ok(dedicatedStates, 'Expected the dedicated waiting-state list');
+    assert.match(dedicatedStates[0], /WAITING_FOR_MAJESTELK_CHOICE/);
+
+    const actNowStates = appSource.match(/const actNowStates = \[[\s\S]*?\];/);
+    assert.ok(actNowStates, 'Expected the dice-overlay act-now state list');
+    assert.match(actNowStates[0], /WAITING_FOR_MAJESTELK_CHOICE/);
+    assert.match(
+        appSource,
+        /WAITING_FOR_MAJESTELK_CHOICE[\s\S]*?chooseMajestelkModifier\(5\)[\s\S]*?chooseMajestelkModifier\(-5\)/
+    );
+});
