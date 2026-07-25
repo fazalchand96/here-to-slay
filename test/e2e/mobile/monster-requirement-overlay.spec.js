@@ -3,7 +3,7 @@
 const path = require('node:path');
 const { test, expect } = require('@playwright/test');
 
-test('blank expansion Monster plaques show party and discard requirements', async ({ page }, testInfo) => {
+test('expansion Monsters use complete baked frames without HTML requirement overlays', async ({ page }, testInfo) => {
     await page.goto('/');
 
     await page.evaluate(() => {
@@ -15,8 +15,8 @@ test('blank expansion Monster plaques show party and discard requirements', asyn
                 expansion: 'Monster Expansion',
                 requirement: '1 Hero',
                 attack_cost: { discard: 'ANY', count: 1 },
-                fullCardArtUrl: 'assets/skin/cards/monster-fullgen-v1/card_208.webp',
-                artUrl: 'assets/skin/cards/monster-fullgen-v1/card_208.webp'
+                fullCardArtUrl: 'assets/skin/cards/monster-fullgen-v2/card_208.webp',
+                artUrl: 'assets/skin/cards/monster-fullgen-v2/card_208.webp'
             },
             {
                 id: 'card_218',
@@ -25,8 +25,8 @@ test('blank expansion Monster plaques show party and discard requirements', asyn
                 expansion: 'Monster Expansion',
                 requirement: '1 Hero',
                 attack_cost: { discard: 'Magic Card', count: 1 },
-                fullCardArtUrl: 'assets/skin/cards/monster-fullgen-v1/card_218.webp',
-                artUrl: 'assets/skin/cards/monster-fullgen-v1/card_218.webp'
+                fullCardArtUrl: 'assets/skin/cards/monster-fullgen-v2/card_218.webp',
+                artUrl: 'assets/skin/cards/monster-fullgen-v2/card_218.webp'
             },
             {
                 id: 'card_175',
@@ -34,8 +34,8 @@ test('blank expansion Monster plaques show party and discard requirements', asyn
                 type: 'Monster Card',
                 expansion: 'Berserkers & Necromancers',
                 requirement: '1 Necromancer, 1 Hero',
-                fullCardArtUrl: 'assets/skin/cards/monster-fullgen-v1/card_175.webp',
-                artUrl: 'assets/skin/cards/monster-fullgen-v1/card_175.webp'
+                fullCardArtUrl: 'assets/skin/cards/monster-fullgen-v2/card_175.webp',
+                artUrl: 'assets/skin/cards/monster-fullgen-v2/card_175.webp'
             }
         ];
 
@@ -83,26 +83,23 @@ test('blank expansion Monster plaques show party and discard requirements', asyn
         `
     });
 
-    const badges = page.locator('#active-monsters .monster-requirement-badge');
-    await expect(badges).toHaveCount(3);
-    await expect(badges.nth(0)).toHaveText('Req: 1 Hero • Discard 1 Card');
-    await expect(badges.nth(1)).toHaveText('Req: 1 Hero • Discard 1 Magic Card');
-    await expect(badges.nth(2)).toHaveText('Req: 1 Necromancer, 1 Hero');
-
-    for (let index = 0; index < 3; index += 1) {
-        const badge = badges.nth(index);
-        await expect(badge).toBeVisible();
-        const display = await badge.evaluate(element => getComputedStyle(element).display);
-        expect(display).toBe('block');
-
-        const bounds = await badge.boundingBox();
-        const cardBounds = await page.locator('#active-monsters .card').nth(index).boundingBox();
-        expect(bounds.y).toBeGreaterThanOrEqual(cardBounds.y);
-        expect(bounds.y + bounds.height).toBeLessThanOrEqual(cardBounds.y + cardBounds.height + 1);
-    }
+    await expect(page.locator('#active-monsters .monster-requirement-badge')).toHaveCount(0);
+    await expect(page.locator('#active-monsters .card.full-card-art')).toHaveCount(3);
+    await expect(page.locator('#active-monsters .card .card-img').nth(0)).toHaveCSS(
+        'background-image',
+        /monster-fullgen-v2\/card_208\.webp/
+    );
+    await expect(page.locator('#active-monsters .card .card-img').nth(1)).toHaveCSS(
+        'background-image',
+        /monster-fullgen-v2\/card_218\.webp/
+    );
+    await expect(page.locator('#active-monsters .card .card-img').nth(2)).toHaveCSS(
+        'background-image',
+        /monster-fullgen-v2\/card_175\.webp/
+    );
 
     await page.screenshot({
-        path: path.join('screenshots', `monster-requirement-overlays-${testInfo.project.name}.png`),
+        path: path.join('screenshots', `monster-requirement-baked-${testInfo.project.name}.png`),
         fullPage: true
     });
 });

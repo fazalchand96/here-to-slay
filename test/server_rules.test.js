@@ -881,6 +881,22 @@ test('only expansion cards with full card art enter live decks', () => {
     );
 });
 
+test('new Monster requirement frames are selected from the baked v2 asset set', () => {
+    loadCards();
+    const expectedIds = new Set([
+        'card_175', 'card_176',
+        'card_208', 'card_209', 'card_210', 'card_211', 'card_212', 'card_213',
+        'card_214', 'card_215', 'card_216', 'card_217', 'card_218', 'card_219',
+        'card_220'
+    ]);
+    const upgraded = gameState.monsterDeck.filter(card => expectedIds.has(card.id));
+
+    assert.equal(upgraded.length, expectedIds.size);
+    assert.ok(upgraded.every(card =>
+        card.fullCardArtUrl === `assets/skin/cards/monster-fullgen-v2/${card.id}.webp`
+    ));
+});
+
 test('base Challenge copies share one integrated card face and illustration', () => {
     loadCards();
     const challenges = gameState.mainDeck.filter(card =>

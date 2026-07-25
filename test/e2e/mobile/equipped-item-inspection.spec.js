@@ -25,8 +25,11 @@ test('equipped Item and Hero remain separate tap targets in the mobile Party vie
     const [heroBox, itemBox] = await Promise.all([hero.boundingBox(), item.boundingBox()]);
     expect(heroBox).not.toBeNull();
     expect(itemBox).not.toBeNull();
-    expect(itemBox.width * itemBox.height, 'Item hit area must not cover the Hero')
-        .toBeLessThan(heroBox.width * heroBox.height * 0.3);
+    const itemAreaRatio = (itemBox.width * itemBox.height) / (heroBox.width * heroBox.height);
+    expect(itemAreaRatio, 'Item should occupy a clearly visible part of the Hero')
+        .toBeGreaterThan(0.14);
+    expect(itemAreaRatio, 'Item hit area must leave most of the Hero tappable')
+        .toBeLessThan(0.26);
 
     // Tap the Hero away from its bottom-right attachment.
     await hero.click({ position: { x: 4, y: 4 } });

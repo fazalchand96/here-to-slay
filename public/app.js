@@ -1524,12 +1524,9 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
     const detailTitle = (isMonster || card.type === 'Monster Card')
         ? `${card.rollType === 'LOW_ROLL' ? `Slay ≤${card.slayRoll} · Fail ${card.penaltyRoll}+` : `Slay ${card.slayRoll}+ · Fail ${card.penaltyRoll}-`} · Needs ${card.requirement || '—'}`
         : (card.requirement || card.name || '');
-    // The newest generated Monster art has a deliberately blank requirement
-    // plaque. Older full-card art already has this text baked into the image.
-    const needsMonsterRequirementOverlay = isFullCardArt
-        && (isMonster || card.type === 'Monster Card')
-        && ['Berserkers & Necromancers', 'Monster Expansion'].includes(card.expansion);
-    const monsterRequirement = (!isFullCardArt || needsMonsterRequirementOverlay)
+    // Premium Monster faces include their requirements in the image itself.
+    // Only legacy, non-full-art cards need a live requirement label.
+    const monsterRequirement = !isFullCardArt
         && (isMonster || card.type === 'Monster Card')
         ? `<div class="monster-requirement-badge">Req: ${formatMonsterRequirement(card)}</div>`
         : '';
@@ -1603,7 +1600,7 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
     // names are intact: data-id on root, .card-img/.card-info/.card-name/.card-type/
     // .card-class/.card-req/.equipped-item-thumb, and every targeting glow class.
     return `
-        <div class="card${variantClass} type-${typeSlug}${classSlug ? ` class-${classSlug}` : ''}${artClass(card)}${fullCardArtClass(card)}${needsMonsterRequirementOverlay ? ' needs-requirement-overlay' : ''} ${glowClass}" id="${card.id}" data-id="${card.id}" title="${detailTitle}" style="--cc:${cardTint}; ${card.artUrl ? '' : artCropStyle(card.id)} ${inlineStyle}">
+        <div class="card${variantClass} type-${typeSlug}${classSlug ? ` class-${classSlug}` : ''}${artClass(card)}${fullCardArtClass(card)} ${glowClass}" id="${card.id}" data-id="${card.id}" title="${detailTitle}" style="--cc:${cardTint}; ${card.artUrl ? '' : artCropStyle(card.id)} ${inlineStyle}">
             <div class="card-req">${badgeVal}</div>
             ${monsterRequirement}
             ${boardCardName}
@@ -4440,6 +4437,24 @@ socket.on('rollResult', (data) => {
 
 let challengePromptSignature = '';
 
+function getChallengeCardChoices(data) {
+    // `challenge_pending` is intentionally a small event and does not include the
+    // players object. Fall back to the latest private snapshot so the recipient
+    // can still see their real hand immediately, before the next state broadcast.
+    const player = data?.players?.[myId] || latestGameState?.players?.[myId];
+    const challengeCards = (player?.hand || []).filter(card => card.type === 'Challenge Card');
+    return challengeCards.map(card => {
+        const requiredClass = card.required_class || null;
+        const eligible = !requiredClass
+            || (player.party || []).some(hero => effectiveHeroClass(hero) === requiredClass);
+        return { card, requiredClass, eligible };
+    });
+}
+
+function challengeChoiceLabel(card) {
+    return card.required_class ? card.name : 'Normal Challenge';
+}
+
 function renderChallengePrompt(data, announce = false) {
     const pending = data.pendingChallenge || {
         rollerId: data.rollerId,
@@ -4466,60 +4481,91 @@ function renderChallengePrompt(data, announce = false) {
     const rollerName = data.rollerName || roller?.name || getPlayerName(pending.rollerId);
     const passedPlayers = pending.passedPlayers || [];
     const hasPassed = passedPlayers.includes(myId);
+    const challengeChoices = getChallengeCardChoices(data);
+    const playableChoices = challengeChoices.filter(choice => choice.eligible);
+    const lockedChoices = challengeChoices.filter(choice => !choice.eligible);
     challengeText.innerText = `${rollerName} is playing:`;
     challengeCardDisplay.innerHTML = renderCard(pending.card, false, false, false, false);
+    challengeModalElement.classList.toggle(
+        'has-challenge-choices',
+        pending.rollerId !== myId && !hasPassed && challengeChoices.length > 0
+    );
 
     if (pending.rollerId === myId) {
         challengeActionArea.innerHTML = `<div style="text-align:center; padding: 15px; font-size:1.1rem; color: var(--text-muted);">Waiting for opponents...</div>`;
     } else if (hasPassed) {
         challengeActionArea.innerHTML = `<div style="text-align:center; padding: 15px; font-size:1.1rem; color: var(--text-muted);">You passed. Waiting for others...</div>`;
     } else {
-        const hand = latestGameState && latestGameState.players[myId] ? latestGameState.players[myId].hand : [];
-        const hasChallengeCard = hand.some(c => c.type === 'Challenge Card');
-        
         challengeActionArea.innerHTML = `
-            <div class="challenge-buttons-container" style="display: flex; flex-direction: column; align-items: center; gap: 15px; width: 100%; margin-top: 15px;">
-                ${hasChallengeCard ? `<button id="challenge-play-btn" class="action-btn">PLAY CHALLENGE</button>` : `<div class="challenge-no-card">No Challenge Cards in hand</div>`}
+            <div class="challenge-choice-heading">Choose your Challenge</div>
+            ${playableChoices.length ? `
+                <div class="challenge-choice-list">
+                    ${playableChoices.map(({ card, requiredClass }) => `
+                        <button type="button" class="challenge-choice action-btn"
+                            data-challenge-card-id="${card.id}">
+                            <span>${challengeChoiceLabel(card)}</span>
+                            <small>${requiredClass
+                                ? `${requiredClass} Hero required · +${card.challenge_bonus || 0} roll`
+                                : 'Standard roll-off'}</small>
+                        </button>
+                    `).join('')}
+                </div>
+            ` : `<div class="challenge-no-card">No playable Challenge Cards</div>`}
+            ${lockedChoices.length ? `
+                <div class="challenge-locked-list">
+                    ${lockedChoices.map(({ card, requiredClass }) => `
+                        <div class="challenge-choice is-locked" data-locked-challenge-card-id="${card.id}">
+                            <span>🔒 ${card.name}</span>
+                            <small>Needs a ${requiredClass} Hero in your Party</small>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : ''}
+            ${challengeChoices.length === 0 ? `<div class="challenge-no-card">No Challenge Cards in hand</div>` : ''}
+            <div class="challenge-buttons-container">
                 <button id="challenge-pass-btn" class="action-btn modal-secondary-action">PASS</button>
             </div>
         `;
 
         const cPassBtn = document.getElementById('challenge-pass-btn');
-        const cPlayBtn = document.getElementById('challenge-play-btn');
+        const choiceButtons = Array.from(
+            challengeActionArea.querySelectorAll('[data-challenge-card-id]')
+        );
         
         if (cPassBtn) {
             cPassBtn.addEventListener('click', () => {
                 socket.emit('pass_challenge');
                 cPassBtn.disabled = true;
                 cPassBtn.innerText = "WAITING FOR OTHERS...";
-                if (cPlayBtn) cPlayBtn.disabled = true;
+                choiceButtons.forEach(button => { button.disabled = true; });
             });
         }
 
-        if (cPlayBtn && hasChallengeCard) {
-            cPlayBtn.addEventListener('click', () => {
-                const challengeCard = hand.find(c => c.type === 'Challenge Card');
-                if (challengeCard) {
-                    playChallenge(challengeCard.id);
-                    cPlayBtn.disabled = true;
-                    if (cPassBtn) cPassBtn.disabled = true;
-                }
+        choiceButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                choiceButtons.forEach(choiceButton => { choiceButton.disabled = true; });
+                if (cPassBtn) cPassBtn.disabled = true;
+                button.classList.add('is-submitting');
+                button.querySelector('span').innerText = 'CHALLENGING...';
+                playChallenge(button.dataset.challengeCardId, accepted => {
+                    if (accepted || latestGameState?.state !== 'WAITING_FOR_CHALLENGES') return;
+                    renderChallengePrompt(latestGameState, false);
+                });
             });
-        }
+        });
     }
 }
 
 function getChallengePromptSignature(data) {
     const pending = data?.pendingChallenge;
     if (!pending) return '';
-    const hand = data.players?.[myId]?.hand || [];
-    const hasChallengeCard = hand.some(card => card.type === 'Challenge Card');
+    const challengeChoices = getChallengeCardChoices(data);
     const hasPassed = (pending.passedPlayers || []).includes(myId);
     return [
         pending.rollerId,
         pending.card?.id,
         hasPassed ? 'passed' : 'open',
-        hasChallengeCard ? 'challenge' : 'no-challenge'
+        challengeChoices.map(({ card, eligible }) => `${card.id}:${eligible ? 'ready' : 'locked'}`).join(',')
     ].join(':');
 }
 
@@ -4541,9 +4587,9 @@ socket.on('challenge_pending', (data) => {
         pending.rollerId,
         pending.card?.id,
         'open',
-        (latestGameState?.players?.[myId]?.hand || []).some(card => card.type === 'Challenge Card')
-            ? 'challenge'
-            : 'no-challenge'
+        getChallengeCardChoices(latestGameState)
+            .map(({ card, eligible }) => `${card.id}:${eligible ? 'ready' : 'locked'}`)
+            .join(',')
     ].join(':');
     renderChallengePrompt({ ...data, pendingChallenge: pending }, true);
 });
@@ -6179,10 +6225,19 @@ window.submitModifierChoice = function(cardId, value, targetRoll) {
 
 
 
-function playChallenge(id) {
+function playChallenge(id, onResult = null) {
     triggerHaptic([20, 30, 20]);
     playSound('challenge');
-    socket.emit('play_challenge', id);
+    socket.timeout(4000).emit('play_challenge', id, (error, response) => {
+        const accepted = !error && response?.ok === true;
+        if (!accepted) {
+            showNotification(
+                response?.message
+                || (error ? 'The Challenge could not be confirmed. Please choose again.' : 'That Challenge cannot be played.')
+            );
+        }
+        if (typeof onResult === 'function') onResult(accepted, response);
+    });
 }
 
 

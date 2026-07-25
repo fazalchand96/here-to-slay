@@ -403,7 +403,12 @@ function applyGeneratedCardArt(card, artIds, fullArtSources) {
     if (artIds.has(artId)) {
         card.illustrationArtUrl = `assets/skin/cards/art-web/${artId}.webp`;
     }
-    const fullArtSource = fullArtSources[card.type];
+    const upgradedMonsterSource = card.type === 'Monster Card'
+        ? fullArtSources.monsterRequirementV2
+        : null;
+    const fullArtSource = upgradedMonsterSource?.extensionById.has(artId)
+        ? upgradedMonsterSource
+        : fullArtSources[card.type];
     const fullArtExtension = fullArtSource?.extensionById.get(artId);
     if (fullArtSource && fullArtExtension) {
         card.fullCardArtUrl = `assets/skin/cards/${fullArtSource.directory}/${artId}.${fullArtExtension}`;
@@ -421,6 +426,7 @@ function loadCards() {
     const artIds = loadCardAssetIds('assets/skin/cards/art-web', '.webp');
     const fullArtSources = {
         'Monster Card': loadFullCardArtSource('monster-fullgen-v1', ['.webp']),
+        monsterRequirementV2: loadFullCardArtSource('monster-fullgen-v2', ['.webp']),
         'Party Leader': loadFullCardArtSource('leader-fullgen-v1', ['.webp']),
         'Item Card': loadFullCardArtSource('item-fullgen-v1', ['.webp']),
         'Cursed Item Card': loadFullCardArtSource('cursed-item-fullgen-v1', ['.webp']),
@@ -4565,25 +4571,44 @@ socket.on('resolve_immediate_play', (data) => {
     });
 
 /* --- CHALLENGE PHASE --- */
-    socket.on('play_challenge', (cardId) => {
-        if (gameState.state !== 'WAITING_FOR_CHALLENGES') return;
-        if (!gameState.pendingChallenge) return;
-        if (socket.id === gameState.pendingChallenge.rollerId) return;
+    socket.on('play_challenge', (cardId, callback) => {
+        const reply = typeof callback === 'function' ? callback : () => {};
+        const reject = message => {
+            io.to(socket.id).emit('message', message);
+            reply({ ok: false, message });
+        };
+
+        if (gameState.state !== 'WAITING_FOR_CHALLENGES' || !gameState.pendingChallenge) {
+            reject('The Challenge window is already closed.');
+            return;
+        }
+        if (socket.id === gameState.pendingChallenge.rollerId) {
+            reject('You cannot Challenge your own card.');
+            return;
+        }
 
         const challenger = gameState.players[socket.id];
+        if (!challenger) {
+            reject('Your player seat is no longer available.');
+            return;
+        }
         const cardIndex = challenger.hand.findIndex(c => c.id === cardId);
-        if (cardIndex === -1) return;
+        if (cardIndex === -1) {
+            reject('That Challenge Card is no longer in your hand.');
+            return;
+        }
 
-        const challengeCard = challenger.hand.splice(cardIndex, 1)[0];
+        const challengeCard = challenger.hand[cardIndex];
         if (challengeCard.type !== 'Challenge Card') {
-            challenger.hand.splice(cardIndex, 0, challengeCard);
+            reject('The selected card is not a Challenge Card.');
             return;
         }
         if (challengeCard.required_class && !playerHasEffectiveClass(challenger, challengeCard.required_class)) {
-            challenger.hand.splice(cardIndex, 0, challengeCard);
-            io.to(socket.id).emit('message', `You need a ${challengeCard.required_class} in your Party to play this Challenge.`);
+            reject(`You need a ${challengeCard.required_class} Hero in your Party to play this Challenge.`);
             return;
         }
+
+        challenger.hand.splice(cardIndex, 1);
         registerCardPlayed(challengeCard);
         gameState.discardPile.push(challengeCard);
         triggerPlayedCardMonsterPassives(socket.id, challengeCard);
@@ -4619,6 +4644,11 @@ socket.on('resolve_immediate_play', (data) => {
             challengerCardName: challengeCard.name,
             passedPlayers: []
         };
+        reply({
+            ok: true,
+            cardId: challengeCard.id,
+            cardName: challengeCard.name
+        });
         broadcastState();
     });
 

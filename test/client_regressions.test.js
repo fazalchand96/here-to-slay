@@ -47,6 +47,22 @@ test('Lightning Labrys confirmation uses a tappable banner and waits for server 
     assert.match(serverSource, /reply\(\{ ok: true, discardedCount \}\)/);
 });
 
+test('Challenge prompt lists every legal card and keeps class-locked Challenges selectable only when eligible', () => {
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const styleSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
+    const serverSource = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+
+    assert.match(appSource, /function getChallengeCardChoices\(data\)/);
+    assert.match(appSource, /data-challenge-card-id="\$\{card\.id\}"/);
+    assert.match(appSource, /data-locked-challenge-card-id="\$\{card\.id\}"/);
+    assert.match(appSource, /Normal Challenge/);
+    assert.match(appSource, /socket\.timeout\(4000\)\.emit\('play_challenge'/);
+    assert.match(styleSource, /\.challenge-choice-list,/);
+    assert.match(styleSource, /\.challenge-choice\.is-locked/);
+    assert.match(serverSource, /You need a \$\{challengeCard\.required_class\} Hero in your Party/);
+    assert.match(serverSource, /reply\(\{\s*ok: true,\s*cardId: challengeCard\.id/);
+});
+
 test('free Monster target actions use the inspector action container', () => {
     const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
     const freeAttackBranch = appSource.match(
@@ -94,41 +110,32 @@ test('Item targeting keeps both own and opponent Party boards available', () => 
     );
 });
 
-test('new full-art Monsters receive a requirement overlay without duplicating older art', () => {
+test('expansion Monster requirements are baked into upgraded card art without a live overlay', () => {
     const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
     const styleSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
-    const formatterSource = appSource.match(
-        /function formatMonsterRequirement\(card\) \{[\s\S]*?\n\}/
-    )?.[0];
+    const serverSource = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
 
-    assert.match(appSource, /const needsMonsterRequirementOverlay = isFullCardArt/);
-    assert.match(appSource, /\['Berserkers & Necromancers', 'Monster Expansion'\]\.includes\(card\.expansion\)/);
-    assert.match(appSource, /needs-requirement-overlay/);
-    assert.ok(formatterSource, 'Expected the Monster requirement formatter to exist');
-    assert.match(appSource, /parts\.push\(`Discard \$\{discardCount\} \$\{discardLabel\}`\)/);
-    assert.match(
-        styleSource,
-        /#active-monsters > \.card\.full-card-art\.needs-requirement-overlay > \.monster-requirement-badge[\s\S]*?display: block !important/
-    );
+    assert.match(serverSource, /monsterRequirementV2: loadFullCardArtSource\('monster-fullgen-v2'/);
+    assert.match(serverSource, /upgradedMonsterSource\?\.extensionById\.has\(artId\)/);
+    assert.match(appSource, /const monsterRequirement = !isFullCardArt/);
+    assert.doesNotMatch(appSource, /needsMonsterRequirementOverlay|needs-requirement-overlay/);
+    assert.doesNotMatch(styleSource, /needs-requirement-overlay/);
 
-    const formatMonsterRequirement = Function(
-        `${formatterSource}; return formatMonsterRequirement;`
-    )();
-    assert.equal(
-        formatMonsterRequirement({
-            requirement: '1 Hero',
-            attack_cost: { discard: 'Magic Card', count: 1 }
-        }),
-        '1 Hero • Discard 1 Magic Card'
-    );
-    assert.equal(
-        formatMonsterRequirement({
-            requirement: '1 Hero',
-            attack_cost: { discard: 'ANY', count: 2 }
-        }),
-        '1 Hero • Discard 2 Cards'
-    );
-    assert.equal(formatMonsterRequirement({ requirement: '2 Heroes' }), '2 Heroes');
+    [
+        'card_175', 'card_176',
+        'card_208', 'card_209', 'card_210', 'card_211', 'card_212', 'card_213',
+        'card_214', 'card_215', 'card_216', 'card_217', 'card_218', 'card_219',
+        'card_220'
+    ].forEach(id => {
+        assert.equal(
+            fs.existsSync(path.join(
+                __dirname, '..', 'public', 'assets', 'skin', 'cards',
+                'monster-fullgen-v2', `${id}.webp`
+            )),
+            true,
+            `${id} should have a fully baked requirement frame`
+        );
+    });
 });
 
 test('opponent boards use dedicated art and clearly mark the active player', () => {
