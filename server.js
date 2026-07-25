@@ -634,6 +634,18 @@ function checkWinCondition() {
     return null;
 }
 
+function checkShamanagaArrivalWin() {
+    const pending = gameState.pendingShamanagaSacrifice;
+    if (!pending || gameState.state === 'GAMEOVER') return null;
+
+    const owner = gameState.players[pending.playerId];
+    const summonedHeroIsPresent = owner?.party?.some(hero => hero.id === pending.heroId);
+    if (!summonedHeroIsPresent) return null;
+
+    const winResult = checkWinCondition();
+    return winResult?.winnerId === pending.playerId ? winResult : null;
+}
+
 function handleGameOver(winResult) {
     if (gameState.state === 'GAMEOVER') return;
     
@@ -1434,7 +1446,15 @@ function resumeExpansionChoices() {
 }
 
 function broadcastState() {
-    resumeExpansionChoices();
+    // Shamanaga's summoned Hero joins the Party before its free skill roll and
+    // later sacrifice. Reaching nine classes at that instant is already a win,
+    // so resolve it before resumeExpansionChoices can remove the summoned Hero.
+    const shamanagaArrivalWin = checkShamanagaArrivalWin();
+    if (shamanagaArrivalWin) {
+        handleGameOver(shamanagaArrivalWin);
+    } else {
+        resumeExpansionChoices();
+    }
     if (gameState.state === 'PLAYING' && !gameState.pendingAction && !gameState.pendingCard
         && !gameState.pendingChallenge && !gameState.pendingGlobalAction) {
         const winResult = checkWinCondition();
@@ -5136,6 +5156,7 @@ module.exports = {
     isHeroSkillRollSuccessful,
     meetsMonsterRequirements,
     checkWinCondition,
+    checkShamanagaArrivalWin,
     loadCards,
     spawnMonsters,
     gameState,

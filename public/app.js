@@ -846,30 +846,53 @@ function buildClassPartyGrid(player, isOwn) {
     const columns = PARTY_CLASS_ORDER.map(className => {
         const heroes = (player.party || []).filter(hero => effectiveHeroClass(hero) === className);
         const leaderInClass = player.leader?.class === className;
-        const leaderCard = leaderInClass
-            ? `<div class="party-class-leader-card" title="Party Leader: ${player.leader.name}">${renderCard(player.leader, isOwn, false, false, isMyTurn)}</div>`
-            : '';
-        const heroCards = heroes.length
-            ? heroes.map(hero => renderCard(hero, isOwn, false, false, isMyTurn)).join('')
-            : (leaderInClass ? '' : `<div class="party-class-empty">Empty</div>`);
-        const classCardCount = heroes.length + (leaderInClass ? 1 : 0);
+        const classCards = [
+            ...(leaderInClass ? [{
+                card: player.leader,
+                leader: true
+            }] : []),
+            ...heroes.map(hero => ({ card: hero, leader: false }))
+        ];
+        const cardSlots = classCards.length
+            ? classCards.map(({ card, leader }, index) => `
+                <div class="party-class-card-slot${leader ? ' party-class-leader-card' : ''}"
+                    style="--party-card-index:${index}" title="${leader ? `Party Leader: ${card.name}` : card.name}">
+                    ${renderCard(card, isOwn, false, false, isMyTurn)}
+                </div>`).join('')
+            : `<div class="party-class-empty">Empty</div>`;
+        const classCardCount = classCards.length;
         return `
             <section class="party-class-column" data-class="${className.toLowerCase()}">
                 <header><span class="party-class-gem"></span><strong>${className}</strong><b>${classCardCount}</b></header>
-                <div class="party-class-stack">${leaderCard}${heroCards}</div>
+                <div class="party-class-stack" data-card-count="${classCardCount}">${cardSlots}</div>
             </section>`;
     }).join('');
 
-    const monsters = (player.slainMonsters || []).length
-        ? player.slainMonsters.map(monster => renderCard(monster, isOwn, false, true, isMyTurn)).join('')
+    const slainMonsters = player.slainMonsters || [];
+    const monsters = slainMonsters.length
+        ? slainMonsters.map((monster, index) => `
+            <div class="party-monster-card-slot" style="--monster-card-index:${index}">
+                ${renderCard(monster, isOwn, false, true, isMyTurn)}
+            </div>`).join('')
         : `<div class="party-class-empty">No slain Monsters yet</div>`;
 
     return `
-        <div class="party-class-grid">${columns}</div>
-        <section class="own-party-monsters">
-            <h3>Slain Monsters <span>${calculateWinStats(player).monsters}/4</span></h3>
-            <div class="own-party-monster-row">${monsters}</div>
-        </section>`;
+        <div class="party-board-layout">
+            <section class="party-classes-zone">
+                <header class="party-board-zone-heading">
+                    <span>Party Classes</span>
+                    <small>Heroes grouped by class</small>
+                </header>
+                <div class="party-class-grid">${columns}</div>
+            </section>
+            <section class="own-party-monsters">
+                <header class="party-board-zone-heading">
+                    <span>Slain Monsters</span>
+                    <strong>${calculateWinStats(player).monsters}/4</strong>
+                </header>
+                <div class="own-party-monster-row" data-monster-count="${slainMonsters.length}">${monsters}</div>
+            </section>
+        </div>`;
 }
 
 const notificationArea = document.getElementById('notification-area');
@@ -1319,6 +1342,29 @@ function fullCardArtClass(card) {
     return card && card.fullCardArtUrl ? ' full-card-art' : '';
 }
 
+function formatMonsterRequirement(card) {
+    if (!card) return 'None';
+
+    const parts = [];
+    if (card.requirement) parts.push(card.requirement);
+
+    const attackCost = card.attack_cost;
+    const discardCount = Number(attackCost?.count || 0);
+    if (discardCount > 0 && attackCost?.discard) {
+        const discardLabels = {
+            ANY: discardCount === 1 ? 'Card' : 'Cards',
+            'Magic Card': discardCount === 1 ? 'Magic Card' : 'Magic Cards',
+            'Challenge Card': discardCount === 1 ? 'Challenge Card' : 'Challenge Cards',
+            'Item Card': discardCount === 1 ? 'Item Card' : 'Item Cards'
+        };
+        const discardLabel = discardLabels[attackCost.discard]
+            || (discardCount === 1 ? attackCost.discard : `${attackCost.discard}s`);
+        parts.push(`Discard ${discardCount} ${discardLabel}`);
+    }
+
+    return parts.join(' • ') || 'None';
+}
+
 function renderCard(card, isMine = false, inHand = false, isMonster = false, isMyTurn = false, inlineStyle = "") {
 
     if (!card) return '';
@@ -1463,7 +1509,7 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
         && ['Berserkers & Necromancers', 'Monster Expansion'].includes(card.expansion);
     const monsterRequirement = (!isFullCardArt || needsMonsterRequirementOverlay)
         && (isMonster || card.type === 'Monster Card')
-        ? `<div class="monster-requirement-badge">Req: ${card.requirement || 'None'}</div>`
+        ? `<div class="monster-requirement-badge">Req: ${formatMonsterRequirement(card)}</div>`
         : '';
     const boardCardName = !isFullCardArt && (isMonster || card.type === 'Monster Card' || card.type === 'Hero Card')
         ? `<div class="board-card-name" title="${card.name || ''}">${card.name || 'Unknown'}</div>`

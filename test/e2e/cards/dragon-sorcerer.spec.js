@@ -84,23 +84,54 @@ test('Sorcerer Challenge accepts a Sorcerer and contributes its printed +3', asy
     expect(errors).toEqual([]);
 });
 
-test('the mobile Party modal keeps all eleven available classes on one row', async ({ browser }) => {
+test('the mobile Party modal separates classes from Monsters without per-class scrolling', async ({ browser }) => {
     const errors = [];
     const { host } = await startGame(browser);
     host.on('pageerror', error => errors.push(error.message));
+
+    for (const cardId of ['card_223', 'card_224', 'card_225', 'card_226']) {
+        await host.evaluate(id => window._socket.emit('debug_inject_to_party', { cardId: id }), cardId);
+    }
+    for (const cardId of ['card_001', 'card_002']) {
+        await host.evaluate(id => window._socket.emit('debug_add_slain_monster', { cardId: id }), cardId);
+    }
+    await host.waitForTimeout(300);
 
     await host.locator('#party-dock').click({ force: true });
     await expect(host.locator('#opponent-modal')).not.toHaveClass(/hidden/);
     const layout = await host.evaluate(() => {
         const columns = [...document.querySelectorAll('#opponent-modal .party-class-column')];
+        const stacks = [...document.querySelectorAll('#opponent-modal .party-class-stack')];
+        const classZone = document.querySelector('#opponent-modal .party-classes-zone')?.getBoundingClientRect();
+        const monsterZone = document.querySelector('#opponent-modal .own-party-monsters')?.getBoundingClientRect();
+        const classCards = [...document.querySelectorAll('#opponent-modal .party-class-card-slot .card')];
         return {
+            portrait: matchMedia('(orientation: portrait)').matches,
             count: columns.length,
             rows: new Set(columns.map(column => Math.round(column.getBoundingClientRect().top))).size,
-            labels: columns.map(column => column.querySelector('header strong')?.textContent?.trim())
+            labels: columns.map(column => column.querySelector('header strong')?.textContent?.trim()),
+            zonesOverlap: !!(classZone && monsterZone && classZone.bottom > monsterZone.top),
+            cardsStayInClassZone: !!classZone && classCards.every(card => {
+                const box = card.getBoundingClientRect();
+                return box.top >= classZone.top - 1 && box.bottom <= classZone.bottom + 1;
+            }),
+            classZoneBounds: classZone ? { top: classZone.top, bottom: classZone.bottom } : null,
+            classCardBounds: classCards.map(card => {
+                const box = card.getBoundingClientRect();
+                return { id: card.dataset.id, top: box.top, bottom: box.bottom };
+            }),
+            stackOverflowModes: stacks.map(stack => getComputedStyle(stack).overflowY),
+            sorcererCards: document.querySelectorAll('.party-class-column[data-class="sorcerer"] .party-class-card-slot').length,
+            monsterCards: document.querySelectorAll('.own-party-monsters .party-monster-card-slot').length
         };
     });
     expect(layout.count).toBe(11);
-    expect(layout.rows).toBe(1);
+    expect(layout.rows).toBe(layout.portrait ? 3 : 2);
     expect(layout.labels).toContain('Sorcerer');
+    expect(layout.zonesOverlap).toBe(false);
+    expect(layout.cardsStayInClassZone, JSON.stringify(layout)).toBe(true);
+    expect(layout.stackOverflowModes.every(mode => !['auto', 'scroll'].includes(mode))).toBe(true);
+    expect(layout.sorcererCards).toBeGreaterThanOrEqual(4);
+    expect(layout.monsterCards).toBe(2);
     expect(errors).toEqual([]);
 });

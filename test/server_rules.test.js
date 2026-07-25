@@ -15,6 +15,7 @@ const {
     isHeroSkillRollSuccessful,
     meetsMonsterRequirements,
     checkWinCondition,
+    checkShamanagaArrivalWin,
     isValidItemEquipTarget,
     clearUntilNextTurnProtections,
     playerHasEffectiveClass,
@@ -767,6 +768,30 @@ test('assembling 9 different classes (leader + party) wins with expansion Heroes
     const res = checkWinCondition();
     assert.equal(res.winnerId, 'p0');
     assert.match(res.reason, /9 classes/);
+});
+
+test('Shamanaga checks the ninth class before its summoned Hero is sacrificed', () => {
+    setBoard([{
+        leader: leader('LEADER_WIZARD', 'Wizard'),
+        party: [
+            heroOf('Fighter'), heroOf('Bard'), heroOf('Guardian'),
+            heroOf('Ranger'), heroOf('Thief'), heroOf('Druid'),
+            heroOf('Sorcerer', { id: 'shamanaga' }),
+            heroOf('Warrior', { id: 'summoned-warrior' }),
+        ],
+    }]);
+    gameState.state = 'WAITING_TO_ROLL';
+    gameState.pendingShamanagaSacrifice = {
+        playerId: 'p0',
+        heroId: 'summoned-warrior'
+    };
+
+    const res = checkShamanagaArrivalWin();
+    assert.equal(res?.winnerId, 'p0');
+    assert.match(res?.reason || '', /9 classes/);
+
+    gameState.pendingShamanagaSacrifice = null;
+    assert.equal(checkShamanagaArrivalWin(), null);
 });
 
 test('duplicate classes do NOT count toward the 9-class win', () => {

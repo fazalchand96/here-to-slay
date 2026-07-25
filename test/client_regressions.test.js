@@ -82,10 +82,39 @@ test('Item targeting keeps both own and opponent Party boards available', () => 
 
 test('new full-art Monsters receive a requirement overlay without duplicating older art', () => {
     const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const styleSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
+    const formatterSource = appSource.match(
+        /function formatMonsterRequirement\(card\) \{[\s\S]*?\n\}/
+    )?.[0];
 
     assert.match(appSource, /const needsMonsterRequirementOverlay = isFullCardArt/);
     assert.match(appSource, /\['Berserkers & Necromancers', 'Monster Expansion'\]\.includes\(card\.expansion\)/);
     assert.match(appSource, /needs-requirement-overlay/);
+    assert.ok(formatterSource, 'Expected the Monster requirement formatter to exist');
+    assert.match(appSource, /parts\.push\(`Discard \$\{discardCount\} \$\{discardLabel\}`\)/);
+    assert.match(
+        styleSource,
+        /#active-monsters > \.card\.full-card-art\.needs-requirement-overlay > \.monster-requirement-badge[\s\S]*?display: block !important/
+    );
+
+    const formatMonsterRequirement = Function(
+        `${formatterSource}; return formatMonsterRequirement;`
+    )();
+    assert.equal(
+        formatMonsterRequirement({
+            requirement: '1 Hero',
+            attack_cost: { discard: 'Magic Card', count: 1 }
+        }),
+        '1 Hero • Discard 1 Magic Card'
+    );
+    assert.equal(
+        formatMonsterRequirement({
+            requirement: '1 Hero',
+            attack_cost: { discard: 'ANY', count: 2 }
+        }),
+        '1 Hero • Discard 2 Cards'
+    );
+    assert.equal(formatMonsterRequirement({ requirement: '2 Heroes' }), '2 Heroes');
 });
 
 test('opponent boards use dedicated art and clearly mark the active player', () => {

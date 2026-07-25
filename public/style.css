@@ -8247,8 +8247,11 @@ body.target-mode-active #opponent-modal.own-party-view #opponent-modal-content {
 }
 
 /* Generated monster cards from these two newer sets leave their lower plaque
-   blank so the live requirement can be rendered accurately from cards.json. */
-.card.full-card-art.needs-requirement-overlay > .monster-requirement-badge {
+   blank so the live requirement and any discard cost can come from cards.json.
+   The id-scoped selector deliberately outranks the older full-art safety rule
+   used by the active Monster row. */
+.card.full-card-art.needs-requirement-overlay > .monster-requirement-badge,
+#active-monsters > .card.full-card-art.needs-requirement-overlay > .monster-requirement-badge {
     display: block !important;
     position: absolute;
     z-index: 12;
@@ -8580,4 +8583,265 @@ body.landscape .action-point-timer-clock {
     top: max(8px, 1%) !important;
     width: 128px;
     height: 44px;
+}
+
+/* Party overview v2: classes and slain Monsters are two unmistakably separate
+   board zones. Eleven classes wrap to compact rows, while cards belonging to
+   the same class fan sideways inside one cell instead of creating a scrollbar
+   or dropping into the Monster area. */
+#opponent-modal.own-party-view #opponent-modal-content {
+    overflow: hidden !important;
+}
+
+.party-board-layout {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) clamp(76px, 21%, 108px);
+    gap: clamp(6px, 1.2dvh, 10px);
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+}
+
+.party-classes-zone,
+#opponent-modal.own-party-view .own-party-monsters {
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 0;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.party-classes-zone {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    padding: clamp(5px, 1dvh, 9px);
+    border: 1px solid rgba(125, 139, 234, .48);
+    background:
+        linear-gradient(180deg, rgba(38, 34, 85, .72), rgba(13, 17, 47, .58)),
+        radial-gradient(circle at 50% 0%, rgba(126, 99, 219, .19), transparent 62%);
+    box-shadow:
+        inset 0 0 0 1px rgba(232, 222, 255, .05),
+        inset 0 -18px 30px rgba(0, 4, 24, .24);
+}
+
+.party-board-zone-heading {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+    margin: 0 0 5px;
+    color: #f8e5ae;
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+
+.party-board-zone-heading > span {
+    font-size: clamp(.52rem, 1.05vw, .78rem);
+    font-weight: 900;
+}
+
+.party-board-zone-heading > small {
+    color: rgba(220, 214, 246, .58);
+    font: 600 clamp(.38rem, .68vw, .54rem)/1 var(--font-body);
+    letter-spacing: .04em;
+}
+
+#opponent-modal.own-party-view .party-class-grid {
+    display: grid !important;
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+    gap: clamp(4px, .65vw, 8px) !important;
+    min-height: 0;
+    overflow: visible !important;
+}
+
+#opponent-modal.own-party-view .party-class-column {
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr);
+    align-items: stretch;
+    min-width: 0;
+    min-height: 0 !important;
+    max-height: none !important;
+    padding: 3px 4px 4px !important;
+    border: 1px solid rgba(199, 191, 238, .16);
+    border-radius: 7px;
+    background: linear-gradient(180deg, rgba(18, 23, 61, .68), rgba(9, 13, 37, .35));
+}
+
+#opponent-modal.own-party-view .party-class-column > header {
+    display: flex;
+    min-height: 16px;
+    margin: 0 0 2px;
+    gap: 4px;
+    font-size: clamp(.38rem, .76vw, .56rem) !important;
+}
+
+#opponent-modal.own-party-view .party-class-column > header strong {
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#opponent-modal.own-party-view .party-class-column > header b {
+    flex: 0 0 auto;
+    color: #d9cafc;
+}
+
+#opponent-modal.own-party-view .party-class-stack {
+    display: flex !important;
+    flex-direction: row !important;
+    flex: 1 1 auto;
+    align-items: center !important;
+    justify-content: center;
+    gap: 3px;
+    min-width: 0;
+    min-height: 0 !important;
+    overflow: visible !important;
+    scrollbar-width: none;
+}
+
+.party-class-card-slot {
+    position: relative;
+    z-index: calc(1 + var(--party-card-index, 0));
+    flex: 0 0 auto;
+    min-width: 0;
+}
+
+#opponent-modal.own-party-view .party-class-card-slot .card {
+    width: auto !important;
+    height: clamp(54px, 12.5dvh, 86px) !important;
+    min-height: 0 !important;
+    max-height: 86px !important;
+    margin: 0 !important;
+}
+
+#opponent-modal.own-party-view .party-class-stack[data-card-count="4"],
+#opponent-modal.own-party-view .party-class-stack[data-card-count="5"],
+#opponent-modal.own-party-view .party-class-stack[data-card-count="6"] {
+    gap: 0;
+}
+
+#opponent-modal.own-party-view .party-class-stack[data-card-count="4"] .party-class-card-slot + .party-class-card-slot {
+    margin-left: -10px;
+}
+#opponent-modal.own-party-view .party-class-stack[data-card-count="5"] .party-class-card-slot + .party-class-card-slot,
+#opponent-modal.own-party-view .party-class-stack[data-card-count="6"] .party-class-card-slot + .party-class-card-slot {
+    margin-left: -17px;
+}
+
+#opponent-modal.own-party-view .party-class-empty {
+    min-height: 0;
+    color: rgba(218, 211, 241, .31);
+    font-size: clamp(.38rem, .72vw, .56rem);
+}
+
+#opponent-modal.own-party-view .own-party-monsters {
+    display: grid !important;
+    grid-template-columns: minmax(110px, 145px) minmax(0, 1fr) !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    width: 100% !important;
+    padding: 7px 10px !important;
+    border: 1px solid rgba(207, 91, 99, .52);
+    background:
+        linear-gradient(90deg, rgba(74, 20, 35, .75), rgba(32, 16, 39, .61)),
+        radial-gradient(circle at 70% 50%, rgba(183, 58, 73, .16), transparent 60%);
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 215, 204, .05),
+        inset 18px 0 28px rgba(48, 5, 18, .2);
+}
+
+#opponent-modal.own-party-view .own-party-monsters .party-board-zone-heading {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-content: center;
+    margin: 0;
+    padding-right: 10px;
+    border-right: 1px solid rgba(244, 167, 148, .3);
+}
+
+#opponent-modal.own-party-view .own-party-monsters .party-board-zone-heading > small {
+    display: none;
+}
+
+#opponent-modal.own-party-view .own-party-monsters .party-board-zone-heading > strong {
+    color: #ffd5c0;
+    font: 900 clamp(.68rem, 1.3vw, 1rem)/1 var(--font-display);
+}
+
+#opponent-modal.own-party-view .own-party-monster-row {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 5px !important;
+    width: 100%;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+}
+
+.party-monster-card-slot {
+    position: relative;
+    z-index: calc(1 + var(--monster-card-index, 0));
+    flex: 0 0 auto;
+}
+
+#opponent-modal.own-party-view .party-monster-card-slot .card {
+    width: auto !important;
+    height: clamp(58px, 13.5dvh, 91px) !important;
+    min-height: 0 !important;
+    max-height: 91px !important;
+    margin: 0 !important;
+}
+
+#opponent-modal.own-party-view .own-party-monster-row[data-monster-count="4"] .party-monster-card-slot + .party-monster-card-slot {
+    margin-left: -9px;
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .party-board-layout {
+        grid-template-rows: minmax(0, 1fr) 68px;
+        gap: 4px;
+    }
+    .party-classes-zone { padding: 3px 5px; }
+    .party-board-zone-heading { margin-bottom: 2px; }
+    #opponent-modal.own-party-view .party-class-grid { gap: 3px 5px !important; }
+    #opponent-modal.own-party-view .party-class-column { padding: 1px 3px 2px !important; }
+    #opponent-modal.own-party-view .party-class-column > header { min-height: 12px; }
+    #opponent-modal.own-party-view .party-class-card-slot .card {
+        height: clamp(30px, 8.4dvh, 36px) !important;
+        max-height: 36px !important;
+    }
+    #opponent-modal.own-party-view .own-party-monsters {
+        grid-template-columns: minmax(88px, 112px) minmax(0, 1fr) !important;
+        padding: 3px 7px !important;
+    }
+    #opponent-modal.own-party-view .party-monster-card-slot .card {
+        height: 56px !important;
+        max-height: 56px !important;
+    }
+}
+
+@media (orientation: portrait) {
+    .party-board-layout {
+        grid-template-rows: minmax(0, 1fr) 88px;
+    }
+    #opponent-modal.own-party-view .party-class-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        grid-template-rows: repeat(3, minmax(0, 1fr));
+    }
+    #opponent-modal.own-party-view .party-class-column > header {
+        font-size: clamp(.42rem, 1.65vw, .58rem) !important;
+    }
+    #opponent-modal.own-party-view .party-class-card-slot .card {
+        height: clamp(48px, 8.7dvh, 70px) !important;
+        max-height: 70px !important;
+    }
+    #opponent-modal.own-party-view .own-party-monsters {
+        grid-template-columns: minmax(92px, 118px) minmax(0, 1fr) !important;
+    }
+    .party-board-zone-heading > small { display: none; }
 }
