@@ -2243,6 +2243,9 @@ function buildBoardParts(data, ctx) {
             chipClass += " valid-target";
             chipClick = `onclick="selectTarget('${id}')"`;
             chipTitle = `title="Click to select this player as a target"`;
+        } else if (isLocalTargeting) {
+            chipClass += " valid-target item-target-board";
+            chipTitle = `title="Open this Party and choose a Hero for ${localPendingEquipCard?.name || 'the Item'}"`;
         }
 
         // Stacked + compact so all opponents (up to 5) fit the bar without horizontal
@@ -3402,8 +3405,8 @@ function renderBoard(data) {
             }
 
         }
-        // The server has already rolled at this point. Let the one-second dice
-        // animation settle before revealing Fearless Flame's optional discard,
+        // The server has already rolled at this point. Keep the result visible for
+        // three seconds before revealing Fearless Flame's optional discard,
         // so the choice is visibly made after seeing the result.
         if (isFearlessFlameChoice) {
             targetBanner?.classList.add('hidden');
@@ -3415,7 +3418,7 @@ function renderBoard(data) {
                     targetBanner?.classList.remove('hidden');
                 }
                 window._fearlessFlamePromptTimer = null;
-            }, 1100);
+            }, 3000);
         }
 
     } else if (isLocalTargeting || isSelfItemTargeting) {
@@ -3604,7 +3607,7 @@ function renderBoard(data) {
                         hideNow();
                     }
                     window._diceStaleTimer = null;
-                }, 1100);
+                }, 3000);
             } else if (actNowStates.includes(data.state)) {
                 hideNow();
             } else if (!data.pendingRoll && !rollingStates.includes(data.state)) {
@@ -5153,8 +5156,8 @@ function startEquipTargeting(cardId, fromHandSelection = false) {
     document.body?.classList.add('target-mode-active');
 
     targetBannerText.innerText = context.card.type === 'Cursed Item Card'
-        ? "Select any Hero on the board to curse with this item."
-        : "Select any Hero on the board to equip this item.";
+        ? `${context.card.name}: open your Party or an opponent's Party, then select any Hero to curse.`
+        : `${context.card.name}: open your Party or an opponent's Party, then select any Hero to equip.`;
 
     targetBannerText.innerHTML += ` <button onclick="cancelEquipTargeting()" style="margin-left: 10px; padding: 5px 10px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>`;
 

@@ -17,9 +17,34 @@ test('free Monster target actions use the inspector action container', () => {
 test('Fearless Flame waits for the settled roll and restores it after a decision', () => {
     const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
 
-    assert.match(appSource, /isFearlessFlameChoice[\s\S]*?_fearlessFlamePromptTimer[\s\S]*?1100/);
-    assert.match(appSource, /fearlessFlameChoice[\s\S]*?_diceStaleTimer[\s\S]*?1100/);
+    assert.match(appSource, /isFearlessFlameChoice[\s\S]*?_fearlessFlamePromptTimer[\s\S]*?3000/);
+    assert.match(appSource, /fearlessFlameChoice[\s\S]*?_diceStaleTimer[\s\S]*?3000/);
     assert.match(appSource, /if \(!data\.isRollUpdate && \(window\.currentRollSignature/);
+});
+
+test('Item targeting keeps both own and opponent Party boards available', () => {
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+
+    assert.match(
+        appSource,
+        /else if \(isLocalTargeting\) \{[\s\S]*?item-target-board[\s\S]*?open this Party/i
+    );
+    assert.match(
+        appSource,
+        /`\$\{context\.card\.name\}: open your Party or an opponent's Party/
+    );
+    assert.match(
+        appSource,
+        /const targetingParty = myTargetMode \|\| isLocalTargeting \|\| isSelfItemTargeting/
+    );
+    assert.match(
+        appSource,
+        /window\.openOwnPartyModal = function\(\)[\s\S]*?buildClassPartyGrid\(me, true\)/
+    );
+    assert.match(
+        appSource,
+        /window\.openOpponentModal = function\(id\)[\s\S]*?buildClassPartyGrid\(opp, false\)/
+    );
 });
 
 test('new full-art Monsters receive a requirement overlay without duplicating older art', () => {
