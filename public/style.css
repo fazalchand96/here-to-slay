@@ -411,6 +411,37 @@ body {
     pointer-events: auto !important;
 }
 
+#majestelk-choice-modal {
+    z-index: 10600 !important;
+}
+
+.majestelk-choice-panel {
+    box-sizing: border-box;
+    width: min(92vw, 460px);
+    padding: clamp(20px, 4vh, 34px);
+    text-align: center;
+}
+
+.majestelk-choice-panel h2 {
+    margin: 0 0 8px;
+    font-size: clamp(1.35rem, 4vh, 2rem);
+}
+
+.majestelk-choice-panel p {
+    margin: 0 0 20px;
+}
+
+.majestelk-choice-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+.majestelk-choice-actions .action-btn {
+    min-height: 58px;
+    font-size: 1.2rem;
+}
+
 /* Portrait: the opponent bar sits below a header row, so the chips run ~38–76px
    from the top — the 65px banner covered their lower half. Since the chips ARE
    the tap targets for player-target skills (Sharp Fox, Plundering Puma, Forced

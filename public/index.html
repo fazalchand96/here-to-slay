@@ -44,6 +44,17 @@
         <h2 id="target-banner-text">Waiting for opponent to select a target...</h2>
     </div>
 
+    <div id="majestelk-choice-modal" class="overlay hidden" aria-modal="true" role="dialog" aria-labelledby="majestelk-choice-title">
+        <div class="glass-panel majestelk-choice-panel">
+            <h2 id="majestelk-choice-title">Majestelk</h2>
+            <p>Choose the modifier applied to every roll until your next turn.</p>
+            <div class="majestelk-choice-actions">
+                <button id="majestelk-plus-five" class="action-btn" type="button" onclick="chooseMajestelkModifier(5)">+5</button>
+                <button id="majestelk-minus-five" class="action-btn attack" type="button" onclick="chooseMajestelkModifier(-5)">−5</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Game Over Screen -->
     <div id="gameover-screen" class="overlay hidden">
         <div class="glass-panel">

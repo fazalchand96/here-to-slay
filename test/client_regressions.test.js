@@ -97,6 +97,11 @@ test('Druid skill rolls show low-roll labels and Majestelk reaches its dedicated
     assert.match(actNowStates[0], /WAITING_FOR_MAJESTELK_CHOICE/);
     assert.match(
         appSource,
-        /WAITING_FOR_MAJESTELK_CHOICE[\s\S]*?chooseMajestelkModifier\(5\)[\s\S]*?chooseMajestelkModifier\(-5\)/
+        /const showMajestelkChoice = data\.state === 'WAITING_FOR_MAJESTELK_CHOICE'/
     );
+
+    const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+    assert.match(htmlSource, /id="majestelk-choice-modal"/);
+    assert.match(htmlSource, /onclick="chooseMajestelkModifier\(5\)"/);
+    assert.match(htmlSource, /onclick="chooseMajestelkModifier\(-5\)"/);
 });

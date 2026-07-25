@@ -2409,6 +2409,18 @@ function renderBoard(data) {
 
     currentPendingAction = data.pendingAction;
 
+    const majestelkChoiceModal = document.getElementById('majestelk-choice-modal');
+    const showMajestelkChoice = data.state === 'WAITING_FOR_MAJESTELK_CHOICE'
+        && data.pendingAction?.playerToChoose === myId;
+    if (majestelkChoiceModal) {
+        majestelkChoiceModal.classList.toggle('hidden', !showMajestelkChoice);
+        majestelkChoiceModal.style.display = showMajestelkChoice ? 'flex' : '';
+    }
+    if (showMajestelkChoice) {
+        document.body?.classList.remove('target-mode-active');
+        closeInspectorModal();
+    }
+
     if (data.state === 'WAITING_FOR_MODIFIER_RETRIEVAL' && data.pendingAction
         && data.pendingAction.type === 'MODIFIER_MINUS_FOUR_RETRIEVAL'
         && data.pendingAction.playerToChoose === myId) {
@@ -3084,12 +3096,12 @@ function renderBoard(data) {
         endTurnBtn.disabled = true;
         drawCardBtn.disabled = true;
         discardDrawBtn.disabled = true;
-        targetBanner?.classList.remove('hidden');
 
         if (data.pendingAction?.playerToChoose === myId) {
             waitingOverlay?.classList.add('hidden');
-            targetBannerText.innerHTML = `CHOOSE MAJESTELK'S MODIFIER <button class="action-btn inline" onclick="chooseMajestelkModifier(5)">+5</button> <button class="action-btn inline attack" onclick="chooseMajestelkModifier(-5)">-5</button>`;
+            targetBanner?.classList.add('hidden');
         } else {
+            targetBanner?.classList.remove('hidden');
             waitingOverlay?.classList.remove('hidden');
             targetBannerText.innerText = 'WAITING FOR THE MAJESTELK CHOICE...';
         }
