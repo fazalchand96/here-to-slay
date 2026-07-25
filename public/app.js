@@ -1167,6 +1167,14 @@ const targetBanner = document.getElementById('target-banner');
 
 const targetBannerText = document.getElementById('target-banner-text');
 
+targetBanner?.addEventListener('click', event => {
+    const button = event.target.closest('[data-submit-variable-discard]');
+    if (!button) return;
+    event.preventDefault();
+    event.stopPropagation();
+    window.submitPenaltyDiscard?.();
+});
+
 
 
 const victoryModal = document.getElementById('victory-modal');
@@ -1233,6 +1241,7 @@ let isLeaderSkillTargeting = false;
 let multiTargetSelected = [];
 
 let multiTargetMax = 2;
+let penaltyDiscardSubmitting = false;
 
 let pendingHeroSkillCard = null;
 
@@ -3415,7 +3424,7 @@ function renderBoard(data) {
 
                 let currentAmt = multiTargetSelected ? multiTargetSelected.length : 0;
 
-                targetBannerText.innerHTML = `SELECT UP TO ${maxAmt} CARD(S) TO DISCARD <button class="action-btn inline attack" style="margin-left:15px; font-size:16px;" onclick="submitPenaltyDiscard()">CONFIRM ${currentAmt} DISCARDS</button>`;
+                targetBannerText.innerHTML = `SELECT UP TO ${maxAmt} CARD(S) TO DISCARD <button type="button" data-submit-variable-discard class="action-btn inline attack variable-discard-confirm">CONFIRM ${currentAmt} DISCARDS</button>`;
 
                 if (!isMultiTargeting || multiTargetMax !== maxAmt) {
 
@@ -5634,7 +5643,7 @@ window.submitMultiTargets = function() {
 
 window.submitPenaltyDiscard = function() {
 
-    if (!latestGameState || !latestGameState.pendingAction) return;
+    if (!latestGameState || !latestGameState.pendingAction || penaltyDiscardSubmitting) return;
 
     // Fixed-amount discards carry `amount` (select exactly N); variable ones
     // (Qi Bear's "up to N") carry `maxAmount` only - the old exact-match check
@@ -5648,8 +5657,31 @@ window.submitPenaltyDiscard = function() {
 
     if (okCount) {
 
-        socket.emit('submit_penalty_discard', { cardIds: multiTargetSelected });
+        if (latestGameState.state === 'WAITING_FOR_VARIABLE_DISCARD') {
+            penaltyDiscardSubmitting = true;
+            const confirmButton = targetBanner?.querySelector('[data-submit-variable-discard]');
+            if (confirmButton) {
+                confirmButton.disabled = true;
+                confirmButton.textContent = 'DISCARDING...';
+            }
+            socket.timeout(4000).emit(
+                'submit_penalty_discard',
+                { cardIds: [...multiTargetSelected] },
+                (error, response) => {
+                    penaltyDiscardSubmitting = false;
+                    if (error || !response?.ok) {
+                        if (latestGameState) renderBoard(latestGameState);
+                        alert(response?.reason || 'The discard could not be confirmed. Please try again.');
+                        return;
+                    }
+                    isMultiTargeting = false;
+                    multiTargetSelected = [];
+                }
+            );
+            return;
+        }
 
+        socket.emit('submit_penalty_discard', { cardIds: multiTargetSelected });
         isMultiTargeting = false;
 
         multiTargetSelected = [];

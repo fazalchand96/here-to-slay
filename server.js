@@ -4164,9 +4164,15 @@ socket.on('resolve_immediate_play', (data) => {
         broadcastState();
     });
 
-    socket.on('submit_penalty_discard', (data) => {
+    socket.on('submit_penalty_discard', (data, acknowledge) => {
         const player = gameState.players[socket.id];
-        if (!player) return;
+        const reply = payload => {
+            if (typeof acknowledge === 'function') acknowledge(payload);
+        };
+        if (!player) {
+            reply({ ok: false, reason: 'Player not found.' });
+            return;
+        }
 
         const { cardIds } = data; // Expect an array of card IDs
 
@@ -4281,10 +4287,23 @@ socket.on('resolve_immediate_play', (data) => {
             broadcastState();
         } else if (gameState.state === 'WAITING_FOR_VARIABLE_DISCARD') {
             const pAction = gameState.pendingAction;
-            if (!pAction) return;
-            if (socket.id !== pAction.originalActor) return;
+            if (!pAction) {
+                reply({ ok: false, reason: 'The discard action is no longer active.' });
+                return;
+            }
+            if (socket.id !== pAction.originalActor) {
+                reply({ ok: false, reason: 'Only the active player may confirm this discard.' });
+                return;
+            }
             if (!cardIds || !Array.isArray(cardIds) || cardIds.length > pAction.maxAmount
-                || new Set(cardIds).size !== cardIds.length) return;
+                || new Set(cardIds).size !== cardIds.length) {
+                reply({ ok: false, reason: `Select at most ${pAction.maxAmount} different cards.` });
+                return;
+            }
+            if (!cardIds.every(cardId => player.hand.some(card => card.id === cardId))) {
+                reply({ ok: false, reason: 'One of the selected cards is no longer in your hand.' });
+                return;
+            }
 
             let discardedCount = 0;
             for (const cardId of cardIds) {
@@ -4342,6 +4361,7 @@ socket.on('resolve_immediate_play', (data) => {
             } else {
                 resetToPlayingState();
             }
+            reply({ ok: true, discardedCount });
             broadcastState();
         }
     });

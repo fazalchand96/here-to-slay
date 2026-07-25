@@ -403,7 +403,7 @@ body {
     font-weight: 800 !important;
     z-index: 10000 !important;
     box-shadow: 0 10px 25px rgba(0,0,0,0.8) !important;
-    pointer-events: none !important; /* Let clicks pass through if needed */
+    pointer-events: auto !important;
 }
 
 /* Ensure any cancel buttons injected into the banner remain clickable */
@@ -6615,6 +6615,12 @@ body.monster-strike-playing .overlay:not(#dice-overlay) {
     pointer-events: auto !important;
     font-size: 0.9rem !important;
     padding: 8px 14px !important;
+    touch-action: manipulation;
+}
+
+#target-banner .variable-discard-confirm {
+    min-height: 48px !important;
+    min-width: 168px !important;
 }
 
 /* ============================================================================

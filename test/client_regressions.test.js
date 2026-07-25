@@ -15,6 +15,18 @@ test('action point countdown is visible and warns during the final seconds', () 
     assert.match(styleSource, /#action-point-timer\.timer-danger/);
 });
 
+test('Lightning Labrys confirmation uses a tappable banner and waits for server acknowledgement', () => {
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const styleSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
+    const serverSource = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+
+    assert.match(appSource, /data-submit-variable-discard/);
+    assert.match(appSource, /socket\.timeout\(4000\)\.emit\([\s\S]*?'submit_penalty_discard'/);
+    assert.match(appSource, /if \(error \|\| !response\?\.ok\)/);
+    assert.match(styleSource, /#target-banner \{[\s\S]*?pointer-events: auto !important;/);
+    assert.match(serverSource, /reply\(\{ ok: true, discardedCount \}\)/);
+});
+
 test('free Monster target actions use the inspector action container', () => {
     const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
     const freeAttackBranch = appSource.match(

@@ -2,7 +2,7 @@
 
 const { test, expect } = require('../helpers/fixtures');
 const {
-    startGame, injectCard, addToDiscard, playCardFromHand, passChallenge,
+    startGame, injectCard, addToDiscard, setHand, playCardFromHand, passChallenge,
     rollDice, passModifiers, clickFirstValidTarget, p2DoAction,
 } = require('../helpers/gameSetup');
 
@@ -12,6 +12,36 @@ async function setupP2Hero(host, p2) {
     await p2.evaluate(() => window._socket.emit('debug_inject_to_party', { cardId: 'card_030' }));
     await p2.waitForTimeout(300);
 }
+
+test('Lightning Labrys: three selected cards can be confirmed and discarded', async ({ browser }) => {
+    const errors = [];
+    const { host, p2, ctx1, ctx2 } = await startGame(browser);
+    host.on('pageerror', error => errors.push(error.message));
+
+    await setHand(host, ['card_202', 'card_020', 'card_030', 'card_040']);
+    await playCardFromHand(host, 'card_202');
+    await passChallenge(p2);
+
+    await expect.poll(() => host.evaluate(() => window.latestGameState?.state))
+        .toBe('WAITING_FOR_VARIABLE_DISCARD');
+
+    for (const cardId of ['card_020', 'card_030', 'card_040']) {
+        await host.locator(`#player-hand [data-id="${cardId}"]`).click({ force: true });
+        const selectButton = host.locator('#inspector-modal-actions button').filter({ hasText: /SELECT TARGET/i }).first();
+        await expect(selectButton).toBeVisible();
+        await selectButton.click();
+    }
+
+    const confirmButton = host.locator('#target-banner button').filter({ hasText: /CONFIRM 3 DISCARDS/i });
+    await expect(confirmButton).toBeVisible();
+    await confirmButton.click();
+
+    await expect.poll(() => host.evaluate(() => window.latestGameState?.pendingAction?.type))
+        .toBe('LIGHTNING_LABRYS_PLAYER');
+    expect(errors).toEqual([]);
+
+    await ctx1.close(); await ctx2.close();
+});
 
 test('Enchanted Spell (card_109): plays without crash, +2 roll bonus message', async ({ browser }) => {
     const errors = [];
