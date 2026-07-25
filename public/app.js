@@ -1077,6 +1077,7 @@ function hideModifierDecisionControls() {
     if (instruction) instruction.style.display = 'none';
     document.getElementById('noble-shaman-controls')?.remove();
     document.getElementById('biggest-ring-controls')?.remove();
+    document.getElementById('fearless-flame-controls')?.remove();
 }
 
 function hasPassedModifierPhase(state = latestGameState) {
@@ -1099,6 +1100,7 @@ function syncModifierDecisionControls(state = latestGameState) {
 
     document.getElementById('noble-shaman-controls')?.remove();
     document.getElementById('biggest-ring-controls')?.remove();
+    document.getElementById('fearless-flame-controls')?.remove();
     const me = state.players && state.players[myId];
     if (me && me.leader && me.leader.effect_id === 'LEADER_DRUID' && !me.usedNobleShamanThisTurn) {
         const controls = document.createElement('div');
@@ -1109,6 +1111,19 @@ function syncModifierDecisionControls(state = latestGameState) {
         } else {
             controls.innerHTML = `<button class="action-btn" onclick="socket.emit('use_noble_shaman')">USE NOBLE SHAMAN (-1)</button>`;
         }
+        passButton.insertAdjacentElement('beforebegin', controls);
+    }
+
+    const canUseFearlessFlame = !passed
+        && me?.leader?.effect_id === 'LEADER_SORCERER'
+        && me.hand?.length > 0
+        && !(state.pendingRoll?.fearlessFlameUsedBy || []).includes(myId)
+        && (state.pendingRoll?.fearlessFlameEligible || []).some(entry => entry.playerId === myId);
+    if (canUseFearlessFlame) {
+        const controls = document.createElement('div');
+        controls.id = 'fearless-flame-controls';
+        controls.className = 'noble-shaman-controls';
+        controls.innerHTML = `<button class="action-btn" onclick="socket.emit('use_fearless_flame')">USE THE FEARLESS FLAME (+1)</button>`;
         passButton.insertAdjacentElement('beforebegin', controls);
     }
 
@@ -2479,12 +2494,6 @@ function renderBoard(data) {
     // button being pushed below the console's visible area.
     const diceOverlayEl = document.getElementById('dice-overlay');
     if (diceOverlayEl) diceOverlayEl.classList.toggle('mod-compact', data.state === 'WAITING_FOR_MODIFIERS');
-    const isFearlessFlameChoice = data.state === 'WAITING_FOR_DISCARD_PENALTY'
-        && data.pendingAction?.type === 'FEARLESS_FLAME_DISCARD';
-    if (!isFearlessFlameChoice && window._fearlessFlamePromptTimer) {
-        clearTimeout(window._fearlessFlamePromptTimer);
-        window._fearlessFlamePromptTimer = null;
-    }
 
 
 
@@ -3458,8 +3467,7 @@ function renderBoard(data) {
 
                 targetBannerText.innerHTML = data.pendingAction.type === 'FEARLESS_FLAME_DISCARD'
                     ? `THE FEARLESS FLAME: DISCARD 1 CARD FOR +1 TO YOUR ROLL
-                        <button class="action-btn inline attack" onclick="submitPenaltyDiscard()">DISCARD FOR +1</button>
-                        <button class="action-btn inline" onclick="socket.emit('resolve_fearless_flame_choice',{use:false})">SKIP</button>`
+                        <button class="action-btn inline attack" onclick="submitPenaltyDiscard()">DISCARD FOR +1</button>`
                     : data.pendingAction.type === 'ENTANGLING_TRAP_DISCARD'
                     ? `ENTANGLING TRAP: SELECT ${amt} CARD(S) TO DISCARD
                         <button class="action-btn inline attack" style="margin-left:15px; font-size:16px;" onclick="submitPenaltyDiscard()">CONFIRM DISCARD</button>`
@@ -3486,22 +3494,6 @@ function renderBoard(data) {
             }
 
         }
-        // The server has already rolled at this point. Keep the result visible for
-        // three seconds before revealing Fearless Flame's optional discard,
-        // so the choice is visibly made after seeing the result.
-        if (isFearlessFlameChoice) {
-            targetBanner?.classList.add('hidden');
-            clearTimeout(window._fearlessFlamePromptTimer);
-            window._fearlessFlamePromptTimer = setTimeout(() => {
-                const current = window.latestGameState;
-                if (current?.state === 'WAITING_FOR_DISCARD_PENALTY'
-                    && current.pendingAction?.type === 'FEARLESS_FLAME_DISCARD') {
-                    targetBanner?.classList.remove('hidden');
-                }
-                window._fearlessFlamePromptTimer = null;
-            }, 3000);
-        }
-
     } else if (isLocalTargeting || isSelfItemTargeting) {
 
         // Client-only targeting (equip an item / target your own equipped item)
@@ -3670,8 +3662,6 @@ function renderBoard(data) {
         const actNowStates = ['WAITING_FOR_DISCARD_PENALTY', 'WAITING_FOR_MULTIPLE_DISCARDS', 'WAITING_FOR_VARIABLE_DISCARD',
             'WAITING_FOR_SACRIFICE', 'WAITING_FOR_HAND_SELECTION', 'WAITING_FOR_GLOBAL_ACTION',
             'WAITING_FOR_IMMEDIATE_PLAY', 'WAITING_FOR_SKILL_TARGET', 'WAITING_FOR_MAJESTELK_CHOICE'];
-        const fearlessFlameChoice = data.state === 'WAITING_FOR_DISCARD_PENALTY'
-            && data.pendingAction?.type === 'FEARLESS_FLAME_DISCARD';
         const hideNow = () => {
             if (diceOv) {
                 diceOv.classList.add('hidden');
@@ -3679,17 +3669,7 @@ function renderBoard(data) {
             }
         };
         if (diceOv && !diceOv.classList.contains('hidden')) {
-            if (fearlessFlameChoice) {
-                clearTimeout(window._diceStaleTimer);
-                window._diceStaleTimer = setTimeout(() => {
-                    const current = window.latestGameState;
-                    if (current?.state === 'WAITING_FOR_DISCARD_PENALTY'
-                        && current.pendingAction?.type === 'FEARLESS_FLAME_DISCARD') {
-                        hideNow();
-                    }
-                    window._diceStaleTimer = null;
-                }, 3000);
-            } else if (actNowStates.includes(data.state)) {
+            if (actNowStates.includes(data.state)) {
                 hideNow();
             } else if (!data.pendingRoll && !rollingStates.includes(data.state)) {
                 clearTimeout(window._diceStaleTimer);

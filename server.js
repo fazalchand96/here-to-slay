@@ -110,26 +110,12 @@ function queueFearlessFlameChoices(entries) {
         const player = gameState.players[entry.playerId];
         return player?.leader?.effect_id === 'LEADER_SORCERER' && player.hand.length > 0;
     });
-    gameState.pendingRoll.fearlessFlameQueue = eligible;
-    return startNextFearlessFlameChoice();
-}
-
-function startNextFearlessFlameChoice() {
-    const next = gameState.pendingRoll?.fearlessFlameQueue?.[0];
-    if (!next) {
-        if (gameState.pendingRoll) gameState.pendingRoll.fearlessFlameQueue = [];
-        gameState.pendingAction = null;
-        gameState.state = 'WAITING_FOR_MODIFIERS';
-        startModifierTimer();
-        return false;
-    }
-    gameState.state = 'WAITING_FOR_DISCARD_PENALTY';
-    gameState.pendingAction = {
-        type: 'FEARLESS_FLAME_DISCARD', playerToChoose: next.playerId,
-        originalActor: next.playerId, amount: 1, optional: true, rollSide: next.rollSide
-    };
-    io.emit('message', `${getPlayerName(gameState, next.playerId)} may discard a card for +1 with The Fearless Flame.`);
-    return true;
+    gameState.pendingRoll.fearlessFlameEligible = eligible;
+    gameState.pendingRoll.fearlessFlameUsedBy = [];
+    gameState.pendingAction = null;
+    gameState.state = 'WAITING_FOR_MODIFIERS';
+    startModifierTimer();
+    return eligible.length > 0;
 }
 
 function finishFearlessFlameChoice(useBonus, emitter = io) {
@@ -153,9 +139,8 @@ function finishFearlessFlameChoice(useBonus, emitter = io) {
         }
         emitter.emit('message', `${getPlayerName(gameState, action.playerToChoose)} gained +1 from The Fearless Flame.`);
     }
-    // Re-show the settled roll after either decision. Previously only using the
-    // bonus emitted this update, so SKIP left the dice overlay closed and made
-    // the roll/challenge appear to resolve without its modifier phase.
+    // Keep the settled roll visible and update its equation before returning to
+    // the normal modifier controls.
     if (roll.type === 'CHALLENGE') {
         emitter.emit('dice_roll_pending', {
             isRollUpdate: true, isChallenge: true, type: 'CHALLENGE',
@@ -179,8 +164,13 @@ function finishFearlessFlameChoice(useBonus, emitter = io) {
             reason: roll.type === 'ATTACK' ? 'to attack a monster' : 'for a skill'
         });
     }
-    roll.fearlessFlameQueue.shift();
-    startNextFearlessFlameChoice();
+    roll.fearlessFlameUsedBy = [...new Set([...(roll.fearlessFlameUsedBy || []), action.playerToChoose])];
+    roll.fearlessFlameEligible = (roll.fearlessFlameEligible || [])
+        .filter(entry => entry.playerId !== action.playerToChoose);
+    gameState.pendingAction = null;
+    gameState.state = 'WAITING_FOR_MODIFIERS';
+    gameState.passedModifiers = [];
+    startModifierTimer();
 }
 
 function clearChallengeTimer() {
@@ -3415,6 +3405,31 @@ io.on('connection', (socket) => {
         resolvePendingRoll();
     });
 
+    socket.on('use_fearless_flame', () => {
+        const roll = gameState.pendingRoll;
+        const player = gameState.players[socket.id];
+        if (gameState.state !== 'WAITING_FOR_MODIFIERS' || !roll || !player
+            || player.leader?.effect_id !== 'LEADER_SORCERER' || player.hand.length === 0
+            || (gameState.passedModifiers || []).includes(socket.id)
+            || (roll.fearlessFlameUsedBy || []).includes(socket.id)) return;
+
+        const eligible = (roll.fearlessFlameEligible || [])
+            .find(entry => entry.playerId === socket.id);
+        if (!eligible) return;
+
+        if (modifierTimer) clearTimeout(modifierTimer);
+        gameState.state = 'WAITING_FOR_DISCARD_PENALTY';
+        gameState.pendingAction = {
+            type: 'FEARLESS_FLAME_DISCARD',
+            playerToChoose: socket.id,
+            originalActor: socket.id,
+            amount: 1,
+            rollSide: eligible.rollSide
+        };
+        io.emit('message', `${getPlayerName(gameState, socket.id)} is using The Fearless Flame and must discard 1 card for +1.`);
+        broadcastState();
+    });
+
     socket.on('use_noble_shaman', (data = {}) => {
         if (gameState.state !== 'WAITING_FOR_MODIFIERS' || !gameState.pendingRoll) return;
         const player = gameState.players[socket.id];
@@ -3895,15 +3910,6 @@ socket.on('resolve_immediate_play', (data) => {
         (player.rollBonusSources = player.rollBonusSources || []).push({ source: 'Dragalter', value });
         resetToPlayingState();
         io.emit('message', `${getPlayerName(gameState, socket.id)} discarded ${modifier.name}; Dragalter applies ${value >= 0 ? '+' : ''}${value} to all of their rolls for the rest of this turn.`);
-        broadcastState();
-    });
-
-    socket.on('resolve_fearless_flame_choice', ({ use } = {}) => {
-        const action = gameState.pendingAction;
-        if (gameState.state !== 'WAITING_FOR_DISCARD_PENALTY'
-            || action?.type !== 'FEARLESS_FLAME_DISCARD' || action.playerToChoose !== socket.id) return;
-        if (use === true) return;
-        finishFearlessFlameChoice(false);
         broadcastState();
     });
 

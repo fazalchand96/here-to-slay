@@ -11,13 +11,6 @@ const PLUS_SIX = 'card_233';
 const SORCERER_CHALLENGE = 'card_236';
 const DISCARD_COST = 'card_016';
 
-async function declineFearlessFlameIfNeeded(host) {
-    const action = await host.evaluate(() => window.latestGameState?.pendingAction);
-    if (action?.type === 'FEARLESS_FLAME_DISCARD') {
-        await host.evaluate(() => window._socket.emit('resolve_fearless_flame_choice', { use: false }));
-    }
-}
-
 test('Modifier +6 requires a different discard and then applies to the live roll', async ({ browser }) => {
     const errors = [];
     const { host, p2 } = await startGame(browser);
@@ -33,7 +26,6 @@ test('Modifier +6 requires a different discard and then applies to the live roll
     await playCardFromHand(host, HERO);
     await passChallenge(p2);
     await rollDice(host);
-    await declineFearlessFlameIfNeeded(host);
     await expect.poll(() => host.evaluate(() => window.latestGameState?.state)).toBe('WAITING_FOR_MODIFIERS');
 
     const before = await host.evaluate(() => window.latestGameState.pendingRoll.currentRoll);

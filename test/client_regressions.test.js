@@ -44,12 +44,15 @@ test('free Monster target actions use the inspector action container', () => {
     assert.doesNotMatch(freeAttackBranch[0], /(^|[^A-Za-z])actions\.appendChild\(btn\)/);
 });
 
-test('Fearless Flame waits for the settled roll and restores it after a decision', () => {
+test('Fearless Flame is offered beside PASS during the visible modifier phase', () => {
     const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const serverSource = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
 
-    assert.match(appSource, /isFearlessFlameChoice[\s\S]*?_fearlessFlamePromptTimer[\s\S]*?3000/);
-    assert.match(appSource, /fearlessFlameChoice[\s\S]*?_diceStaleTimer[\s\S]*?3000/);
-    assert.match(appSource, /if \(!data\.isRollUpdate && \(window\.currentRollSignature/);
+    assert.match(appSource, /id = 'fearless-flame-controls'/);
+    assert.match(appSource, /USE THE FEARLESS FLAME \(\+1\)/);
+    assert.match(appSource, /socket\.emit\('use_fearless_flame'\)/);
+    assert.match(serverSource, /socket\.on\('use_fearless_flame'/);
+    assert.doesNotMatch(appSource, /resolve_fearless_flame_choice/);
 });
 
 test('Item targeting keeps both own and opponent Party boards available', () => {

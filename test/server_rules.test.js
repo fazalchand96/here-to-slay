@@ -444,7 +444,7 @@ test('challenge quorum keeps waiting for every connected opponent', () => {
 // calculateRollDetails — passive roll bonuses
 // ===========================================================================
 
-test('declining Fearless Flame re-emits settled skill and Challenge rolls', () => {
+test('Fearless Flame adds +1 and returns the settled roll to the modifier phase', () => {
     const previous = {
         players: gameState.players,
         pendingRoll: gameState.pendingRoll,
@@ -476,17 +476,18 @@ test('declining Fearless Flame re-emits settled skill and Challenge rolls', () =
             currentRoll: 8,
             modifierTotal: 0,
             breakdown: [{ source: 'Base Dice', value: 8 }],
-            fearlessFlameQueue: [
-                { playerId: 'flame', rollSide: 'ROLL' },
-                { playerId: 'next', rollSide: 'ROLL' },
-            ],
+            fearlessFlameEligible: [{ playerId: 'flame', rollSide: 'ROLL' }],
+            fearlessFlameUsedBy: [],
         };
 
-        finishFearlessFlameChoice(false, emitter);
+        finishFearlessFlameChoice(true, emitter);
         let update = events.find(event => event.name === 'dice_roll_pending')?.payload;
         assert.equal(update.isRollUpdate, true);
-        assert.equal(update.finalTotal, 8);
-        assert.equal(gameState.pendingRoll.currentRoll, 8);
+        assert.equal(update.finalTotal, 9);
+        assert.equal(gameState.pendingRoll.currentRoll, 9);
+        assert.equal(gameState.state, 'WAITING_FOR_MODIFIERS');
+        assert.equal(gameState.pendingAction, null);
+        assert.deepEqual(gameState.pendingRoll.fearlessFlameUsedBy, ['flame']);
 
         events.length = 0;
         gameState.state = 'WAITING_FOR_DISCARD_PENALTY';
@@ -509,17 +510,15 @@ test('declining Fearless Flame re-emits settled skill and Challenge rolls', () =
             challengerBase: 7,
             challengerBreakdown: [{ source: 'Base Dice', value: 7 }],
             challengerModifiers: 0,
-            fearlessFlameQueue: [
-                { playerId: 'flame', rollSide: 'ACTIVE' },
-                { playerId: 'next', rollSide: 'CHALLENGER' },
-            ],
+            fearlessFlameEligible: [{ playerId: 'flame', rollSide: 'ACTIVE' }],
+            fearlessFlameUsedBy: [],
         };
 
-        finishFearlessFlameChoice(false, emitter);
+        finishFearlessFlameChoice(true, emitter);
         update = events.find(event => event.name === 'dice_roll_pending')?.payload;
         assert.equal(update.isRollUpdate, true);
         assert.equal(update.isChallenge, true);
-        assert.equal(update.activeFinalTotal, 8);
+        assert.equal(update.activeFinalTotal, 9);
         assert.equal(update.challengerFinalTotal, 7);
     } finally {
         gameState.players = previous.players;
