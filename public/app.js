@@ -162,6 +162,8 @@ const Sound = (() => {
         coin:      () => { blip(988, { type: 'square', dur: 0.08, vol: 0.16 }); blip(1319, { type: 'square', dur: 0.14, vol: 0.14, when: 0.06 }); },
         equip:     () => { blip(1318, { type: 'square', dur: 0.05, vol: 0.14 }); blip(1568, { type: 'square', dur: 0.08, vol: 0.12, when: 0.04 }); },
         turn:      () => { blip(587, { type: 'sine', dur: 0.14, vol: 0.2 }); blip(880, { type: 'sine', dur: 0.2, vol: 0.16, when: 0.1 }); },
+        timerWarning: () => blip(740, { type: 'triangle', dur: 0.1, vol: 0.18 }),
+        timerUrgent:  () => { blip(880, { type: 'square', dur: 0.08, vol: 0.2 }); blip(660, { type: 'square', dur: 0.1, vol: 0.16, when: 0.09 }); },
         error:     () => { blip(200, { type: 'sawtooth', dur: 0.16, vol: 0.2 }); blip(150, { type: 'sawtooth', dur: 0.2, vol: 0.18, when: 0.08 }); },
         join:      () => blip(660, { type: 'sine', dur: 0.12, vol: 0.16, slideTo: 880 }),
         win:       () => arp([523, 659, 784, 1047], { type: 'triangle', dur: 0.5, vol: 0.2, stagger: 0.12 }),
@@ -739,8 +741,74 @@ const discardDrawBtn = document.getElementById('discard-draw-btn');
 
 
 const turnIndicator = document.getElementById('turn-indicator');
+const actionPointTimer = document.getElementById('action-point-timer');
+const actionPointTimerPlayer = document.getElementById('action-point-timer-player');
+const actionPointTimerSeconds = document.getElementById('action-point-timer-seconds');
 
 const waitingOverlay = document.getElementById('waiting-overlay');
+
+let actionPointCountdownInterval = null;
+let actionPointCountdownSignature = null;
+let actionPointCountdownWarnings = new Set();
+
+function clearActionPointCountdown() {
+    if (actionPointCountdownInterval) clearInterval(actionPointCountdownInterval);
+    actionPointCountdownInterval = null;
+    actionPointCountdownSignature = null;
+    actionPointCountdownWarnings = new Set();
+    actionPointTimer?.classList.add('hidden');
+}
+
+function syncActionPointCountdown(data) {
+    const deadline = Number(data?.actionPointDeadline || 0);
+    const activePlayerId = data?.activePlayerSocketId;
+    if (!deadline || !activePlayerId || !data?.players?.[activePlayerId]) {
+        clearActionPointCountdown();
+        return;
+    }
+
+    const signature = `${activePlayerId}:${deadline}`;
+    if (signature !== actionPointCountdownSignature) {
+        if (actionPointCountdownInterval) clearInterval(actionPointCountdownInterval);
+        actionPointCountdownInterval = null;
+        actionPointCountdownSignature = signature;
+        actionPointCountdownWarnings = new Set();
+    }
+
+    const duration = Number(data.actionPointDurationMs || 45_000);
+    const activePlayer = data.players[activePlayerId];
+    const isMine = activePlayerId === myId;
+    actionPointTimer?.classList.remove('hidden');
+    actionPointTimer?.classList.toggle('is-mine', isMine);
+    if (actionPointTimerPlayer) {
+        actionPointTimerPlayer.textContent = isMine
+            ? 'YOUR ACTION'
+            : `${activePlayer.name || 'OPPONENT'} • ACTION`;
+    }
+
+    const update = () => {
+        const remainingMs = Math.max(0, deadline - Date.now());
+        const seconds = Math.ceil(remainingMs / 1000);
+        if (actionPointTimerSeconds) actionPointTimerSeconds.textContent = String(seconds);
+        if (actionPointTimer) {
+            actionPointTimer.style.setProperty('--timer-progress', String(Math.max(0, Math.min(1, remainingMs / duration))));
+            actionPointTimer.classList.toggle('timer-warning', seconds <= 10 && seconds > 5);
+            actionPointTimer.classList.toggle('timer-danger', seconds <= 5);
+        }
+
+        const shouldWarn = seconds === 10 || (seconds >= 1 && seconds <= 5);
+        if (shouldWarn && !actionPointCountdownWarnings.has(seconds)) {
+            actionPointCountdownWarnings.add(seconds);
+            playSound(seconds <= 5 ? 'timerUrgent' : 'timerWarning');
+            if (isMine && [5, 3, 1].includes(seconds)) triggerHaptic(seconds === 1 ? [50, 40, 90] : 35);
+        }
+    };
+
+    update();
+    if (!actionPointCountdownInterval) {
+        actionPointCountdownInterval = setInterval(update, 200);
+    }
+}
 
 function updateWaitingOverlay(data) {
     if (!waitingOverlay || !data) return;
@@ -1770,6 +1838,7 @@ socket.on('gameStateUpdate', (data) => {
 
 
     latestGameState = data;
+    syncActionPointCountdown(data);
     updateWaitingOverlay(data);
 
     const hostResetButton = document.getElementById('host-reset-game-btn');

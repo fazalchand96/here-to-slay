@@ -34,9 +34,63 @@ const {
     finishFearlessFlameChoice,
     completeShadowSaintDiscard,
     CHALLENGE_TIMEOUT_MS,
+    ACTION_POINT_TIMEOUT_MS,
+    isActionPointTimerEligible,
+    expireActionPoint,
     loadCards,
     gameState
 } = require('../server');
+
+test('action point timer allows 45 seconds only while the active player can act', () => {
+    const state = {
+        state: 'PLAYING',
+        activePlayerSocketId: 'active',
+        players: {
+            active: { id: 'active', ap: 3, connected: true, away: false }
+        },
+        pendingAction: null,
+        pendingCard: null,
+        pendingRoll: null,
+        pendingChallenge: null,
+        pendingGlobalAction: null,
+        waitingForInput: false
+    };
+
+    assert.equal(ACTION_POINT_TIMEOUT_MS, 45_000);
+    assert.equal(isActionPointTimerEligible(state), true);
+
+    state.state = 'WAITING_FOR_MODIFIERS';
+    assert.equal(isActionPointTimerEligible(state), false);
+    state.state = 'PLAYING';
+    state.pendingAction = { type: 'DISCARD' };
+    assert.equal(isActionPointTimerEligible(state), false);
+    state.pendingAction = null;
+    state.players.active.away = true;
+    assert.equal(isActionPointTimerEligible(state), false);
+});
+
+test('an expired timer removes one action point and ends only after the last point', () => {
+    const state = {
+        activePlayerSocketId: 'active',
+        players: { active: { id: 'active', ap: 2 } }
+    };
+
+    assert.deepEqual(expireActionPoint(state, 'active'), {
+        expired: true,
+        remainingAp: 1,
+        shouldEndTurn: false
+    });
+    assert.deepEqual(expireActionPoint(state, 'active'), {
+        expired: true,
+        remainingAp: 0,
+        shouldEndTurn: true
+    });
+    assert.deepEqual(expireActionPoint(state, 'other'), {
+        expired: false,
+        remainingAp: 0,
+        shouldEndTurn: false
+    });
+});
 
 test('Shadow Saint completes its Modifier discard and returns the game to the turn', () => {
     const previous = { ...gameState };

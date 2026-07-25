@@ -913,6 +913,77 @@ body.landscape #opponents-bar .opponent-stat-value {
     animation: turnCue 0.6s var(--ease-out);
 }
 
+#action-point-timer {
+    --timer-progress: 1;
+    position: fixed;
+    top: max(8px, env(safe-area-inset-top));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9700;
+    min-width: 118px;
+    height: 42px;
+    padding: 4px 8px 4px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    color: #fff8df;
+    background:
+        linear-gradient(#191524, #191524) padding-box,
+        conic-gradient(from -90deg, #f5c04a calc(var(--timer-progress) * 1turn), rgba(255,255,255,0.16) 0) border-box;
+    border: 3px solid transparent;
+    border-radius: 999px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.08);
+    font-family: var(--font-body);
+    pointer-events: none;
+}
+
+#action-point-timer.is-mine {
+    box-shadow: 0 0 17px rgba(245,192,74,0.55), 0 4px 14px rgba(0,0,0,0.55);
+}
+
+#action-point-timer-player {
+    max-width: 96px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.58rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+
+.action-point-timer-clock {
+    display: flex;
+    align-items: baseline;
+    min-width: 32px;
+    font-variant-numeric: tabular-nums;
+    font-size: 1.3rem;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.action-point-timer-clock small {
+    margin-left: 1px;
+    font-size: 0.56rem;
+}
+
+#action-point-timer.timer-warning {
+    color: #fff0ad;
+    animation: actionTimerPulse 0.85s ease-in-out infinite;
+}
+
+#action-point-timer.timer-danger {
+    color: #fff;
+    background:
+        linear-gradient(#3b1015, #3b1015) padding-box,
+        conic-gradient(from -90deg, #ff5252 calc(var(--timer-progress) * 1turn), rgba(255,255,255,0.16) 0) border-box;
+    animation: actionTimerPulse 0.42s ease-in-out infinite;
+}
+
+@keyframes actionTimerPulse {
+    50% { transform: translateX(-50%) scale(1.06); }
+}
+
 .deck-area {
     display: flex;
     gap: 10px;
@@ -4272,6 +4343,9 @@ body.landscape:not(.chat-open) #event-console-empty { display: none !important; 
 body.landscape #turn-indicator {
     display: none !important;
 }
+body.landscape #action-point-timer {
+    top: max(6px, env(safe-area-inset-top)) !important;
+}
 body.landscape #waiting-overlay {
     position: fixed !important;
     inset: 0 !important;
@@ -4777,6 +4851,10 @@ button.action-btn,
     background-size: cover !important;
     background-position: center !important;
     background-color: transparent !important;
+}
+
+#game-board.portrait #action-point-timer {
+    top: max(9px, env(safe-area-inset-top)) !important;
 }
 .lobby-leader-effect {
     box-sizing: border-box;

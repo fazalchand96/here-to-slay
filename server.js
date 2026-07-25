@@ -53,6 +53,8 @@ let gameState = {
     discardPile: [],
     activeMonsters: [],
     winner: null,
+    actionPointTurnId: 0,
+    actionPointDeadline: null,
     pendingGlobalAction: null,
     modifierResponses: {
         actedPlayers: [],
@@ -63,6 +65,11 @@ let gameState = {
 let modifierTimer = null;
 let challengeTimer = null;
 const CHALLENGE_TIMEOUT_MS = 15_000;
+const ACTION_POINT_TIMEOUT_MS = 45_000;
+let actionPointTimer = null;
+let actionPointTimerKey = null;
+let actionPointTimerRemainingMs = ACTION_POINT_TIMEOUT_MS;
+let actionPointTimerStartedAt = null;
 
 // Test-only: when set, the next skill/attack roll uses these dice instead of
 // random ones, so e2e tests asserting on success/failure are deterministic.
@@ -607,6 +614,109 @@ function handleGameOver(winResult) {
     }, 5000);
 }
 
+function isActionPointTimerEligible(state) {
+    const playerId = state?.activePlayerSocketId;
+    const player = playerId && state.players?.[playerId];
+    return Boolean(
+        state?.state === 'PLAYING'
+        && player
+        && player.connected !== false
+        && !player.away
+        && Number(player.ap) > 0
+        && !state.pendingAction
+        && !state.pendingCard
+        && !state.pendingChallenge
+        && !state.pendingGlobalAction
+        && !state.waitingForInput
+    );
+}
+
+function expireActionPoint(state, playerId) {
+    const player = state?.players?.[playerId];
+    if (!player || state.activePlayerSocketId !== playerId || Number(player.ap) <= 0) {
+        return { expired: false, remainingAp: Number(player?.ap || 0), shouldEndTurn: false };
+    }
+    player.ap = Math.max(0, Number(player.ap) - 1);
+    return { expired: true, remainingAp: player.ap, shouldEndTurn: player.ap === 0 };
+}
+
+function actionPointTimerKeyForState(state) {
+    const playerId = state?.activePlayerSocketId;
+    const player = playerId && state.players?.[playerId];
+    if (!player || Number(player.ap) <= 0) return null;
+    return `${Number(state.actionPointTurnId || 0)}:${playerId}:${Number(player.ap)}`;
+}
+
+function resetActionPointTimerTracking() {
+    if (actionPointTimer) clearTimeout(actionPointTimer);
+    actionPointTimer = null;
+    actionPointTimerKey = null;
+    actionPointTimerRemainingMs = ACTION_POINT_TIMEOUT_MS;
+    actionPointTimerStartedAt = null;
+    gameState.actionPointDeadline = null;
+}
+
+function syncActionPointTimer() {
+    const nextKey = actionPointTimerKeyForState(gameState);
+    if (!nextKey) {
+        resetActionPointTimerTracking();
+        return;
+    }
+
+    if (nextKey !== actionPointTimerKey) {
+        if (actionPointTimer) clearTimeout(actionPointTimer);
+        actionPointTimer = null;
+        actionPointTimerKey = nextKey;
+        actionPointTimerRemainingMs = ACTION_POINT_TIMEOUT_MS;
+        actionPointTimerStartedAt = null;
+        gameState.actionPointDeadline = null;
+    }
+
+    if (!isActionPointTimerEligible(gameState)) {
+        if (actionPointTimer && actionPointTimerStartedAt) {
+            actionPointTimerRemainingMs = Math.max(
+                1,
+                actionPointTimerRemainingMs - (Date.now() - actionPointTimerStartedAt)
+            );
+        }
+        if (actionPointTimer) clearTimeout(actionPointTimer);
+        actionPointTimer = null;
+        actionPointTimerStartedAt = null;
+        gameState.actionPointDeadline = null;
+        return;
+    }
+
+    if (actionPointTimer) return;
+
+    const playerId = gameState.activePlayerSocketId;
+    const scheduledKey = actionPointTimerKey;
+    actionPointTimerStartedAt = Date.now();
+    gameState.actionPointDeadline = actionPointTimerStartedAt + actionPointTimerRemainingMs;
+    actionPointTimer = setTimeout(() => {
+        actionPointTimer = null;
+        actionPointTimerStartedAt = null;
+        gameState.actionPointDeadline = null;
+
+        if (scheduledKey !== actionPointTimerKey || !isActionPointTimerEligible(gameState)) {
+            syncActionPointTimer();
+            broadcastState();
+            return;
+        }
+
+        const result = expireActionPoint(gameState, playerId);
+        actionPointTimerKey = null;
+        actionPointTimerRemainingMs = ACTION_POINT_TIMEOUT_MS;
+        if (result.expired) {
+            const playerName = getPlayerName(gameState, playerId);
+            io.emit('message', `${playerName}'s 45 seconds expired: 1 action point was lost.`);
+            io.emit('action_point_expired', { playerId, remainingAp: result.remainingAp });
+            if (result.shouldEndTurn) beginEndTurn(playerId);
+        }
+        broadcastState();
+    }, actionPointTimerRemainingMs);
+    actionPointTimer.unref?.();
+}
+
 function resetGameForNextMatch() {
     console.log(`[SIMULATION] Resetting match now...`);
     // Reset global game state
@@ -630,10 +740,12 @@ function resetGameForNextMatch() {
     gameState.waitingForInput = false;
     gameState.modifierResponses = { actedPlayers: [], totalPlayers: 0 };
     gameState.activePlayerSocketId = null;
+    gameState.actionPointTurnId = 0;
     gameState.winner = null;
     if (modifierTimer) clearTimeout(modifierTimer);
     modifierTimer = null;
     clearChallengeTimer();
+    resetActionPointTimerTracking();
     clearRexMajorChoices(gameState);
     debugForcedRoll = null;
 
@@ -717,6 +829,7 @@ function advanceTurn(currentPlayerId) {
     if (currentIndex === -1 || gameState.playerOrder.length === 0) return false;
     const nextIndex = (currentIndex + 1) % gameState.playerOrder.length;
     gameState.activePlayerSocketId = gameState.playerOrder[nextIndex];
+    gameState.actionPointTurnId = Number(gameState.actionPointTurnId || 0) + 1;
 
     resetToPlayingState();
     gameState.pendingRoll = null;
@@ -1292,6 +1405,7 @@ function broadcastState() {
     } else {
         clearChallengeTimer();
     }
+    syncActionPointTimer();
     // Hide hands of other players before sending
     console.log(`[DEBUG] broadcastState: playerOrder=${gameState.playerOrder.join(", ")}, players:`, Object.keys(gameState.players).map(k => `${k} has ${gameState.players[k].hand.length} cards`));
     console.log(`[DEBUG] broadcastState -> state=${gameState.state}, mainDeck=${gameState.mainDeck.length}, monsterDeck=${gameState.monsterDeck.length}, activeMonsters=${gameState.activeMonsters.length}`);
@@ -1337,6 +1451,8 @@ function broadcastState() {
             privatePendingCards,
             privatePendingTargetName,
             winner: playerState.winner,
+            actionPointDeadline: playerState.actionPointDeadline,
+            actionPointDurationMs: ACTION_POINT_TIMEOUT_MS,
             me: socket.id,
             availableLeaders: (gameState.availableLeaders && gameState.availableLeaders.length > 0) ? gameState.availableLeaders : PARTY_LEADERS // Send for selection
         });
@@ -2069,6 +2185,7 @@ function removePlayerAndResetMatch(socketId) {
     const clearBoard = () => {
         clearRexMajorChoices(gameState);
         gameState.activePlayerSocketId = null;
+        gameState.actionPointTurnId = 0;
         gameState.pendingAction = null;
         gameState.pendingCard = null;
         gameState.pendingRoll = null;
@@ -2083,6 +2200,7 @@ function removePlayerAndResetMatch(socketId) {
         debugForcedRoll = null;
         if (modifierTimer) { clearTimeout(modifierTimer); modifierTimer = null; }
         clearChallengeTimer();
+        resetActionPointTimerTracking();
     };
 
     if (gameState.playerOrder.length === 0) {
@@ -4789,6 +4907,7 @@ function startGame() {
     gameState.pendingSmokReveal = null;
     if (modifierTimer) clearTimeout(modifierTimer);
     clearChallengeTimer();
+    resetActionPointTimerTracking();
 
     gameState.playerOrder.forEach(id => {
         dealCards(5, id);
@@ -4798,6 +4917,7 @@ function startGame() {
 
     // Randomly select one player as the active player (or default to Player 1)
     gameState.activePlayerSocketId = gameState.playerOrder[0];
+    gameState.actionPointTurnId = Number(gameState.actionPointTurnId || 0) + 1;
     gameState.players[gameState.activePlayerSocketId].ap = 3;
 
 }
@@ -4845,4 +4965,7 @@ module.exports = {
     resolvePendingCard,
     finishFearlessFlameChoice,
     completeShadowSaintDiscard,
+    ACTION_POINT_TIMEOUT_MS,
+    isActionPointTimerEligible,
+    expireActionPoint,
 };
