@@ -75,9 +75,9 @@ async function closeTrackedContexts() {
 }
 
 // Start a full 2-player game. Returns { host, p2, ctx1, ctx2 }.
-async function startGame(browser) {
-    const ctx1 = await newTrackedContext(browser);
-    const ctx2 = await newTrackedContext(browser);
+async function startGame(browser, contextOptions) {
+    const ctx1 = await newTrackedContext(browser, contextOptions);
+    const ctx2 = await newTrackedContext(browser, contextOptions);
     const host = await ctx1.newPage();
     const p2   = await ctx2.newPage();
 

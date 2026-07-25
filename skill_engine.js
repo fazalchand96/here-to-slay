@@ -119,6 +119,14 @@ function effectiveHeroClass(hero) {
     return (mask && maskClass(mask)) || hero.class;
 }
 
+// Card text that says a class must be "in your/their Party" refers to Hero
+// cards in the Party, not the separately placed Party Leader. Class Masks still
+// replace a Hero's effective class for these checks.
+function partyHasHeroClass(player, requiredClass) {
+    if (!player || !requiredClass) return false;
+    return (player.party || []).some(hero => effectiveHeroClass(hero) === requiredClass);
+}
+
 function equippedItems(hero) {
     return [hero && hero.equippedItem, hero && hero.equippedItem2].filter(Boolean);
 }
@@ -886,8 +894,7 @@ function executeSkill(gameState, io, skillId, rollerId, heroId, targetData) {
             let teddyTargets = [];
             Object.keys(gameState.players).forEach(pId => {
                 const p = gameState.players[pId];
-                const hasFighter = p.leader?.class === 'Fighter'
-                    || p.party.some(c => effectiveHeroClass(c) === 'Fighter');
+                const hasFighter = partyHasHeroClass(p, 'Fighter');
                 if (pId !== rollerId && hasFighter && p.hand.length > 0) {
                     teddyTargets.push(pId);
                 }
@@ -1330,7 +1337,7 @@ case 'DRAW_CARD':
             break;
         case 'SKILL_SMOOTH_MIMIMEOW':
             Object.values(gameState.players).forEach(p => {
-                if (p.id !== rollerId && p.party.some(h => effectiveHeroClass(h) === 'Thief') && p.hand.length > 0) {
+                if (p.id !== rollerId && partyHasHeroClass(p, 'Thief') && p.hand.length > 0) {
                     const randIndex = Math.floor(Math.random() * p.hand.length);
                     player.hand.push(p.hand.splice(randIndex, 1)[0]);
                 }
@@ -2091,6 +2098,7 @@ module.exports = {
     hasOpponentHeroTarget,
     getTargetingSkillPlan,
     effectiveHeroClass,
+    partyHasHeroClass,
     drawCardsWithPassives,
     drawCardsWithoutPassives,
     applyDrawnCardPassives,

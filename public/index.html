@@ -91,6 +91,10 @@
         <div class="glass-panel large" style="position: relative; max-width: 800px; width: 90%; max-height: 85vh; display: flex; flex-direction: column;">
             <button id="opponent-modal-close-btn" class="close-btn" onclick="closeOpponentModal()">&times;</button>
             <h1 id="opponent-modal-title" style="margin-bottom: 20px;">Opponent Name</h1>
+            <nav id="party-view-tabs" class="party-view-tabs hidden" aria-label="Party overview">
+                <button id="party-classes-tab" type="button" onclick="openCurrentPartySection('classes')">Classes</button>
+                <button id="party-monsters-tab" type="button" onclick="openCurrentPartySection('monsters')">Slain Monsters</button>
+            </nav>
             <div id="opponent-modal-content" class="card-container" style="flex: 1; overflow-y: auto; display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; padding: 10px;">
                 <!-- Opponent cards go here -->
             </div>

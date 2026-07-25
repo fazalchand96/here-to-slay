@@ -5,8 +5,8 @@ const {
     newTrackedContext, createRoom, joinRoom, startGame, setHand,
 } = require('./helpers/gameSetup');
 
-async function makePage(browser) {
-    const context = await newTrackedContext(browser);
+async function makePage(browser, contextOptions) {
+    const context = await newTrackedContext(browser, contextOptions);
     const page = await context.newPage();
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     return page;
@@ -55,9 +55,19 @@ test('joining a running room becomes a read-only spectator with every hand visib
     const roomCode = await host.evaluate(() => window.activeRoomCode);
 
     await setHand(host, ['card_104']);
-    await setHand(p2, ['card_107']);
+    await setHand(p2, ['card_107', 'card_169']);
+    for (const cardId of ['card_056', 'card_048', 'card_040']) {
+        await p2.evaluate(id => window._socket.emit('debug_inject_to_party', { cardId: id }), cardId);
+    }
+    for (const cardId of ['card_001', 'card_002']) {
+        await p2.evaluate(id => window._socket.emit('debug_add_slain_monster', { cardId: id }), cardId);
+    }
 
-    const watcher = await makePage(browser);
+    const watcher = await makePage(browser, {
+        viewport: { width: 915, height: 412 },
+        hasTouch: true,
+        serviceWorkers: 'block'
+    });
     await joinRoom(watcher, roomCode);
     await expect(watcher.locator('#app-container')).not.toHaveClass(/hidden/);
     await expect.poll(() => watcher.evaluate(() => window.isSpectator)).toBe(true);
@@ -74,6 +84,39 @@ test('joining a running room becomes a read-only spectator with every hand visib
 
     await watcher.locator('#opponents-bar .opponent-chip').click();
     await expect(watcher.locator('.spectator-hand-view [data-id="card_107"]')).toBeVisible();
+    await expect(watcher.locator('.party-classes-zone')).toBeVisible();
+
+    const modalLayout = await watcher.evaluate(() => {
+        const content = document.querySelector('#opponent-modal-content').getBoundingClientRect();
+        const hand = document.querySelector('.spectator-hand-view').getBoundingClientRect();
+        const classes = document.querySelector('.party-classes-zone').getBoundingClientRect();
+        const columns = [...document.querySelectorAll('.party-class-column')]
+            .map(column => column.getBoundingClientRect());
+        return {
+            columnCount: columns.length,
+            handAndPartyOverlap: hand.right > classes.left && hand.left < classes.right,
+            contentContainsClasses: classes.left >= content.left - 1 && classes.right <= content.right + 1,
+            contentContainsLastClass: columns.at(-1).right <= content.right + 1,
+            hasMonsterZone: !!document.querySelector('.own-party-monsters')
+        };
+    });
+    expect(modalLayout.columnCount).toBe(11);
+    expect(modalLayout.handAndPartyOverlap).toBe(false);
+    expect(modalLayout.contentContainsClasses).toBe(true);
+    expect(modalLayout.contentContainsLastClass).toBe(true);
+    expect(modalLayout.hasMonsterZone).toBe(false);
+
+    await watcher.locator('#party-monsters-tab').click();
+    await expect(watcher.locator('#opponent-modal')).toHaveAttribute('data-section', 'monsters');
+    await expect(watcher.locator('.spectator-hand-view')).toHaveCount(0);
+    await expect(watcher.locator('.party-classes-zone')).toHaveCount(0);
+    await expect(watcher.locator('.own-party-monsters .party-monster-card-slot')).toHaveCount(2);
+    const monsterModalScrolls = await watcher.evaluate(() => {
+        const content = document.querySelector('#opponent-modal-content');
+        return content.scrollHeight > content.clientHeight + 1
+            || content.scrollWidth > content.clientWidth + 1;
+    });
+    expect(monsterModalScrolls).toBe(false);
 
     const activeBefore = spectatorState.activePlayerSocketId;
     await watcher.evaluate(() => window._socket.emit('end_turn'));

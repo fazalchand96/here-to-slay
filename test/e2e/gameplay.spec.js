@@ -66,6 +66,66 @@ test('AP display shows 3 at the start of the first turn', async ({ browser }) =>
     await ctx2.close();
 });
 
+test("RELOAD spends 3 of Mega Slime's 4 action points and leaves 1", async ({ browser }) => {
+    const { host, p2, ctx1, ctx2 } = await startTwoPlayerGame(browser);
+
+    await p2.evaluate(() => window._socket.emit('debug_add_slain_monster', { cardId: 'card_010' }));
+    await expect.poll(() => p2.evaluate(() =>
+        window.latestGameState.players[window.myId].slainMonsters
+            .some(monster => monster.effect_id === 'MONSTER_MEGA_SLIME')
+    )).toBe(true);
+
+    await host.evaluate(() => window._socket.emit('end_turn'));
+    await expect.poll(() => p2.evaluate(() => ({
+        active: window.latestGameState.activePlayerSocketId === window.myId,
+        ap: window.latestGameState.players[window.myId].ap
+    }))).toEqual({ active: true, ap: 4 });
+
+    await expect(p2.locator('#discard-draw-btn')).toBeEnabled();
+    await p2.locator('#discard-draw-btn').click({ force: true });
+
+    await expect.poll(() => p2.evaluate(() =>
+        window.latestGameState.players[window.myId].ap
+    )).toBe(1);
+    await expect(p2.locator('#player-ap')).toHaveText('1');
+
+    await ctx1.close();
+    await ctx2.close();
+});
+
+test('Muscipula Rex free draw stays visibly announced without spending AP', async ({ browser }) => {
+    const { host, ctx1, ctx2 } = await startTwoPlayerGame(browser);
+
+    await host.evaluate(() => window._socket.emit('debug_add_slain_monster', { cardId: 'card_139' }));
+    await expect.poll(() => host.evaluate(() =>
+        window.latestGameState.players[window.myId].slainMonsters
+            .some(monster => monster.effect_id === 'MONSTER_MUSCIPULA_REX')
+    )).toBe(true);
+    await host.waitForTimeout(3600);
+
+    const before = await host.evaluate(() => {
+        const me = window.latestGameState.players[window.myId];
+        return { ap: me.ap, handSize: me.hand.length };
+    });
+    await host.evaluate(() => window._socket.emit('use_muscipula_rex'));
+
+    const banner = host.locator('#monster-trigger-modal');
+    await expect(banner).toBeVisible();
+    await expect(banner.locator('.monster-trigger-kicker')).toHaveText('FREE DRAW · 0 AP');
+    await host.waitForTimeout(2800);
+    await expect(banner).toBeVisible();
+
+    const after = await host.evaluate(() => {
+        const me = window.latestGameState.players[window.myId];
+        return { ap: me.ap, handSize: me.hand.length };
+    });
+    expect(after).toEqual({ ap: before.ap, handSize: before.handSize + 1 });
+    await expect(banner).toHaveCount(0, { timeout: 3500 });
+
+    await ctx1.close();
+    await ctx2.close();
+});
+
 test('DRAW button is enabled when AP >= 1 and disabled at AP 0', async ({ browser }) => {
     const { host, ctx1, ctx2 } = await startTwoPlayerGame(browser);
 

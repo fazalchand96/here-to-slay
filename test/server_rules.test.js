@@ -38,6 +38,7 @@ const {
     ACTION_POINT_TIMEOUT_MS,
     isActionPointTimerEligible,
     expireActionPoint,
+    spendReloadActionPoints,
     loadCards,
     gameState
 } = require('../server');
@@ -91,6 +92,20 @@ test('an expired timer removes one action point and ends only after the last poi
         remainingAp: 0,
         shouldEndTurn: false
     });
+});
+
+test('reload spends exactly three action points and preserves any extra point', () => {
+    const megaSlimePlayer = { ap: 4 };
+    assert.equal(spendReloadActionPoints(megaSlimePlayer), true);
+    assert.equal(megaSlimePlayer.ap, 1);
+
+    const regularPlayer = { ap: 3 };
+    assert.equal(spendReloadActionPoints(regularPlayer), true);
+    assert.equal(regularPlayer.ap, 0);
+
+    const shortPlayer = { ap: 2 };
+    assert.equal(spendReloadActionPoints(shortPlayer), false);
+    assert.equal(shortPlayer.ap, 2);
 });
 
 test('Shadow Saint completes its Modifier discard and returns the game to the turn', () => {
@@ -391,11 +406,11 @@ test('Items and Cursed Items may target Heroes belonging to either player', () =
     assert.equal(isValidItemEquipTarget(state, 'missing-player', 'alice-hero'), false);
 });
 
-test('class-gated Challenges accept leaders and Heroes wearing the matching Mask', () => {
-    assert.equal(playerHasEffectiveClass(pl({ leader: leader('LEADER_DRUID', 'Druid') }), 'Druid'), true);
+test('class-gated Challenges require a Hero in the Party and never count the Party Leader', () => {
+    assert.equal(playerHasEffectiveClass(pl({ leader: leader('LEADER_DRUID', 'Druid') }), 'Druid'), false);
     assert.equal(playerHasEffectiveClass(pl({ party: [heroOf('Wizard', { equippedItem: { ...item('ITEM_MASK', 'Warrior Mask'), class: 'Warrior' } })] }), 'Warrior'), true);
     assert.equal(playerHasEffectiveClass(pl({ party: [heroOf('Wizard')] }), 'Druid'), false);
-    assert.equal(playerHasEffectiveClass(pl({ leader: leader('LEADER_NECROMANCER', 'Necromancer') }), 'Necromancer'), true);
+    assert.equal(playerHasEffectiveClass(pl({ leader: leader('LEADER_NECROMANCER', 'Necromancer') }), 'Necromancer'), false);
     assert.equal(playerHasEffectiveClass(pl({ party: [heroOf('Bard', { equippedItem: { ...item('ITEM_MASK', 'Berserker Mask'), class: 'Berserker' } })] }), 'Berserker'), true);
 });
 

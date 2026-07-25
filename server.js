@@ -689,6 +689,12 @@ function expireActionPoint(state, playerId) {
     return { expired: true, remainingAp: player.ap, shouldEndTurn: player.ap === 0 };
 }
 
+function spendReloadActionPoints(player) {
+    if (!player || Number(player.ap) < 3) return false;
+    player.ap = Number(player.ap) - 3;
+    return true;
+}
+
 function actionPointTimerKeyForState(state) {
     const playerId = state?.activePlayerSocketId;
     const player = playerId && state.players?.[playerId];
@@ -1799,7 +1805,8 @@ function grantExpansionModifierDraws(pendingRoll, finalForEntry) {
 
 function playerHasEffectiveClass(player, requiredClass) {
     if (!player || !requiredClass) return false;
-    if (player.leader && player.leader.class === requiredClass) return true;
+    // Expansion Challenges say the class must be "in your Party". Party
+    // Leaders sit outside the Hero Party and therefore never satisfy this.
     return (player.party || []).some(hero => effectiveHeroClass(hero) === requiredClass);
 }
 
@@ -5003,7 +5010,14 @@ socket.on('resolve_immediate_play', (data) => {
         player.usedMuscipulaRexThisTurn = true;
         dealCards(1, player.id, 'Muscipula Rex');
         const message = `${getPlayerName(gameState, player.id)} used Muscipula Rex and drew a card without spending an action point.`;
-        io.emit('monster_effect_triggered', { monsterId: 'card_139', monsterName: 'Muscipula Rex', ownerId: player.id, message });
+        io.emit('monster_effect_triggered', {
+            monsterId: 'card_139',
+            monsterName: 'Muscipula Rex',
+            ownerId: player.id,
+            message,
+            effectLabel: 'FREE DRAW · 0 AP',
+            durationMs: 5200
+        });
         io.emit('message', message);
         broadcastState();
     });
@@ -5014,9 +5028,7 @@ socket.on('resolve_immediate_play', (data) => {
         if (gameState.pendingAction) return;
 
         const player = gameState.players[socket.id];
-        if (player.ap !== 3) return;
-
-        player.ap = 0;
+        if (!spendReloadActionPoints(player)) return;
 
         while (player.hand.length > 0) {
             gameState.discardPile.push(player.hand.pop());
@@ -5185,4 +5197,5 @@ module.exports = {
     ACTION_POINT_TIMEOUT_MS,
     isActionPointTimerEligible,
     expireActionPoint,
+    spendReloadActionPoints,
 };

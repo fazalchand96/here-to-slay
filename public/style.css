@@ -1678,26 +1678,40 @@ body.landscape #opponents-bar .opponent-stat-value {
     border: 1px solid rgba(255,255,255,0.3);
 }
 
-/* Equipped item: small art thumbnail pinned to the hero card's bottom-right
-   corner. Tap it to inspect the full item (handled in app.js click router). */
-.equipped-item-thumb {
+/* Equipped items: small, independent tap targets pinned to the Hero. Keeping
+   them in their own stack means a second item remains reachable without either
+   attachment taking over the Hero's click surface. */
+.equipped-items-stack {
     position: absolute;
     bottom: -6px;
     right: -6px;
+    z-index: 12;
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: flex-end;
+    gap: 2px;
+    pointer-events: none;
+}
+.equipped-item-thumb {
+    position: relative;
     width: 38px;
     height: 38px;
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
     background-size: cover;
     background-position: center;
     background-color: #1a1a1a;
     border-radius: 8px;
     border: 2px solid #f5c451; /* gold = beneficial item */
     box-shadow: 0 3px 8px rgba(0,0,0,0.6);
-    z-index: 12;
     cursor: pointer;
     overflow: hidden;
     display: flex;
     align-items: flex-end;
     justify-content: center;
+    pointer-events: auto;
 }
 .equipped-item-thumb.cursed {
     border-color: #ef4444; /* red = cursed item */
@@ -1731,6 +1745,38 @@ body.landscape #opponents-bar .opponent-stat-value {
 .equipped-item-thumb:active {
     transform: scale(1.12);
     transition: transform 0.12s ease;
+}
+
+/* Party cards become intentionally tiny on phone screens. The old fixed 38px
+   attachment covered almost the entire Hero there, so the Hero skill could no
+   longer be opened. Scale the item with the card and reserve most of the Hero
+   as a separate tap target. */
+#opponent-modal.own-party-view .party-class-card-slot .equipped-items-stack {
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    justify-content: flex-end;
+    gap: 1px;
+}
+#opponent-modal.own-party-view .party-class-card-slot .equipped-item-thumb {
+    right: 0 !important;
+    bottom: 0 !important;
+    width: min(28%, 18px) !important;
+    height: auto !important;
+    aspect-ratio: 1;
+    min-width: 10px;
+    min-height: 0 !important;
+    border-width: 1px !important;
+    border-radius: 4px !important;
+    appearance: none;
+}
+#opponent-modal.own-party-view .party-class-card-slot .equipped-item-thumb::before {
+    border-top-width: 7px;
+    border-right-width: 7px;
+}
+#opponent-modal.own-party-view .party-class-card-slot .equipped-item-thumb-name {
+    display: none;
 }
 
 /* Deck/hand peek modal: lay each card above a persistent, full Select button so
@@ -7447,6 +7493,73 @@ body.landscape #party-zone > .area-label,
 }
 .rex-major-reveal-panel .card { height: min(42vh, 250px) !important; width: auto !important; }
 
+.monster-trigger-modal {
+    pointer-events: none !important;
+    background:
+        radial-gradient(circle at 50% 44%, rgba(89, 53, 139, .22), transparent 42%),
+        rgba(2, 1, 12, .44) !important;
+}
+
+.monster-trigger-panel {
+    position: relative;
+    width: min(460px, 90vw) !important;
+    padding: clamp(18px, 3vw, 28px) clamp(20px, 4vw, 34px) clamp(21px, 3vw, 30px) !important;
+    overflow: hidden;
+    border-color: rgba(244, 202, 103, .68) !important;
+    background:
+        radial-gradient(circle at 76% 34%, rgba(35, 126, 115, .24), transparent 34%),
+        linear-gradient(135deg, rgba(29, 16, 53, .98), rgba(5, 28, 35, .98)) !important;
+    box-shadow:
+        inset 0 0 28px rgba(68, 31, 112, .34),
+        0 18px 55px rgba(0, 0, 0, .72),
+        0 0 28px rgba(214, 158, 65, .2) !important;
+}
+
+.monster-trigger-kicker {
+    display: inline-flex;
+    align-items: center;
+    min-height: 25px;
+    padding: 4px 12px;
+    border: 1px solid rgba(255, 225, 144, .55);
+    border-radius: 999px;
+    color: #ffe39a;
+    background: linear-gradient(180deg, rgba(104, 68, 145, .88), rgba(43, 27, 76, .92));
+    font: 900 clamp(.58rem, 1.8vw, .74rem)/1 var(--font-body);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    box-shadow: 0 0 14px rgba(178, 118, 229, .25);
+}
+
+.monster-trigger-panel > h2 {
+    margin: 9px 0 5px;
+    color: #ffe5a4;
+    text-shadow: 0 2px 3px #000, 0 0 14px rgba(221, 167, 73, .3);
+}
+
+.monster-trigger-panel > p {
+    max-width: 38ch;
+    margin: 0 auto 10px;
+    color: rgba(249, 244, 255, .9);
+    font-size: clamp(.7rem, 2vw, .9rem);
+    line-height: 1.35;
+}
+
+.monster-trigger-timer {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 5px;
+    background: linear-gradient(90deg, #8c6de8, #f4cd68, #70dce8);
+    box-shadow: 0 0 10px rgba(244, 205, 104, .45);
+    transform-origin: left;
+    animation: monster-trigger-countdown var(--monster-trigger-duration, 2400ms) linear forwards;
+}
+
+@keyframes monster-trigger-countdown {
+    to { transform: scaleX(0); }
+}
+
 @media (max-height: 520px) {
     .rex-major-choice-prompt {
         top: 7px;
@@ -7457,6 +7570,27 @@ body.landscape #party-zone > .area-label,
     }
     .rex-major-choice-card .card { height: 88px !important; max-height: 88px !important; }
     .rex-major-choice-actions .action-btn { min-height: 31px !important; padding-block: 4px !important; }
+    .monster-trigger-panel {
+        width: min(78vw, 560px) !important;
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) 92px !important;
+        grid-template-rows: auto auto auto !important;
+        column-gap: 16px;
+        padding: 12px 20px 15px !important;
+        text-align: left !important;
+    }
+    .monster-trigger-panel .monster-trigger-kicker,
+    .monster-trigger-panel > h2,
+    .monster-trigger-panel > p { grid-column: 1; }
+    .monster-trigger-panel > h2 { margin-block: 6px 3px; }
+    .monster-trigger-panel > p { margin: 0; }
+    .monster-trigger-panel > .card {
+        grid-column: 2;
+        grid-row: 1 / 4;
+        align-self: center;
+        height: min(39vh, 142px) !important;
+        max-height: 142px !important;
+    }
 }
 
 @media (orientation: portrait) {
@@ -8664,6 +8798,7 @@ body.landscape .action-point-timer-clock {
     min-width: 0;
     min-height: 0 !important;
     max-height: none !important;
+    overflow: hidden;
     padding: 3px 4px 4px !important;
     border: 1px solid rgba(199, 191, 238, .16);
     border-radius: 7px;
@@ -8695,11 +8830,12 @@ body.landscape .action-point-timer-clock {
     flex-direction: row !important;
     flex: 1 1 auto;
     align-items: center !important;
-    justify-content: center;
+    justify-content: center !important;
     gap: 3px;
+    width: 100%;
     min-width: 0;
     min-height: 0 !important;
-    overflow: visible !important;
+    overflow: hidden !important;
     scrollbar-width: none;
 }
 
@@ -8708,6 +8844,12 @@ body.landscape .action-point-timer-clock {
     z-index: calc(1 + var(--party-card-index, 0));
     flex: 0 0 auto;
     min-width: 0;
+}
+
+.party-class-card-slot.party-class-leader-card {
+    display: block;
+    justify-content: initial;
+    width: auto;
 }
 
 #opponent-modal.own-party-view .party-class-card-slot .card {
@@ -8801,6 +8943,60 @@ body.landscape .action-point-timer-clock {
     margin-left: -9px;
 }
 
+/* Spectators see a player's hand and Party at the same time. Keep the hand in
+   a compact side rail so it cannot consume the vertical space needed by the
+   eleven class cells and the slain-Monster strip. */
+#opponent-modal.own-party-view.spectator-party-view #opponent-modal-content {
+    display: grid !important;
+    grid-template-columns: minmax(150px, 22%) minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    align-items: stretch !important;
+    gap: clamp(6px, 1vw, 10px) !important;
+}
+
+#opponent-modal.spectator-party-view .spectator-hand-view {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    padding: clamp(5px, .8vw, 9px);
+}
+
+#opponent-modal.spectator-party-view .spectator-hand-view > header {
+    min-width: 0;
+    gap: 5px;
+    margin-bottom: 4px;
+}
+
+#opponent-modal.spectator-party-view .spectator-hand-view > header strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#opponent-modal.spectator-party-view .spectator-hand-cards {
+    align-content: start;
+    justify-content: center;
+    flex-wrap: wrap;
+    min-width: 0;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+#opponent-modal.spectator-party-view .spectator-hand-cards .card {
+    height: clamp(70px, 17dvh, 102px) !important;
+    max-height: 102px !important;
+}
+
+#opponent-modal.spectator-party-view .party-board-layout {
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+}
+
 @media (max-height: 520px) and (orientation: landscape) {
     .party-board-layout {
         grid-template-rows: minmax(0, 1fr) 68px;
@@ -8844,4 +9040,195 @@ body.landscape .action-point-timer-clock {
         grid-template-columns: minmax(92px, 118px) minmax(0, 1fr) !important;
     }
     .party-board-zone-heading > small { display: none; }
+
+    #opponent-modal.own-party-view.spectator-party-view #opponent-modal-content {
+        grid-template-columns: minmax(0, 1fr) !important;
+        grid-template-rows: minmax(108px, 25%) minmax(0, 1fr) !important;
+    }
+
+    #opponent-modal.spectator-party-view .spectator-hand-cards {
+        align-items: center;
+        align-content: center;
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+
+    #opponent-modal.spectator-party-view .spectator-hand-cards .card {
+        height: clamp(72px, 12dvh, 94px) !important;
+    }
+}
+
+/* Party overview v3: Classes and slain Monsters are separate, fixed-size
+   modal pages. This keeps every class cell stationary even when several cards
+   share one class and removes the need for a scrollable Party board. */
+.party-view-tabs {
+    display: flex;
+    flex: 0 0 auto;
+    align-self: center;
+    gap: 5px;
+    margin: 0 0 6px;
+    padding: 3px;
+    border: 1px solid rgba(206, 176, 111, .3);
+    border-radius: 999px;
+    background: rgba(7, 5, 25, .72);
+}
+
+.party-view-tabs button {
+    min-width: 104px;
+    padding: 5px 13px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    color: rgba(238, 229, 255, .72);
+    background: transparent;
+    font: 800 clamp(.52rem, 1vw, .68rem)/1 var(--font-body);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.party-view-tabs button.is-active {
+    border-color: rgba(255, 221, 139, .54);
+    color: #ffe29a;
+    background: linear-gradient(180deg, rgba(102, 70, 145, .72), rgba(39, 25, 75, .82));
+    box-shadow: 0 0 10px rgba(170, 119, 241, .2);
+}
+
+#party-dock {
+    cursor: pointer;
+}
+
+#party-dock .party-dock-slay {
+    margin: 0;
+    padding: 3px;
+    border: 1px solid rgba(225, 172, 96, .15);
+    border-radius: 7px;
+    color: inherit;
+    background: rgba(21, 11, 35, .22);
+    font: inherit;
+    cursor: pointer;
+}
+
+#party-dock .party-dock-slay:hover,
+#party-dock .party-dock-slay:focus-visible {
+    border-color: rgba(255, 218, 139, .5);
+    background: rgba(74, 39, 70, .48);
+}
+
+#party-dock .party-dock-slay:disabled {
+    pointer-events: none;
+}
+
+#opponent-modal.own-party-view #opponent-modal-content {
+    overflow: hidden !important;
+}
+
+#opponent-modal.own-party-view .party-board-layout.party-classes-only,
+#opponent-modal.own-party-view .party-board-layout.party-monsters-only {
+    grid-template-rows: minmax(0, 1fr) !important;
+    height: 100% !important;
+    min-height: 0;
+}
+
+#opponent-modal.own-party-view .party-classes-only .party-classes-zone {
+    height: 100%;
+}
+
+#opponent-modal.own-party-view .party-classes-only .party-class-grid {
+    overflow: hidden !important;
+}
+
+#opponent-modal.own-party-view .party-classes-only .party-class-stack {
+    position: relative;
+    display: block !important;
+    width: 100%;
+    height: 100%;
+    overflow: hidden !important;
+}
+
+#opponent-modal.own-party-view .party-classes-only .party-class-card-slot,
+#opponent-modal.own-party-view .party-classes-only .party-class-card-slot.party-class-leader-card {
+    position: absolute;
+    top: 50%;
+    left: var(--party-card-left, 50%);
+    display: block;
+    width: auto;
+    margin: 0 !important;
+    transform: translate(-50%, -50%);
+}
+
+#opponent-modal.own-party-view .party-classes-only .party-class-card-slot .card {
+    height: clamp(52px, 14dvh, 82px) !important;
+    max-height: 82px !important;
+}
+
+#opponent-modal.own-party-view.monster-only-view #opponent-modal-content {
+    display: block !important;
+}
+
+#opponent-modal.own-party-view .party-monsters-only .own-party-monsters {
+    display: grid !important;
+    grid-template-columns: minmax(120px, 18%) minmax(0, 1fr) !important;
+    height: 100%;
+    padding: clamp(8px, 1.5dvh, 14px) !important;
+}
+
+#opponent-modal.own-party-view .party-monsters-only .own-party-monster-row {
+    overflow: hidden !important;
+}
+
+#opponent-modal.own-party-view .party-monsters-only .party-monster-card-slot .card {
+    height: clamp(116px, 36dvh, 220px) !important;
+    max-height: 220px !important;
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .party-view-tabs {
+        position: absolute;
+        top: 31px;
+        right: clamp(58px, 8vw, 86px);
+        z-index: 2;
+        margin: 0;
+    }
+
+    .party-view-tabs button {
+        min-width: 84px;
+        padding: 4px 9px;
+        font-size: .48rem;
+    }
+
+    #opponent-modal.own-party-view .party-classes-only .party-class-card-slot .card {
+        height: clamp(48px, 14dvh, 62px) !important;
+        max-height: 62px !important;
+    }
+
+    #opponent-modal.own-party-view .party-monsters-only .party-monster-card-slot .card {
+        height: clamp(108px, 35dvh, 150px) !important;
+        max-height: 150px !important;
+    }
+}
+
+@media (orientation: portrait) {
+    #opponent-modal.own-party-view .party-classes-only .party-class-card-slot .card {
+        height: clamp(46px, 9dvh, 68px) !important;
+        max-height: 68px !important;
+    }
+
+    #opponent-modal.own-party-view .party-monsters-only .own-party-monsters {
+        grid-template-columns: minmax(92px, 118px) minmax(0, 1fr) !important;
+    }
+
+    #opponent-modal.own-party-view .party-monsters-only .party-monster-card-slot .card {
+        height: clamp(92px, 13dvh, 110px) !important;
+        max-height: 110px !important;
+    }
+
+    #opponent-modal.own-party-view .party-monsters-only .own-party-monster-row[data-monster-count="3"] .party-monster-card-slot + .party-monster-card-slot {
+        margin-left: -10px;
+    }
+
+    #opponent-modal.own-party-view .party-monsters-only .own-party-monster-row[data-monster-count="4"] .party-monster-card-slot + .party-monster-card-slot {
+        margin-left: -35px;
+    }
 }

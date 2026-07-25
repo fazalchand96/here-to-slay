@@ -547,7 +547,14 @@ function closeAllModals() {
     // Keep modals that represent a still-pending REQUIRED action — they're driven
     // by their own events/state and must not be dismissed by a stray PLAYING-state
     // render (e.g. the global-action prompt that appears as a skill resolves).
-    const keepOpen = ['inspector-modal', 'mandatory-discard-modal', 'discard-viewer-modal', 'deck-peek-modal', 'global-discard-pool'];
+    const keepOpen = [
+        'inspector-modal',
+        'mandatory-discard-modal',
+        'discard-viewer-modal',
+        'deck-peek-modal',
+        'global-discard-pool',
+        'monster-trigger-modal'
+    ];
     document.querySelectorAll('.overlay').forEach(el => {
 
         if (!keepOpen.includes(el.id)) {
@@ -854,11 +861,19 @@ function buildClassPartyGrid(player, isOwn) {
             ...heroes.map(hero => ({ card: hero, leader: false }))
         ];
         const cardSlots = classCards.length
-            ? classCards.map(({ card, leader }, index) => `
+            ? classCards.map(({ card, leader }, index) => {
+                const cardLeft = classCards.length === 1
+                    ? 50
+                    : classCards.length === 2
+                        ? 38 + (index * 24)
+                        : 32 + (index * (36 / (classCards.length - 1)));
+                return `
                 <div class="party-class-card-slot${leader ? ' party-class-leader-card' : ''}"
-                    style="--party-card-index:${index}" title="${leader ? `Party Leader: ${card.name}` : card.name}">
+                    style="--party-card-index:${index};--party-card-left:${cardLeft}%"
+                    title="${leader ? `Party Leader: ${card.name}` : card.name}">
                     ${renderCard(card, isOwn, false, false, isMyTurn)}
-                </div>`).join('')
+                </div>`;
+            }).join('')
             : `<div class="party-class-empty">Empty</div>`;
         const classCardCount = classCards.length;
         return `
@@ -868,6 +883,20 @@ function buildClassPartyGrid(player, isOwn) {
             </section>`;
     }).join('');
 
+    return `
+        <div class="party-board-layout party-classes-only">
+            <section class="party-classes-zone">
+                <header class="party-board-zone-heading">
+                    <span>Party Classes</span>
+                    <small>Heroes grouped by class</small>
+                </header>
+                <div class="party-class-grid">${columns}</div>
+            </section>
+        </div>`;
+}
+
+function buildSlainMonstersGrid(player, isOwn) {
+    const isMyTurn = latestGameState?.activePlayerSocketId === myId;
     const slainMonsters = player.slainMonsters || [];
     const monsters = slainMonsters.length
         ? slainMonsters.map((monster, index) => `
@@ -877,14 +906,7 @@ function buildClassPartyGrid(player, isOwn) {
         : `<div class="party-class-empty">No slain Monsters yet</div>`;
 
     return `
-        <div class="party-board-layout">
-            <section class="party-classes-zone">
-                <header class="party-board-zone-heading">
-                    <span>Party Classes</span>
-                    <small>Heroes grouped by class</small>
-                </header>
-                <div class="party-class-grid">${columns}</div>
-            </section>
+        <div class="party-board-layout party-monsters-only">
             <section class="own-party-monsters">
                 <header class="party-board-zone-heading">
                     <span>Slain Monsters</span>
@@ -1529,12 +1551,22 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
 
     let equippedBadge = '';
 
-    if (!inHand && card.type === 'Hero Card' && card.equippedItem) {
-
-        const item = card.equippedItem;
-        const isCursed = /cursed/i.test(item.type || '') || /curse/i.test(item.effect_id || '');
-        equippedBadge = `<div class="equipped-item-thumb${isCursed ? ' cursed' : ''}" title="${item.name}" style="background-image: url('${cardArt(item)}')"><span class="equipped-item-thumb-name">${item.name}</span></div>`;
-
+    if (!inHand && card.type === 'Hero Card') {
+        const equippedItems = [card.equippedItem, card.equippedItem2].filter(Boolean);
+        if (equippedItems.length) {
+            equippedBadge = `
+                <div class="equipped-items-stack" aria-label="Equipped items">
+                    ${equippedItems.map(item => {
+                        const isCursed = /cursed/i.test(item.type || '') || /curse/i.test(item.effect_id || '');
+                        return `<button type="button"
+                            class="equipped-item-thumb${isCursed ? ' cursed' : ''}"
+                            data-equipped-item-id="${item.id}"
+                            aria-label="Inspect ${item.name}"
+                            title="${item.name}"
+                            style="background-image: url('${cardArt(item)}')"><span class="equipped-item-thumb-name">${item.name}</span></button>`;
+                    }).join('')}
+                </div>`;
+        }
     }
 
 
@@ -1592,7 +1624,20 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
 
 
 
-window.openOwnPartyModal = function() {
+function syncPartyViewTabs(section) {
+    const tabs = document.getElementById('party-view-tabs');
+    const classesTab = document.getElementById('party-classes-tab');
+    const monstersTab = document.getElementById('party-monsters-tab');
+    const targetingActive = isSkillTargeting || isMultiTargeting || isLocalTargeting
+        || isSelfItemTargeting || myTargetMode;
+    tabs?.classList.toggle('hidden', targetingActive);
+    classesTab?.classList.toggle('is-active', section === 'classes');
+    monstersTab?.classList.toggle('is-active', section === 'monsters');
+    classesTab?.setAttribute('aria-selected', String(section === 'classes'));
+    monstersTab?.setAttribute('aria-selected', String(section === 'monsters'));
+}
+
+window.openOwnPartyModal = function(requestedSection = 'classes') {
     if (isPlayerTargeting && latestGameState?.pendingAction?.allowSelf) {
         socket.emit('submit_skill_target', { targetPlayerId: myId });
         cancelSkillTargeting();
@@ -1604,17 +1649,28 @@ window.openOwnPartyModal = function() {
     const modalContent = document.getElementById('opponent-modal-content');
     if (!me || !modal || !modalTitle || !modalContent) return;
 
+    const section = requestedSection === 'monsters' ? 'monsters' : 'classes';
     currentlyViewedOpponentId = myId;
     modal.dataset.view = 'own-party';
+    modal.dataset.section = section;
     modal.classList.add('own-party-view');
+    modal.classList.remove('spectator-party-view');
+    modal.classList.toggle('monster-only-view', section === 'monsters');
     modalTitle.innerHTML = `Your Party <span class="own-party-title-stats">${(me.party || []).length} Heroes · ${calculateWinStats(me).monsters}/4 Slain</span>`;
-    modalContent.innerHTML = buildClassPartyGrid(me, true);
+    syncPartyViewTabs(section);
+    modalContent.innerHTML = section === 'monsters'
+        ? buildSlainMonstersGrid(me, true)
+        : buildClassPartyGrid(me, true);
     modal.style.display = 'flex';
     modal.classList.remove('hidden');
     window._oppModalSig = oppModalSignature(myId);
 };
 
-window.openOpponentModal = function(id) {
+window.openOwnMonstersModal = function() {
+    window.openOwnPartyModal('monsters');
+};
+
+window.openOpponentModal = function(id, requestedSection = 'classes') {
 
     if (isLeaderSkillTargeting) {
 
@@ -1676,15 +1732,20 @@ window.openOpponentModal = function(id) {
 
     if (!modal) return;
 
+    const section = requestedSection === 'monsters' ? 'monsters' : 'classes';
     modal.dataset.view = 'opponent';
+    modal.dataset.section = section;
     modal.classList.add('own-party-view');
+    modal.classList.toggle('spectator-party-view', !!latestGameState?.spectator && section === 'classes');
+    modal.classList.toggle('monster-only-view', section === 'monsters');
 
 
 
     const displayName = getPlayerName(id);
 
     modalTitle.innerHTML = `${displayName}'s Party <span class="own-party-title-stats">${(opp.party || []).length} Heroes &middot; ${calculateWinStats(opp).monsters}/4 Slain</span>`;
-    const spectatorHand = latestGameState?.spectator
+    syncPartyViewTabs(section);
+    const spectatorHand = latestGameState?.spectator && section === 'classes'
         ? `
             <section class="spectator-hand-view">
                 <header>
@@ -1697,7 +1758,9 @@ window.openOpponentModal = function(id) {
                 </div>
             </section>`
         : '';
-    modalContent.innerHTML = spectatorHand + buildClassPartyGrid(opp, false);
+    modalContent.innerHTML = section === 'monsters'
+        ? buildSlainMonstersGrid(opp, false)
+        : spectatorHand + buildClassPartyGrid(opp, false);
 
 
 
@@ -1724,10 +1787,24 @@ function oppModalSignature(id) {
         p: (opp.party || []).map(h => `${h.id}:${h.equippedItem ? h.equippedItem.id : ''}:${h.equippedItem2 ? h.equippedItem2.id : ''}:${effectiveHeroClass(h) || ''}`),
         m: (opp.slainMonsters || []).map(monster => monster.id),
         h: latestGameState?.spectator ? (opp.hand || []).map(card => card.id) : [],
+        v: document.getElementById('opponent-modal')?.dataset.section || 'classes',
         t: targetingActive,
         s: latestGameState ? latestGameState.state : null,
     });
 }
+
+window.openCurrentPartySection = function(section) {
+    const modal = document.getElementById('opponent-modal');
+    if (!modal || !currentlyViewedOpponentId) return;
+    const targetingActive = isSkillTargeting || isMultiTargeting || isLocalTargeting
+        || isSelfItemTargeting || myTargetMode;
+    if (targetingActive) return;
+    if (modal.dataset.view === 'own-party') {
+        window.openOwnPartyModal(section);
+    } else {
+        window.openOpponentModal(currentlyViewedOpponentId, section);
+    }
+};
 
 
 
@@ -1748,7 +1825,11 @@ window.closeOpponentModal = function() {
 
         modal.style.display = 'none';
         modal.classList.remove('own-party-view');
+        modal.classList.remove('spectator-party-view');
+        modal.classList.remove('monster-only-view');
+        document.getElementById('party-view-tabs')?.classList.add('hidden');
         delete modal.dataset.view;
+        delete modal.dataset.section;
 
     }
 };
@@ -2588,16 +2669,24 @@ function buildBoardParts(data, ctx) {
         ? 'Tap to view this party and hand'
         : (targetingParty ? 'Tap to select a Hero' : 'Tap your party to view all Heroes');
     const partyClick = spectator ? `openOpponentModal('${perspectiveId}')` : 'openOwnPartyModal()';
+    const monstersClick = spectator
+        ? `openOpponentModal('${perspectiveId}', 'monsters')`
+        : 'openOwnMonstersModal()';
     const partyHtml = `
-        <button id="party-dock" class="party-dock${targetingParty ? ' valid-target' : ''}" type="button" onclick="${partyClick}" aria-label="Open ${partyTitle}">
+        <div id="party-dock" class="party-dock${targetingParty ? ' valid-target' : ''}" role="button" tabindex="0"
+            onclick="${partyClick}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${partyClick}}"
+            aria-label="Open ${partyTitle} classes">
             <span class="party-dock-copy">
                 <strong>${partyTitle} <b>${(me.party || []).length}</b></strong>
                 <small>${partyInstruction}</small>
                 <span class="party-dock-classes">${classChips || '<i>No classes yet</i>'}</span>
             </span>
             <span class="party-dock-preview">${previewCards}${hiddenHeroCount ? `<b class="party-dock-more">+${hiddenHeroCount}</b>` : ''}</span>
-            <span class="party-dock-slay"><strong>Slain</strong><b>${myWinStats.monsters}/4</b><i>${[0, 1, 2, 3].map(i => `<em class="${i < myWinStats.monsters ? 'on' : ''}"></em>`).join('')}</i></span>
-        </button>`;
+            <button class="party-dock-slay" type="button" onclick="event.stopPropagation();${monstersClick}"
+                aria-label="Open ${partyTitle} slain Monsters"${targetingParty ? ' disabled' : ''}>
+                <strong>Slain</strong><b>${myWinStats.monsters}/4</b><i>${[0, 1, 2, 3].map(i => `<em class="${i < myWinStats.monsters ? 'on' : ''}"></em>`).join('')}</i>
+            </button>
+        </div>`;
 
     // --- Local class tracker --- (slain progress already lives in the Party dock)
     const myStats = calculateWinStats(me);
@@ -3802,8 +3891,9 @@ function renderBoard(data) {
     // which looked like "nothing happened" when targeting in multiplayer.
     if (currentlyViewedOpponentId && opponentModal && !opponentModal.classList.contains('hidden')) {
         if (oppModalSignature(currentlyViewedOpponentId) !== window._oppModalSig) {
-            if (opponentModal.dataset.view === 'own-party') openOwnPartyModal();
-            else openOpponentModal(currentlyViewedOpponentId);
+            const section = opponentModal.dataset.section || 'classes';
+            if (opponentModal.dataset.view === 'own-party') openOwnPartyModal(section);
+            else openOpponentModal(currentlyViewedOpponentId, section);
         }
     }
 
@@ -4862,18 +4952,35 @@ socket.on('rex_major_reveal', ({ playerName, card }) => {
     setTimeout(() => overlay.remove(), 2600);
 });
 
-socket.on('monster_effect_triggered', ({ monsterId, monsterName, message }) => {
+socket.on('monster_effect_triggered', ({
+    monsterId,
+    monsterName,
+    message,
+    effectLabel = 'MONSTER EFFECT',
+    durationMs = 2400
+}) => {
     const context = findCardContext(monsterId);
     const card = context && context.card;
+    const visibleMs = Math.max(2400, Math.min(8000, Number(durationMs) || 2400));
     showNotification(`${monsterName}: ${message}`);
     if (!card) return;
     document.getElementById('monster-trigger-modal')?.remove();
     const overlay = document.createElement('div');
     overlay.id = 'monster-trigger-modal';
-    overlay.className = 'overlay rex-major-reveal-modal';
-    overlay.innerHTML = `<div class="glass-panel rex-major-reveal-panel"><h2>${monsterName} activated!</h2><p>${message}</p>${renderCard(card, false, false, true)}</div>`;
+    overlay.className = 'overlay rex-major-reveal-modal monster-trigger-modal';
+    overlay.setAttribute('role', 'status');
+    overlay.setAttribute('aria-live', 'polite');
+    overlay.style.setProperty('--monster-trigger-duration', `${visibleMs}ms`);
+    overlay.innerHTML = `
+        <div class="glass-panel rex-major-reveal-panel monster-trigger-panel">
+            <span class="monster-trigger-kicker">${effectLabel}</span>
+            <h2>${monsterName} activated!</h2>
+            <p>${message}</p>
+            ${renderCard(card, false, false, true)}
+            <i class="monster-trigger-timer" aria-hidden="true"></i>
+        </div>`;
     document.body.appendChild(overlay);
-    setTimeout(() => overlay.remove(), 2400);
+    setTimeout(() => overlay.remove(), visibleMs);
 });
 
 
@@ -6282,6 +6389,19 @@ function findCardContext(id) {
 
         if (card) return { card, location: 'party', owner: playerId };
 
+        for (const hero of (p.party || [])) {
+            const equippedItem = [hero.equippedItem, hero.equippedItem2]
+                .find(item => item && item.id === id);
+            if (equippedItem) {
+                return {
+                    card: equippedItem,
+                    location: 'equipped-item',
+                    owner: playerId,
+                    hero
+                };
+            }
+        }
+
         
 
         card = p.hand.find(c => c.id === id);
@@ -7383,20 +7503,14 @@ document.body.addEventListener('click', (e) => {
 
     if (cardEl && cardEl.dataset.id && !cardEl.classList.contains('empty-slot') && !cardEl.classList.contains('card-back')) {
 
-        if (e.target.closest('.equipped-item-badge') || e.target.closest('.equipped-item-thumb')) {
-
-            // If they click the equipped badge, inspect the equipped item instead!
-
-            const context = findCardContext(cardEl.dataset.id);
-
-            if (context && context.card && context.card.equippedItem) {
-
-                inspectCard(context.card.equippedItem.id);
-
-                return;
-
-            }
-
+        const equippedItemEl = e.target.closest('[data-equipped-item-id]');
+        if (equippedItemEl) {
+            // The attachment has its own deliberately small hit target. Inspecting
+            // it must never trigger the Hero underneath (or a targeting action).
+            e.preventDefault();
+            e.stopPropagation();
+            inspectCard(equippedItemEl.dataset.equippedItemId);
+            return;
         }
 
         

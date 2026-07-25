@@ -999,7 +999,7 @@ test('SKILL_TOUGH_TEDDY targets only opponents who have a Fighter and cards', ()
     assert.deepEqual(gs.pendingAction.targets, ['bob']);
 });
 
-test('SKILL_TOUGH_TEDDY counts a Fighter Party Leader as a Fighter', () => {
+test('SKILL_TOUGH_TEDDY does not count a Fighter Party Leader as a Fighter in the Party', () => {
     const fighterLeader = card('The Fist of Reason', 'Party Leader', { class: 'Fighter' });
     const bob = player('bob', {
         leader: fighterLeader,
@@ -1011,8 +1011,9 @@ test('SKILL_TOUGH_TEDDY counts a Fighter Party Leader as a Fighter', () => {
 
     executeSkill(gs, makeIo(), 'SKILL_TOUGH_TEDDY', 'alice', 'tt', null);
 
-    assert.equal(gs.state, 'WAITING_FOR_MULTIPLE_DISCARDS');
-    assert.deepEqual(gs.pendingAction.targets, ['bob']);
+    assert.notEqual(gs.state, 'WAITING_FOR_MULTIPLE_DISCARDS');
+    assert.equal(gs.pendingAction, null);
+    assert.equal(bob.hand.length, 1);
 });
 
 test('SKILL_TOUGH_TEDDY does nothing when no opponent has a Fighter with cards', () => {
@@ -1240,7 +1241,11 @@ test('SKILL_SLIPPERY_PAWS pulls 2 cards then offers to discard one of those two'
 
 test('SKILL_SMOOTH_MIMIMEOW pulls only from opponents who have a Thief', () => {
     const bob = player('bob', { party: [hero('BobThief', { id: 'bt', class: 'Thief' })], hand: [card('a', 'Item Card')] });
-    const carol = player('carol', { party: [hero('CarolWiz', { id: 'cw', class: 'Wizard' })], hand: [card('b', 'Item Card')] });
+    const carol = player('carol', {
+        leader: card('The Shadow Claw', 'Party Leader', { class: 'Thief' }),
+        party: [hero('CarolWiz', { id: 'cw', class: 'Wizard' })],
+        hand: [card('b', 'Item Card')]
+    });
     const alice = player('alice', { party: [hero('Smooth Mimimeow', { id: 'sm' })] });
     const gs = makeState([alice, bob, carol]);
     withRandom(0, () => {
@@ -1248,7 +1253,7 @@ test('SKILL_SMOOTH_MIMIMEOW pulls only from opponents who have a Thief', () => {
     });
     assert.equal(alice.hand.length, 1); // only pulled from bob (Thief)
     assert.equal(bob.hand.length, 0);
-    assert.equal(carol.hand.length, 1); // untouched
+    assert.equal(carol.hand.length, 1); // Thief Leader is not a Thief in the Party
 });
 
 test('SKILL_SMOOTH_MIMIMEOW counts a Hero wearing a Thief Mask', () => {

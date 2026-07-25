@@ -132,13 +132,18 @@ test('Dystortivern trades Party Leaders with the chosen opponent', () => {
 test('Extraga returns every other effective Sorcerer and its Items', () => {
     const mask = card('Sorcerer Mask', 'Item Card', { effect_id: 'ITEM_MASK', class: 'Sorcerer' });
     const a = player('a', { party: [hero('Extraga', { id: 'extra' }), hero('Other Sorcerer', { id: 'own' })] });
-    const b = player('b', { party: [hero('Masked Fighter', { id: 'masked', class: 'Fighter', equippedItem: mask })] });
+    const sorcererLeader = card('The Fearless Flame', 'Party Leader', { class: 'Sorcerer' });
+    const b = player('b', {
+        leader: sorcererLeader,
+        party: [hero('Masked Fighter', { id: 'masked', class: 'Fighter', equippedItem: mask })]
+    });
     const game = state([a, b]);
     executeSkill(game, io(), 'SKILL_EXTRAGA', 'a', 'extra');
     assert.deepEqual(a.party.map(entry => entry.id), ['extra']);
     assert.equal(a.hand.some(entry => entry.id === 'own'), true);
     assert.equal(b.party.length, 0);
     assert.equal(b.hand.some(entry => entry.id === mask.id), true);
+    assert.equal(b.leader, sorcererLeader);
 });
 
 test('Luut offers regular equipped Items and a legal destination', () => {

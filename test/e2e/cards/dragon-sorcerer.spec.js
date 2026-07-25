@@ -84,12 +84,19 @@ test('Sorcerer Challenge accepts a Sorcerer and contributes its printed +3', asy
     expect(errors).toEqual([]);
 });
 
-test('the mobile Party modal separates classes from Monsters without per-class scrolling', async ({ browser }) => {
+test('the mobile Party modal separates classes from Monsters without per-class scrolling', async ({ browser }, testInfo) => {
     const errors = [];
-    const { host } = await startGame(browser);
+    const viewport = testInfo.project.name.includes('portrait')
+        ? { width: 390, height: 844 }
+        : { width: 915, height: 412 };
+    const { host } = await startGame(browser, {
+        viewport,
+        hasTouch: true,
+        serviceWorkers: 'block'
+    });
     host.on('pageerror', error => errors.push(error.message));
 
-    for (const cardId of ['card_223', 'card_224', 'card_225', 'card_226']) {
+    for (const cardId of ['card_223', 'card_224', 'card_225', 'card_226', 'card_056']) {
         await host.evaluate(id => window._socket.emit('debug_inject_to_party', { cardId: id }), cardId);
     }
     for (const cardId of ['card_001', 'card_002']) {
@@ -97,23 +104,36 @@ test('the mobile Party modal separates classes from Monsters without per-class s
     }
     await host.waitForTimeout(300);
 
-    await host.locator('#party-dock').click({ force: true });
+    await host.evaluate(() => {
+        const me = window.latestGameState.players[window.myId];
+        me.leader = { ...me.leader, id: 'layout-wizard-leader', class: 'Wizard' };
+        window.openOwnPartyModal();
+    });
     await expect(host.locator('#opponent-modal')).not.toHaveClass(/hidden/);
     const layout = await host.evaluate(() => {
         const columns = [...document.querySelectorAll('#opponent-modal .party-class-column')];
         const stacks = [...document.querySelectorAll('#opponent-modal .party-class-stack')];
         const classZone = document.querySelector('#opponent-modal .party-classes-zone')?.getBoundingClientRect();
-        const monsterZone = document.querySelector('#opponent-modal .own-party-monsters')?.getBoundingClientRect();
         const classCards = [...document.querySelectorAll('#opponent-modal .party-class-card-slot .card')];
+        const content = document.querySelector('#opponent-modal-content');
         return {
             portrait: matchMedia('(orientation: portrait)').matches,
             count: columns.length,
             rows: new Set(columns.map(column => Math.round(column.getBoundingClientRect().top))).size,
             labels: columns.map(column => column.querySelector('header strong')?.textContent?.trim()),
-            zonesOverlap: !!(classZone && monsterZone && classZone.bottom > monsterZone.top),
+            hasMonsterZone: !!document.querySelector('#opponent-modal .own-party-monsters'),
+            contentScrolls: content.scrollHeight > content.clientHeight + 1
+                || content.scrollWidth > content.clientWidth + 1,
             cardsStayInClassZone: !!classZone && classCards.every(card => {
                 const box = card.getBoundingClientRect();
                 return box.top >= classZone.top - 1 && box.bottom <= classZone.bottom + 1;
+            }),
+            cardsStayInOwnColumn: classCards.every(card => {
+                const box = card.getBoundingClientRect();
+                const column = card.closest('.party-class-column')?.getBoundingClientRect();
+                return column
+                    && box.left >= column.left - 1
+                    && box.right <= column.right + 1;
             }),
             classZoneBounds: classZone ? { top: classZone.top, bottom: classZone.bottom } : null,
             classCardBounds: classCards.map(card => {
@@ -122,16 +142,39 @@ test('the mobile Party modal separates classes from Monsters without per-class s
             }),
             stackOverflowModes: stacks.map(stack => getComputedStyle(stack).overflowY),
             sorcererCards: document.querySelectorAll('.party-class-column[data-class="sorcerer"] .party-class-card-slot').length,
-            monsterCards: document.querySelectorAll('.own-party-monsters .party-monster-card-slot').length
+            wizardCards: document.querySelectorAll('.party-class-column[data-class="wizard"] .party-class-card-slot').length
         };
     });
     expect(layout.count).toBe(11);
     expect(layout.rows).toBe(layout.portrait ? 3 : 2);
     expect(layout.labels).toContain('Sorcerer');
-    expect(layout.zonesOverlap).toBe(false);
+    expect(layout.hasMonsterZone).toBe(false);
+    expect(layout.contentScrolls, JSON.stringify(layout)).toBe(false);
     expect(layout.cardsStayInClassZone, JSON.stringify(layout)).toBe(true);
+    expect(layout.cardsStayInOwnColumn, JSON.stringify(layout)).toBe(true);
     expect(layout.stackOverflowModes.every(mode => !['auto', 'scroll'].includes(mode))).toBe(true);
     expect(layout.sorcererCards).toBeGreaterThanOrEqual(4);
-    expect(layout.monsterCards).toBe(2);
+    expect(layout.wizardCards).toBeGreaterThanOrEqual(2);
+
+    await host.locator('#party-monsters-tab').click();
+    await expect(host.locator('#opponent-modal')).toHaveAttribute('data-section', 'monsters');
+    await expect(host.locator('.party-classes-zone')).toHaveCount(0);
+    await expect(host.locator('.own-party-monsters .party-monster-card-slot')).toHaveCount(2);
+    const monsterLayout = await host.evaluate(() => {
+        const content = document.querySelector('#opponent-modal-content');
+        const cards = [...document.querySelectorAll('.party-monster-card-slot .card')];
+        const bounds = content.getBoundingClientRect();
+        return {
+            contentScrolls: content.scrollHeight > content.clientHeight + 1
+                || content.scrollWidth > content.clientWidth + 1,
+            cardsStayInside: cards.every(card => {
+                const box = card.getBoundingClientRect();
+                return box.left >= bounds.left - 1 && box.right <= bounds.right + 1
+                    && box.top >= bounds.top - 1 && box.bottom <= bounds.bottom + 1;
+            })
+        };
+    });
+    expect(monsterLayout.contentScrolls).toBe(false);
+    expect(monsterLayout.cardsStayInside).toBe(true);
     expect(errors).toEqual([]);
 });

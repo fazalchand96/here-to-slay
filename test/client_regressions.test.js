@@ -21,6 +21,20 @@ test('action point countdown is visible and warns during the final seconds', () 
     );
 });
 
+test('Muscipula Rex shows every player a longer non-blocking free-draw banner', () => {
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const styleSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
+    const serverSource = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+
+    assert.match(serverSource, /effectLabel: 'FREE DRAW · 0 AP'/);
+    assert.match(serverSource, /durationMs: 5200/);
+    assert.match(appSource, /className = 'overlay rex-major-reveal-modal monster-trigger-modal'/);
+    assert.match(appSource, /const keepOpen = \[[\s\S]*?'monster-trigger-modal'[\s\S]*?\];/);
+    assert.match(appSource, /setTimeout\(\(\) => overlay\.remove\(\), visibleMs\)/);
+    assert.match(styleSource, /\.monster-trigger-modal \{[\s\S]*?pointer-events: none !important;/);
+    assert.match(styleSource, /monster-trigger-countdown var\(--monster-trigger-duration, 2400ms\)/);
+});
+
 test('Lightning Labrys confirmation uses a tappable banner and waits for server acknowledgement', () => {
     const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
     const styleSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
@@ -72,11 +86,11 @@ test('Item targeting keeps both own and opponent Party boards available', () => 
     );
     assert.match(
         appSource,
-        /window\.openOwnPartyModal = function\(\)[\s\S]*?buildClassPartyGrid\(me, true\)/
+        /window\.openOwnPartyModal = function\(requestedSection = 'classes'\)[\s\S]*?buildClassPartyGrid\(me, true\)/
     );
     assert.match(
         appSource,
-        /window\.openOpponentModal = function\(id\)[\s\S]*?buildClassPartyGrid\(opp, false\)/
+        /window\.openOpponentModal = function\(id, requestedSection = 'classes'\)[\s\S]*?buildClassPartyGrid\(opp, false\)/
     );
 });
 
