@@ -1047,12 +1047,16 @@ function advanceEndTurnMonsterEffect() {
     };
     const monster = (player.slainMonsters || [])
         .find(card => card.name === monsterNameByEffect[effect]);
-    emitPublicCardEffect(
-        monster,
-        player.id,
-        `${getPlayerName(gameState, player.id)} may use ${monster?.name || 'an end-turn Monster'} now.`,
-        'MONSTER · END-TURN EFFECT'
-    );
+    // Announce Clawed Nightmare and Goretelodont only if their optional effect
+    // is actually used. Scavenger Griffin keeps its existing offer reveal.
+    if (effect === 'SCAVENGER_GRIFFIN_STEAL') {
+        emitPublicCardEffect(
+            monster,
+            player.id,
+            `${getPlayerName(gameState, player.id)} may use ${monster?.name || 'an end-turn Monster'} now.`,
+            'MONSTER · END-TURN EFFECT'
+        );
+    }
     return true;
 }
 
@@ -1429,12 +1433,6 @@ function resumeExpansionChoices() {
             type: 'LUMBERING_DEMON_DRAW', playerToChoose: player.id,
             originalActor: player.id, source: sequence.source
         };
-        emitPublicCardEffect(
-            (player.slainMonsters || []).find(card => card.effect_id === 'MONSTER_LUMBERING_DEMON'),
-            player.id,
-            `${getPlayerName(gameState, player.id)} may replace a draw by drawing 2 cards and discarding 1.`,
-            'MONSTER · REPLACEMENT DRAW'
-        );
         return;
     }
 
@@ -1452,7 +1450,8 @@ function resumeExpansionChoices() {
             sourceCard,
             player.id,
             `${getPlayerName(gameState, player.id)} draws a card because ${entry.source} activated.`,
-            `${sourceCard?.type === 'Party Leader' ? 'PARTY LEADER' : 'MONSTER'} · BONUS DRAW`
+            `${sourceCard?.type === 'Party Leader' ? 'PARTY LEADER' : 'MONSTER'} · BONUS DRAW`,
+            entry.source === 'Possessed Plush' ? 5200 : 3600
         );
         if (gameState.pendingLumberingDraws?.length > 0) {
             resumeExpansionChoices();
@@ -1475,18 +1474,18 @@ function resumeExpansionChoices() {
                 type: 'DRAGON_WASP_REPLACEMENT', playerToChoose: player.id,
                 originalActor: player.id, trigger
             };
-            emitPublicCardEffect(
-                (player.slainMonsters || []).find(card => card.effect_id === 'MONSTER_DRAGON_WASP'),
-                player.id,
-                `${getPlayerName(gameState, player.id)} may discard 2 cards to save a Hero.`,
-                'MONSTER · SAVE HERO'
-            );
             return;
         }
         if (trigger.type === 'FERAL_DRAGON_DRAW') {
             dealCards(1, player.id, 'Feral Dragon');
             const message = `${getPlayerName(gameState, trigger.sacrificingPlayerId)} sacrificed a card, so ${getPlayerName(gameState, player.id)} draws a card.`;
-            io.emit('monster_effect_triggered', { monsterId: 'card_138', monsterName: 'Feral Dragon', ownerId: player.id, message });
+            emitPublicCardEffect(
+                (player.slainMonsters || []).find(monster => monster.effect_id === 'MONSTER_FERAL_DRAGON'),
+                player.id,
+                message,
+                'SACRIFICE · DRAW 1',
+                5200
+            );
             io.emit('message', `Feral Dragon activated: ${message}`);
             if (gameState.pendingLumberingDraws?.length > 0) {
                 resumeExpansionChoices();
@@ -2516,6 +2515,10 @@ function createRoomSession(roomCode) {
         onPlayerRestored: (player, oldSocketId, newSocketId) => roomContext.run(session, () => {
             session.socketIds.delete(oldSocketId);
             session.socketIds.add(newSocketId);
+            const replacedSocket = ioServer.sockets.sockets.get(oldSocketId);
+            if (replacedSocket && oldSocketId !== newSocketId) {
+                replacedSocket.disconnect(true);
+            }
             io.emit('message', `${getPlayerName(gameState, player.id)} reconnected.`);
             broadcastState();
         }),
@@ -2525,7 +2528,17 @@ function createRoomSession(roomCode) {
 }
 
 function joinSocketToSession(socket, session, requestedSessionToken, { watchOnly = false } = {}) {
-    if (socket.data.roomCode) return { ok: false, reason: 'You already joined a room.' };
+    if (socket.data.roomCode) {
+        if (socket.data.roomCode === session.roomCode) {
+            return {
+                ok: true,
+                roomCode: session.roomCode,
+                reconnected: true,
+                spectator: socket.data.isSpectator === true
+            };
+        }
+        return { ok: false, reason: 'Leave your current lobby before joining another one.' };
+    }
 
     return roomContext.run(session, () => {
         const restoredSession = session.reconnectManager.restore(socket.id, requestedSessionToken);
@@ -2617,8 +2630,9 @@ ioServer.on('connection', (socket) => {
         const session = roomSessions.get(socket.data.roomCode);
         if (!session) return;
         // Spectators receive room broadcasts but can never reach gameplay
-        // handlers. Disconnect remains enabled so their socket is cleaned up.
-        if (socket.data.isSpectator === true && eventName !== 'disconnect') return;
+        // handlers. They may still leave cleanly or disconnect.
+        if (socket.data.isSpectator === true
+            && !['disconnect', 'leave_room', 'leave_game'].includes(eventName)) return;
         return roomContext.run(session, () => handler(...args));
     });
 
@@ -2650,9 +2664,22 @@ ioServer.on('connection', (socket) => {
         if (typeof acknowledgement === 'function') acknowledgement({ ok: result.ok, revealed: Boolean(result.revealed) });
     });
 
-    // The browser UI has no leave button today; this event exists so controlled
-    // clients/test harnesses can explicitly abandon a seat without waiting out
-    // the reconnect grace timer.
+    socket.on('leave_room', acknowledgement => {
+        const session = currentSession();
+        const wasSpectator = socket.data.isSpectator === true;
+        session.socketIds.delete(socket.id);
+        if (!wasSpectator) session.reconnectManager.leaveNow(socket.id);
+        socket.leave(session.roomCode);
+        socket.data.roomCode = null;
+        socket.data.isSpectator = false;
+        if (session.state.playerOrder.length === 0 && session.socketIds.size === 0) {
+            roomSessions.delete(session.roomCode);
+        }
+        if (typeof acknowledgement === 'function') acknowledgement({ ok: true });
+    });
+
+    // Controlled clients/test harnesses can explicitly abandon a seat without
+    // waiting out the reconnect grace timer.
     socket.on('leave_game', acknowledgement => {
         currentSession().reconnectManager.leaveNow(socket.id);
         if (typeof acknowledgement === 'function') acknowledgement();
@@ -2723,7 +2750,10 @@ ioServer.on('connection', (socket) => {
         if (gameState.state !== 'LOBBY') return;
         if (socket.id !== gameState.playerOrder[0]) return; // Only host can start
         
-        const allSelected = gameState.playerOrder.every(id => gameState.players[id].hasSelectedLeader);
+        const allSelected = gameState.playerOrder.every(id => {
+            const player = gameState.players[id];
+            return player?.connected !== false && player?.hasSelectedLeader;
+        });
         if (!allSelected) return;
 
         startGame();
@@ -3102,7 +3132,15 @@ ioServer.on('connection', (socket) => {
                 actor.hand.push(target.hand.splice(index, 1)[0]);
                 pulled += 1;
             }
-            io.emit('message', `${getPlayerName(gameState, socket.id)} pulled ${pulled} card${pulled === 1 ? '' : 's'} from ${getPlayerName(gameState, targetId)} with Clawed Nightmare.`);
+            const message = `${getPlayerName(gameState, socket.id)} pulled ${pulled} card${pulled === 1 ? '' : 's'} from ${getPlayerName(gameState, targetId)} with Clawed Nightmare.`;
+            io.emit('message', message);
+            emitPublicCardEffect(
+                (actor.slainMonsters || []).find(monster => monster.effect_id === 'MONSTER_CLAWED_NIGHTMARE'),
+                actor.id,
+                message,
+                'EMPTY HAND · PULL 2',
+                5200
+            );
             resetToPlayingState();
             advanceEndTurnMonsterEffect();
             broadcastState();
@@ -4438,6 +4476,13 @@ socket.on('resolve_immediate_play', (data) => {
         gameState.pendingAction = null;
         if (use === true) {
             const drawn = drawCardsWithoutPassives(gameState, io, 2, player);
+            emitPublicCardEffect(
+                (player.slainMonsters || []).find(monster => monster.effect_id === 'MONSTER_LUMBERING_DEMON'),
+                player.id,
+                `${getPlayerName(gameState, player.id)} replaced one draw by drawing 2 cards and discarding 1.`,
+                'REPLACEMENT · DRAW 2, DISCARD 1',
+                5200
+            );
             if (drawn.length > 0 && player.hand.length > 0) {
                 gameState.state = 'WAITING_FOR_DISCARD_PENALTY';
                 gameState.pendingAction = {
@@ -4534,12 +4579,23 @@ socket.on('resolve_immediate_play', (data) => {
             return;
         }
         if (effect === 'GORETELODONT_DRAW') {
+            const player = gameState.players[socket.id];
             const queued = queueLumberingDrawSequence(
-                gameState, gameState.players[socket.id], 3,
+                gameState, player, 3,
                 { type: 'ADVANCE_END_TURN_MONSTER_EFFECT' }, 'Goretelodont'
             );
-            if (!queued) drawCardsWithPassives(gameState, io, 3, gameState.players[socket.id]);
-            io.emit('message', `${getPlayerName(gameState, socket.id)} drew 3 cards with Goretelodont.`);
+            if (!queued) drawCardsWithPassives(gameState, io, 3, player);
+            const message = queued
+                ? `${getPlayerName(gameState, socket.id)} activated Goretelodont to draw 3 cards.`
+                : `${getPlayerName(gameState, socket.id)} drew 3 cards with Goretelodont.`;
+            io.emit('message', message);
+            emitPublicCardEffect(
+                (player.slainMonsters || []).find(monster => monster.effect_id === 'MONSTER_GORETELODONT'),
+                player.id,
+                message,
+                'EMPTY HAND · DRAW 3',
+                5200
+            );
             if (!queued && gameState.state === 'PLAYING' && !gameState.pendingAction && !gameState.pendingCard) {
                 advanceEndTurnMonsterEffect();
             }
@@ -4655,9 +4711,20 @@ socket.on('resolve_immediate_play', (data) => {
             if (nextAction?.type === 'COMPLETE_DRAGON_WASP_REPLACEMENT') {
                 const restored = restoreDragonWaspHero(nextAction.trigger);
                 resetToPlayingState();
-                io.emit('message', restored
+                const message = restored
                     ? `${getPlayerName(gameState, socket.id)} discarded 2 cards with Dragon Wasp, so ${nextAction.trigger.hero.name} remains in their Party.`
-                    : `Dragon Wasp could not restore the Hero.`);
+                    : `Dragon Wasp could not restore the Hero.`;
+                io.emit('message', message);
+                if (restored) {
+                    const player = gameState.players[socket.id];
+                    emitPublicCardEffect(
+                        (player?.slainMonsters || []).find(monster => monster.effect_id === 'MONSTER_DRAGON_WASP'),
+                        socket.id,
+                        message,
+                        'DISCARD 2 · HERO SAVED',
+                        5200
+                    );
+                }
                 resumeExpansionChoices();
                 broadcastState();
                 return;

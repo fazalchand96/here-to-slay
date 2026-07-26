@@ -1,7 +1,33 @@
 'use strict';
 
 const { test, expect } = require('./helpers/fixtures');
-const { startGame } = require('./helpers/gameSetup');
+const { createRoom, newTrackedContext, startGame } = require('./helpers/gameSetup');
+
+test('a valid token takes over its lobby seat even before the old socket times out', async ({ browser }) => {
+    const firstContext = await newTrackedContext(browser);
+    const firstPage = await firstContext.newPage();
+    await firstPage.goto('/', { waitUntil: 'domcontentloaded' });
+    const roomCode = await createRoom(firstPage);
+    const token = await firstPage.evaluate(code => (
+        localStorage.getItem(`hts-player-session-token:${code}`)
+    ), roomCode);
+
+    const replacementContext = await newTrackedContext(browser);
+    await replacementContext.addInitScript(({ code, savedToken }) => {
+        localStorage.setItem('hts-last-room-code', code);
+        localStorage.setItem(`hts-player-session-token:${code}`, savedToken);
+        localStorage.setItem(`hts-room-role:${code}`, 'player');
+    }, { code: roomCode, savedToken: token });
+    const replacementPage = await replacementContext.newPage();
+    await replacementPage.goto('/', { waitUntil: 'domcontentloaded' });
+
+    await expect.poll(() => replacementPage.evaluate(() => window.activeRoomCode || '')).toBe(roomCode);
+    await expect.poll(() => replacementPage.evaluate(() => window.latestGameState?.playerOrder?.length || 0)).toBe(1);
+    await expect.poll(() => replacementPage.evaluate(() => (
+        window.latestGameState?.players?.[window.myId]?.connected
+    ))).toBe(true);
+    await expect.poll(() => firstPage.evaluate(() => window._socket.connected)).toBe(false);
+});
 
 test('a new page in the same browser context restores its mid-match seat', async ({ browser }) => {
     const { host, p2, ctx2 } = await startGame(browser);

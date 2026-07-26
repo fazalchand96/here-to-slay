@@ -50,6 +50,7 @@
                 </button>
                 <div id="lobby-players" class="tavern-board"></div>
                 <input type="text" id="player-name-input" placeholder="Enter your hero's name..." class="tavern-input">
+                <button id="lobby-leave-room-btn" class="action-btn leave-room-btn" type="button" onclick="returnToRoomMenu()">BACK TO MAIN MENU</button>
             </div>
             <div class="lobby-col lobby-col-right">
                 <div id="leader-selection-container" class="tavern-leader-grid"></div>
@@ -404,6 +405,7 @@
                         </div>
 
                         <button id="host-reset-game-btn" class="action-btn host-reset-game-btn hidden" type="button" onclick="requestHostGameReset()">RESET GAME TO LOBBY</button>
+                        <button id="game-leave-room-btn" class="action-btn leave-room-btn game-leave-room-btn" type="button" onclick="returnToRoomMenu()">LEAVE TO MAIN MENU</button>
 
                     </div>
 

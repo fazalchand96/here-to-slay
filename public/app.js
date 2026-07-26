@@ -1903,6 +1903,63 @@ function enterJoinedRoom(roomCode, { spectator = false } = {}) {
     socket.emit('request_lobby_data');
 }
 
+function showRoomMenuAfterLeaving(roomCode) {
+    const normalizedCode = normalizeRoomCodeInput(roomCode || activeRoomCode);
+    try {
+        localStorage.removeItem(LAST_ROOM_CODE_KEY);
+        if (normalizedCode) {
+            localStorage.removeItem(`${ROOM_ROLE_PREFIX}${normalizedCode}`);
+            localStorage.removeItem(`${SESSION_TOKEN_PREFIX}${normalizedCode}`);
+        }
+    } catch (e) {}
+
+    activeRoomCode = '';
+    isSpectator = false;
+    myId = null;
+    previousGameState = null;
+    latestGameState = null;
+    window.activeRoomCode = '';
+    window.isSpectator = false;
+    window.myId = null;
+    window.latestGameState = null;
+    document.body?.classList.remove('spectator-mode', 'chat-open');
+    document.querySelectorAll('.overlay').forEach(overlay => {
+        overlay.classList.toggle('hidden', overlay.id !== 'room-modal');
+    });
+    document.getElementById('room-modal')?.classList.remove('hidden');
+    lobbyScreen?.classList.add('hidden');
+    appContainer?.classList.add('hidden');
+    document.getElementById('gameover-screen')?.classList.add('hidden');
+    document.getElementById('monster-trigger-modal')?.remove();
+    const roomInput = document.getElementById('room-code-input');
+    if (roomInput) roomInput.value = '';
+    setRoomControlsBusy(false);
+    setRoomError('');
+}
+
+window.returnToRoomMenu = function() {
+    if (!activeRoomCode) {
+        showRoomMenuAfterLeaving('');
+        return;
+    }
+    const roomCode = activeRoomCode;
+    const matchInProgress = latestGameState
+        && latestGameState.state !== 'LOBBY'
+        && latestGameState.state !== 'GAMEOVER';
+    const warning = matchInProgress && !isSpectator
+        ? 'Leave this match and return to the main menu? The current match may return to the lobby for the other players.'
+        : 'Leave this lobby and return to the main menu?';
+    if (!window.confirm(warning)) return;
+
+    socket.timeout(4000).emit('leave_room', (error, response) => {
+        if (error || response?.ok !== true) {
+            window.alert('The lobby could not be left yet. Check your connection and try again.');
+            return;
+        }
+        showRoomMenuAfterLeaving(roomCode);
+    });
+};
+
 function submitJoinRoom(roomCode, { automatic = false } = {}) {
     const code = normalizeRoomCodeInput(roomCode);
     if (code.length !== 4) {
@@ -2172,7 +2229,12 @@ socket.on('gameStateUpdate', (data) => {
             let statusHtml = '';
             let avatarHtml = '<div class="roster-avatar empty">?</div>';
             
-            if (p.hasSelectedLeader && p.leader) {
+            if (p.connected === false) {
+                statusHtml = `<span class="status-away">↻ Reconnecting...</span>`;
+                if (p.leader) {
+                    avatarHtml = `<div class="roster-avatar" style="background-image: url('${cardArt(p.leader)}')"></div>`;
+                }
+            } else if (p.hasSelectedLeader && p.leader) {
                 statusHtml = `<span class="status-ready">✓ Ready</span>`;
                 avatarHtml = `<div class="roster-avatar" style="background-image: url('${cardArt(p.leader)}')"></div>`;
             } else {
@@ -2312,7 +2374,11 @@ socket.on('gameStateUpdate', (data) => {
 
         const isHost = myId === data.playerOrder[0];
 
-        const allReady = data.playerOrder.every(id => data.players[id].hasSelectedLeader);
+        const awayPlayers = data.playerOrder.filter(id => data.players[id]?.connected === false);
+        const allReady = data.playerOrder.every(id => {
+            const player = data.players[id];
+            return player?.connected !== false && player?.hasSelectedLeader;
+        });
 
         
 
@@ -2331,6 +2397,9 @@ socket.on('gameStateUpdate', (data) => {
             if (isHost && data.playerOrder.length < 2) {
 
                 lobbyWaitingMsg.innerText = "Waiting for more players... (Need at least 2)";
+
+            } else if (isHost && awayPlayers.length > 0) {
+                lobbyWaitingMsg.innerText = "Waiting for a player to reconnect...";
 
             } else if (isHost && !allReady) {
 
@@ -6641,6 +6710,15 @@ window.inspectCard = function(cardId, scopedContext = null) {
             : `Slay: ${card.slayRoll}+ | Fail: ${card.penaltyRoll}-\n\n`;
 
         descriptionText += `Requirement: ${card.requirement || 'None'}\n\n`;
+
+        const directSlayRewards = {
+            DRAW_1: 'Draw 1 card',
+            DRAW_2: 'Draw 2 cards'
+        };
+        const directSlayReward = directSlayRewards[card.rewardAction];
+        if (directSlayReward) {
+            descriptionText += `Slay reward: ${directSlayReward}\n\n`;
+        }
 
     } else if (card.requirement && card.requirement !== 'None') {
 

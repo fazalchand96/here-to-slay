@@ -21,6 +21,21 @@ test('action point countdown is visible and warns during the final seconds', () 
     );
 });
 
+test('room recovery offers a main-menu exit and an idempotent same-room join', () => {
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+    const serverSource = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+
+    assert.match(htmlSource, /id="lobby-leave-room-btn"[\s\S]*?returnToRoomMenu\(\)/);
+    assert.match(htmlSource, /id="game-leave-room-btn"[\s\S]*?returnToRoomMenu\(\)/);
+    assert.match(appSource, /window\.returnToRoomMenu = function\(\)/);
+    assert.match(appSource, /socket\.timeout\(4000\)\.emit\('leave_room'/);
+    assert.match(appSource, /localStorage\.removeItem\(LAST_ROOM_CODE_KEY\)/);
+    assert.match(serverSource, /socket\.on\('leave_room'/);
+    assert.match(serverSource, /socket\.leave\(session\.roomCode\)/);
+    assert.match(serverSource, /if \(socket\.data\.roomCode === session\.roomCode\)/);
+});
+
 test('Muscipula Rex shows every player a longer non-blocking free-draw banner', () => {
     const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
     const styleSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
@@ -33,6 +48,40 @@ test('Muscipula Rex shows every player a longer non-blocking free-draw banner', 
     assert.match(appSource, /setTimeout\(\(\) => \{[\s\S]*?overlay\.remove\(\)[\s\S]*?showNextPublicCardEffect\(\)/);
     assert.match(styleSource, /\.monster-trigger-modal \{[\s\S]*?pointer-events: none !important;/);
     assert.match(styleSource, /monster-trigger-countdown var\(--monster-trigger-duration, 2400ms\)/);
+});
+
+test('Feral Dragon shows every player the longer public draw-effect card', () => {
+    const serverSource = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+    const triggerBranch = serverSource.match(
+        /if \(trigger\.type === 'FERAL_DRAGON_DRAW'\) \{[\s\S]*?if \(gameState\.pendingLumberingDraws/
+    );
+
+    assert.ok(triggerBranch, 'Expected the Feral Dragon trigger branch to exist');
+    assert.match(triggerBranch[0], /emitPublicCardEffect\(/);
+    assert.match(triggerBranch[0], /MONSTER_FERAL_DRAGON/);
+    assert.match(triggerBranch[0], /'SACRIFICE · DRAW 1'/);
+    assert.match(triggerBranch[0], /5200/);
+    assert.doesNotMatch(triggerBranch[0], /io\.emit\('monster_effect_triggered'/);
+});
+
+test('Monster Expansion effects use the longer public card reveal after activation', () => {
+    const serverSource = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+
+    for (const label of [
+        'EMPTY HAND · PULL 2',
+        'DISCARD 2 · HERO SAVED',
+        'EMPTY HAND · DRAW 3',
+        'REPLACEMENT · DRAW 2, DISCARD 1'
+    ]) {
+        const labelIndex = serverSource.indexOf(`'${label}'`);
+        assert.notEqual(labelIndex, -1, `Expected public reveal label: ${label}`);
+        assert.match(serverSource.slice(labelIndex, labelIndex + 120), /5200/);
+    }
+    assert.match(serverSource, /entry\.source === 'Possessed Plush' \? 5200 : 3600/);
+    assert.match(serverSource, /MONSTER_CLAWED_NIGHTMARE/);
+    assert.match(serverSource, /MONSTER_DRAGON_WASP/);
+    assert.match(serverSource, /MONSTER_GORETELODONT/);
+    assert.match(serverSource, /MONSTER_LUMBERING_DEMON/);
 });
 
 test('Monster and Party Leader effects show every player and spectator the activated public card', () => {
@@ -92,6 +141,15 @@ test('free Monster target actions use the inspector action container', () => {
     assert.ok(freeAttackBranch, 'Expected the free Monster attack inspector branch to exist');
     assert.match(freeAttackBranch[0], /modalActions\.appendChild\(btn\)/);
     assert.doesNotMatch(freeAttackBranch[0], /(^|[^A-Za-z])actions\.appendChild\(btn\)/);
+});
+
+test('Monster inspector shows direct draw rewards without duplicating passive rewardAction values', () => {
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+
+    assert.match(appSource, /const directSlayRewards = \{[\s\S]*?DRAW_1: 'Draw 1 card'[\s\S]*?DRAW_2: 'Draw 2 cards'/);
+    assert.match(appSource, /descriptionText \+= `Slay reward: \$\{directSlayReward\}/);
+    assert.doesNotMatch(appSource, /DRAW_ON_ANY_SACRIFICE: 'Slay reward/);
+    assert.doesNotMatch(appSource, /FREE_DRAW_ONCE_PER_TURN: 'Slay reward/);
 });
 
 test('Fearless Flame is offered beside PASS during the visible modifier phase', () => {

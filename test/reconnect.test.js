@@ -75,6 +75,63 @@ test('reconnect within grace restores the same seat and preserves full match sta
     assert.equal(originalPlayer.away, false);
 });
 
+test('session token can take over a seat before the old mobile socket is marked disconnected', () => {
+    const oldId = 'still-connected-socket';
+    const newId = 'replacement-socket';
+    const token = 'mobile-takeover-session-token';
+    const originalPlayer = player(oldId);
+    const state = {
+        state: 'PLAYING',
+        players: { [oldId]: originalPlayer },
+        playerOrder: [oldId],
+        activePlayerSocketId: oldId,
+    };
+    const manager = createReconnectManager({
+        gameState: state,
+        onPlayerExpired: () => assert.fail('takeover must not expire the seat'),
+    });
+
+    manager.register(oldId, token);
+    const restored = manager.restore(newId, token);
+
+    assert.equal(restored.oldSocketId, oldId);
+    assert.equal(restored.player, originalPlayer);
+    assert.equal(state.players[oldId], undefined);
+    assert.equal(state.players[newId], originalPlayer);
+    assert.deepEqual(state.playerOrder, [newId]);
+    assert.equal(state.activePlayerSocketId, newId);
+    assert.equal(originalPlayer.connected, true);
+});
+
+test('a lobby disconnect keeps the seat during the reconnect grace period', () => {
+    const socketId = 'lobby-mobile';
+    const token = 'lobby-reconnect-session-token';
+    const originalPlayer = player(socketId);
+    const state = {
+        state: 'LOBBY',
+        players: { [socketId]: originalPlayer },
+        playerOrder: [socketId],
+    };
+    let scheduled;
+    const manager = createReconnectManager({
+        gameState: state,
+        onPlayerExpired: () => {},
+        setTimeoutFn: callback => {
+            scheduled = callback;
+            return { callback };
+        },
+    });
+
+    manager.register(socketId, token);
+    manager.disconnect(socketId);
+
+    assert.equal(state.players[socketId], originalPlayer);
+    assert.deepEqual(state.playerOrder, [socketId]);
+    assert.equal(originalPlayer.connected, false);
+    assert.equal(originalPlayer.away, true);
+    assert.equal(typeof scheduled, 'function');
+});
+
 test('grace expiry removes the player and falls back to the existing wipe-to-lobby reset', () => {
     const droppedId = 'dropped-socket';
     const remainingId = 'remaining-socket';

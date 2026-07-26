@@ -241,6 +241,29 @@ body {
     font-size: 1.15rem;
 }
 
+.leave-room-btn {
+    min-height: 32px !important;
+    padding: 6px 12px !important;
+    color: #f3dfbd !important;
+    border-color: rgba(215, 154, 86, .72) !important;
+    background: linear-gradient(180deg, rgba(77, 49, 36, .94), rgba(38, 25, 23, .96)) !important;
+    font-size: clamp(.62rem, 1.6vw, .76rem) !important;
+}
+
+#lobby-leave-room-btn {
+    position: absolute !important;
+    top: clamp(8px, 1.6dvh, 15px) !important;
+    right: clamp(8px, 1.5vw, 16px) !important;
+    z-index: 2 !important;
+    width: auto !important;
+    margin: 0 !important;
+}
+
+.status-away {
+    color: #fbbf24;
+    font-weight: 700;
+}
+
 .room-divider {
     display: flex;
     align-items: center;
@@ -3082,6 +3105,12 @@ body.landscape #event-console #challenge-modal .challenge-buttons-container .act
     color: #fff1d2 !important;
     border-color: #d79a56 !important;
     filter: saturate(0.9) hue-rotate(325deg);
+}
+
+.game-leave-room-btn {
+    flex: 0 0 auto;
+    width: calc(100% - 16px);
+    margin: 0 8px 8px !important;
 }
 
 /* Each settled result has its own baked face image. This keeps the eyes crisp

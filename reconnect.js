@@ -62,13 +62,17 @@ function createReconnectManager({
     function restore(newSocketId, token) {
         if (typeof token !== 'string') return null;
         const record = recordsByToken.get(token.trim());
-        if (!record || !record.timer) return null;
+        if (!record || record.socketId === newSocketId) return null;
 
         const oldSocketId = record.socketId;
         const oldPlayer = gameState.players[oldSocketId];
-        if (!oldPlayer || oldPlayer.connected !== false) return null;
+        if (!oldPlayer) return null;
 
-        clearTimeoutFn(record.timer);
+        // A mobile browser can establish its new socket just before the server
+        // notices that the previous socket disappeared. The private session
+        // token is authoritative, so allow that new socket to take over the
+        // existing seat even when the old connection still looks active.
+        if (record.timer) clearTimeoutFn(record.timer);
         const player = migratePlayerSocketId(gameState, oldSocketId, newSocketId);
         if (!player) return null;
 
@@ -103,9 +107,7 @@ function createReconnectManager({
         const token = sessionsBySocketId.get(socketId);
         const record = token && recordsByToken.get(token);
 
-        // Lobby seats have no match state to preserve, so retain the existing
-        // immediate-removal behaviour there.
-        if (gameState.state === 'LOBBY' || !record) {
+        if (!record) {
             if (token) recordsByToken.delete(token);
             sessionsBySocketId.delete(socketId);
             onPlayerExpired(socketId);
@@ -118,6 +120,7 @@ function createReconnectManager({
         player.disconnectedAt = Date.now();
         record.expiresAt = player.disconnectedAt + graceMs;
         record.timer = setTimeoutFn(() => expire(token), graceMs);
+        record.timer?.unref?.();
         onPlayerAway(player, record.expiresAt);
         return true;
     }

@@ -18,6 +18,21 @@ async function chooseLeader(page, name) {
     await expect(page.locator('#player-name-input')).toBeHidden({ timeout: 10_000 });
 }
 
+test('a player can leave to the main menu and create a different lobby', async ({ browser }) => {
+    const page = await makePage(browser);
+    const firstRoom = await createRoom(page);
+
+    page.once('dialog', dialog => dialog.accept());
+    await page.locator('#lobby-leave-room-btn').click();
+
+    await expect(page.locator('#room-modal')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#lobby-modal')).toHaveClass(/hidden/);
+    await expect.poll(() => page.evaluate(() => window.activeRoomCode || '')).toBe('');
+
+    const secondRoom = await createRoom(page);
+    expect(secondRoom).not.toBe(firstRoom);
+});
+
 test('two lobby codes keep players, broadcasts, and match state isolated', async ({ browser }) => {
     const [aHost, aGuest, bHost, bGuest] = await Promise.all([
         makePage(browser), makePage(browser), makePage(browser), makePage(browser),
