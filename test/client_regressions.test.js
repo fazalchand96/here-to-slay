@@ -30,9 +30,29 @@ test('Muscipula Rex shows every player a longer non-blocking free-draw banner', 
     assert.match(serverSource, /durationMs: 5200/);
     assert.match(appSource, /className = 'overlay rex-major-reveal-modal monster-trigger-modal'/);
     assert.match(appSource, /const keepOpen = \[[\s\S]*?'monster-trigger-modal'[\s\S]*?\];/);
-    assert.match(appSource, /setTimeout\(\(\) => overlay\.remove\(\), visibleMs\)/);
+    assert.match(appSource, /setTimeout\(\(\) => \{[\s\S]*?overlay\.remove\(\)[\s\S]*?showNextPublicCardEffect\(\)/);
     assert.match(styleSource, /\.monster-trigger-modal \{[\s\S]*?pointer-events: none !important;/);
     assert.match(styleSource, /monster-trigger-countdown var\(--monster-trigger-duration, 2400ms\)/);
+});
+
+test('Monster and Party Leader effects show every player and spectator the activated public card', () => {
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const serverSource = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+    const skillSource = fs.readFileSync(path.join(__dirname, '..', 'skill_engine.js'), 'utf8');
+
+    assert.match(serverSource, /function emitPublicCardEffect\(/);
+    assert.match(serverSource, /function emitRollCardEffects\(/);
+    assert.match(serverSource, /'party_leader_effect_triggered'/);
+    assert.match(serverSource, /'monster_effect_triggered'/);
+    assert.match(skillSource, /function emitMonsterEffect\(/);
+    assert.match(appSource, /function showPublicCardEffect\(/);
+    assert.match(appSource, /socket\.on\('monster_effect_triggered'/);
+    assert.match(appSource, /socket\.on\('party_leader_effect_triggered'/);
+    assert.doesNotMatch(appSource, /socket\.on\('hero_skill_activated'/);
+    assert.doesNotMatch(serverSource, /io\.emit\('hero_skill_activated'/);
+    assert.match(appSource, /publicCardEffectQueue/);
+    assert.match(appSource, /renderCard\(visibleCard, false, false, isMonster\)/);
+    assert.match(appSource, /overlay\.id = 'monster-trigger-modal'/);
 });
 
 test('Lightning Labrys confirmation uses a tappable banner and waits for server acknowledgement', () => {

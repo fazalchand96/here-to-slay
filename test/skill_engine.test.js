@@ -1270,20 +1270,24 @@ test('SKILL_SMOOTH_MIMIMEOW counts a Hero wearing a Thief Mask', () => {
 });
 
 test('Orthus offers a Magic card drawn by a Hero effect for immediate play', () => {
+    const orthus = card('Orthus', 'Monster Card', { id: 'card_011', effect_id: 'MONSTER_ORTHUS' });
     const alice = player('alice', {
         party: [hero('Drawer', { id: 'drawer' })],
-        slainMonsters: [{ effect_id: 'MONSTER_ORTHUS' }]
+        slainMonsters: [orthus]
     });
     const magic = card('Spell', 'Magic Card');
     const gs = makeState([alice], { mainDeck: [magic] });
-    executeSkill(gs, makeIo(), 'DRAW_CARD', 'alice', 'drawer', null);
+    const io = makeIo();
+    executeSkill(gs, io, 'DRAW_CARD', 'alice', 'drawer', null);
     assert.equal(gs.state, 'WAITING_FOR_IMMEDIATE_PLAY');
     assert.equal(gs.pendingCard, magic);
     assert.equal(alice.hand.length, 0);
+    assert.equal(io.find('monster_effect_triggered').payload.card, orthus);
 });
 
 test('Rex Major privately offers a reveal before granting the extra draw', () => {
-    const alice = player('alice', { slainMonsters: [{ effect_id: 'MONSTER_REX_MAJOR' }] });
+    const rexMajor = card('Rex Major', 'Monster Card', { id: 'card_012', effect_id: 'MONSTER_REX_MAJOR' });
+    const alice = player('alice', { slainMonsters: [rexMajor] });
     const bonus = card('Bonus', 'Hero Card');
     const fillerOne = card('Filler One', 'Item Card');
     const fillerTwo = card('Filler Two', 'Hero Card');
@@ -1302,6 +1306,7 @@ test('Rex Major privately offers a reveal before granting the extra draw', () =>
     assert.equal(result.revealed, true);
     assert.ok(alice.hand.includes(bonus));
     assert.equal(io.emits.filter(event => event.event === 'rex_major_reveal').length, 1);
+    assert.equal(io.find('monster_effect_triggered').payload.card, rexMajor);
     clearRexMajorChoices(gs);
 });
 
@@ -1349,12 +1354,17 @@ test('Rex Major queues multiple Modifier reveal choices one at a time', () => {
 });
 
 test('Crowned Serpent owner draws when another player plays a Modifier', () => {
-    const owner = player('owner', { slainMonsters: [{ effect_id: 'MONSTER_CROWNED_SERPENT' }] });
+    const crownedSerpent = card('Crowned Serpent', 'Monster Card', {
+        id: 'card_006', effect_id: 'MONSTER_CROWNED_SERPENT'
+    });
+    const owner = player('owner', { slainMonsters: [crownedSerpent] });
     const other = player('other');
     const gs = makeState([owner, other], { mainDeck: [card('reward', 'Hero Card')] });
-    triggerCrownedSerpent(gs, makeIo());
+    const io = makeIo();
+    triggerCrownedSerpent(gs, io);
     assert.equal(owner.hand.length, 1);
     assert.equal(other.hand.length, 0);
+    assert.equal(io.find('monster_effect_triggered').payload.card, crownedSerpent);
 });
 
 test('Sly Pickings immediate Item play moves the specific item into equip selection', () => {

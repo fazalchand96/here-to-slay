@@ -6,6 +6,21 @@ const rexRevealHolds = new Map();
 const rexRevealTimers = new Map();
 let rexChoiceSequence = 0;
 
+function emitMonsterEffect(gameState, io, player, effectId, message, effectLabel, durationMs = 3600) {
+    if (!io?.emit || !player) return;
+    const monster = (player.slainMonsters || []).find(card => card.effect_id === effectId);
+    if (!monster) return;
+    io.emit('monster_effect_triggered', {
+        card: monster,
+        monsterId: monster.id,
+        monsterName: monster.name,
+        ownerId: player.id,
+        message,
+        effectLabel,
+        durationMs
+    });
+}
+
 function activateNextRexMajorChoice(gameState, io, playerId) {
     if (!gameState.pendingRexChoices) gameState.pendingRexChoices = [];
     if (gameState.pendingRexChoices.some(choice => choice.playerId === playerId && choice.status === 'ACTIVE')) return;
@@ -83,6 +98,14 @@ function resolveRexMajorChoice(gameState, io, playerId, choiceId, reveal) {
         card
     });
     io.emit('message', `${getPlayerName(gameState, playerId)} revealed ${card.name} due to Rex Major and draws another card!`);
+    emitMonsterEffect(
+        gameState,
+        io,
+        player,
+        'MONSTER_REX_MAJOR',
+        `${getPlayerName(gameState, playerId)} revealed a Modifier and draws another card.`,
+        'MONSTER · REVEAL & DRAW'
+    );
     const drawResult = drawCardsForEffect(gameState, io, 1, player, null, 'Rex Major');
 
     const holdTimer = setTimeout(() => {
@@ -222,7 +245,8 @@ function queueMonsterTrigger(gameState, trigger) {
 function queueCommittedHeroRemovalTriggers(gameState, owner, card, {
     eventType,
     isHero = false,
-    initiatorId = null
+    initiatorId = null,
+    io = null
 } = {}) {
     if (!owner || !card) return;
     const slain = owner.slainMonsters || [];
@@ -233,7 +257,15 @@ function queueCommittedHeroRemovalTriggers(gameState, owner, card, {
         }
         if (eventType === 'DESTROY'
             && slain.some(monster => monster.effect_id === 'MONSTER_DRACOS')) {
-            drawCardsForEffect(gameState, null, 1, owner, null, 'Dracos');
+            drawCardsForEffect(gameState, io, 1, owner, null, 'Dracos');
+            emitMonsterEffect(
+                gameState,
+                io,
+                owner,
+                'MONSTER_DRACOS',
+                `${getPlayerName(gameState, owner.id)} draws a card after one of their Heroes was destroyed.`,
+                'MONSTER · BONUS DRAW'
+            );
         }
     }
     if (eventType === 'SACRIFICE') {
@@ -260,7 +292,8 @@ function queueCommittedHeroRemovalTriggers(gameState, owner, card, {
 function queueHeroRemovalEvent(gameState, owner, hero, {
     eventType,
     removedItems = [],
-    initiatorId = null
+    initiatorId = null,
+    io = null
 } = {}) {
     if (!owner || !hero) return false;
     const hasDragonWasp = (owner.slainMonsters || [])
@@ -273,7 +306,7 @@ function queueHeroRemovalEvent(gameState, owner, hero, {
         return true;
     }
     queueCommittedHeroRemovalTriggers(gameState, owner, hero, {
-        eventType, isHero: true, initiatorId
+        eventType, isHero: true, initiatorId, io
     });
     return false;
 }
@@ -354,6 +387,14 @@ function applyDrawnCardPassives(gameState, io, player, card) {
             originalActor: player.id,
             source: 'MONSTER_ORTHUS'
         };
+        emitMonsterEffect(
+            gameState,
+            io,
+            player,
+            'MONSTER_ORTHUS',
+            `${getPlayerName(gameState, player.id)} may immediately play the drawn Magic card.`,
+            'MONSTER · FREE MAGIC'
+        );
     }
     if (hasRex && card.type === 'Modifier Card') queueRexMajorChoice(gameState, io, player, card);
 }
@@ -389,6 +430,14 @@ function triggerCrownedSerpent(gameState, io) {
     Object.values(gameState.players || {}).forEach(player => {
         if ((player.slainMonsters || []).some(m => m.effect_id === 'MONSTER_CROWNED_SERPENT') && gameState.mainDeck.length > 0) {
             drawCardsForEffect(gameState, io, 1, player, null, 'Crowned Serpent');
+            emitMonsterEffect(
+                gameState,
+                io,
+                player,
+                'MONSTER_CROWNED_SERPENT',
+                `${getPlayerName(gameState, player.id)} draws a card after a Modifier was played.`,
+                'MONSTER · BONUS DRAW'
+            );
         }
     });
 }
@@ -486,7 +535,7 @@ function getTargetingSkillPlan(gameState, actorId, skillId) {
 
 // keepItem: Shurikitty's special — when an equipped Item would be discarded by the
 // destroy, the initiator takes it into hand instead.
-function resolveDestroyAction(gameState, initiatorId, targetPlayerId, targetHeroId, keepItem = false) {
+function resolveDestroyAction(gameState, initiatorId, targetPlayerId, targetHeroId, keepItem = false, io = null) {
     const initiator = gameState.players[initiatorId];
     const targetPlayer = gameState.players[targetPlayerId];
     if (!initiator || !targetPlayer) return '';
@@ -541,7 +590,8 @@ function resolveDestroyAction(gameState, initiatorId, targetPlayerId, targetHero
         gameState.discardPile.push(targetHero);
         recordDestroyEvent(gameState, targetPlayer, targetHero, {
             removedItems,
-            initiatorId: initiator.silentShieldActive ? initiatorId : null
+            initiatorId: initiator.silentShieldActive ? initiatorId : null,
+            io
         });
         actionMessage = `${getPlayerName(gameState, initiatorId)} DESTROYED ${getPlayerName(gameState, targetPlayerId)}'s ${targetHero.name}!${itemNote}`;
     }
@@ -1383,7 +1433,7 @@ case 'DRAW_CARD':
             // "DESTROY a Hero. If it had an Item equipped, add that Item to YOUR hand
             // instead of discarding it." keepItem=true routes the Item to the roller.
             if (targetData && targetData.targetPlayerId && targetData.targetHeroId) {
-                actionMessage = resolveDestroyAction(gameState, rollerId, targetData.targetPlayerId, targetData.targetHeroId, true);
+                actionMessage = resolveDestroyAction(gameState, rollerId, targetData.targetPlayerId, targetData.targetHeroId, true, io);
             }
             break;
         case 'SKILL_WHISKERS':
@@ -1437,7 +1487,7 @@ case 'DRAW_CARD':
             // "DESTROY a Hero AND DRAW a card." The draw is unconditional (not gated on
             // the destroyed Hero having had an Item).
             if (targetData && targetData.targetPlayerId && targetData.targetHeroId) {
-                actionMessage = resolveDestroyAction(gameState, rollerId, targetData.targetPlayerId, targetData.targetHeroId);
+                actionMessage = resolveDestroyAction(gameState, rollerId, targetData.targetPlayerId, targetData.targetHeroId, false, io);
             } else {
                 actionMessage = `${getPlayerName(gameState, player.id)} used Serious Grey, but there was no Hero to DESTROY.`;
             }
@@ -1509,7 +1559,7 @@ case 'DESTROY_HERO':
                 } else if (tp && !tp.cannotBeDestroyed) {
                     const tHeroIndex = tp.party.findIndex(h => h.id === targetData.targetHeroId);
                     if (tHeroIndex !== -1) {
-                        actionMessage = resolveDestroyAction(gameState, rollerId, targetData.targetPlayerId, targetData.targetHeroId);
+                        actionMessage = resolveDestroyAction(gameState, rollerId, targetData.targetPlayerId, targetData.targetHeroId, false, io);
                     }
                 } else if (tp && tp.cannotBeDestroyed) {
                      actionMessage = `${getPlayerName(gameState, player.id)} tried to destroy ${getPlayerName(gameState, tp.id)}'s Hero, but they are protected by Mighty Blade!`;
@@ -1560,7 +1610,7 @@ case 'DESTROY_HERO':
                 const tp = gameState.players[targetData.targetPlayerId];
                 const targetHero = (tp?.party || []).find(card => card.id === targetData.targetHeroId);
                 const wasBerserker = effectiveHeroClass(targetHero) === 'Berserker';
-                actionMessage = resolveDestroyAction(gameState, rollerId, targetData.targetPlayerId, targetData.targetHeroId);
+                actionMessage = resolveDestroyAction(gameState, rollerId, targetData.targetPlayerId, targetData.targetHeroId, false, io);
                 if (wasBerserker && actionMessage.includes('DESTROYED')) {
                     player.ap += 1;
                     actionMessage += ` ${getPlayerName(gameState, player.id)} gained 1 extra action point.`;
@@ -1837,7 +1887,7 @@ case 'DESTROY_HERO':
                         if (tp && !tp.cannotBeDestroyed) {
                             const tHeroIndex = tp.party.findIndex(h => h.id === targetId);
                             if (tHeroIndex !== -1) {
-                                let destroyMsg = resolveDestroyAction(gameState, rollerId, pid, targetId);
+                                let destroyMsg = resolveDestroyAction(gameState, rollerId, pid, targetId, false, io);
                                 actionMessage += ` and ${destroyMsg}`;
                                 destroyedCount++;
                             }
@@ -1883,6 +1933,27 @@ case 'DESTROY_HERO':
             break;
     }
 
+    if (/Corrupted Sabretooth turned a Destroy into a Steal/.test(actionMessage)) {
+        emitMonsterEffect(
+            gameState,
+            io,
+            player,
+            'MONSTER_CORRUPTED_SABRETOOTH',
+            `${getPlayerName(gameState, player.id)} converted a Destroy into a Steal.`,
+            'MONSTER · CONVERT TO STEAL'
+        );
+    }
+    if (/protected by Terratuga/.test(actionMessage)) {
+        const protectedPlayer = gameState.players[targetData?.targetPlayerId];
+        emitMonsterEffect(
+            gameState,
+            io,
+            protectedPlayer,
+            'MONSTER_TERRATUGA',
+            `${getPlayerName(gameState, protectedPlayer?.id)} blocked a Hero from being destroyed.`,
+            'MONSTER · DESTROY PROTECTION'
+        );
+    }
     io.emit('message', actionMessage);
 }
 function executeMagic(gameState, io, effectId, playerId, targetData) {

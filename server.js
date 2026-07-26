@@ -116,6 +116,46 @@ const io = {
     },
 };
 
+function emitPublicCardEffect(card, ownerId, message, effectLabel, durationMs = 3600) {
+    if (!card || !['Monster Card', 'Party Leader'].includes(card.type)) return;
+    const payload = {
+        card,
+        cardId: card.id,
+        cardName: card.name,
+        ownerId,
+        playerName: ownerId ? getPlayerName(gameState, ownerId) : '',
+        message,
+        effectLabel,
+        durationMs
+    };
+    io.emit(card.type === 'Party Leader'
+        ? 'party_leader_effect_triggered'
+        : 'monster_effect_triggered', {
+        ...payload,
+        monsterId: card.id,
+        monsterName: card.name
+    });
+}
+
+function emitRollCardEffects(player, breakdown, contextLabel) {
+    if (!player || !Array.isArray(breakdown)) return;
+    const publicEffectCards = [player.leader, ...(player.slainMonsters || [])].filter(Boolean);
+    const emittedIds = new Set();
+    breakdown.forEach(entry => {
+        const card = publicEffectCards.find(candidate => candidate.name === entry.source);
+        if (!card || emittedIds.has(card.id) || !entry.value) return;
+        emittedIds.add(card.id);
+        const signedValue = entry.value > 0 ? `+${entry.value}` : `${entry.value}`;
+        emitPublicCardEffect(
+            card,
+            player.id,
+            `${card.name} gave ${getPlayerName(gameState, player.id)} ${signedValue} on ${contextLabel}.`,
+            `${card.type === 'Party Leader' ? 'PARTY LEADER' : 'MONSTER'} · ROLL BONUS`,
+            2800
+        );
+    });
+}
+
 const CHALLENGE_TIMEOUT_MS = 15_000;
 const ACTION_POINT_TIMEOUT_MS = 45_000;
 
@@ -182,6 +222,13 @@ function finishFearlessFlameChoice(useBonus, emitter = io) {
             roll.passiveBonus += 1;
             (roll.breakdown = roll.breakdown || []).push({ source: 'The Fearless Flame', value: 1 });
         }
+        const player = gameState.players[action.playerToChoose];
+        emitPublicCardEffect(
+            player?.leader,
+            action.playerToChoose,
+            `${getPlayerName(gameState, action.playerToChoose)} discarded a card for +1 on the roll.`,
+            'PARTY LEADER · +1 ROLL'
+        );
         emitter.emit('message', `${getPlayerName(gameState, action.playerToChoose)} gained +1 from The Fearless Flame.`);
     }
     // Keep the settled roll visible and update its equation before returning to
@@ -511,6 +558,12 @@ function dealCards(count, playerSocketId, source = 'draw', continuation = null) 
                     type: 'IMMEDIATE_PLAY',
                     originalActor: playerSocketId
                 };
+                emitPublicCardEffect(
+                    player.slainMonsters.find(monster => monster.effect_id === 'MONSTER_MALAMAMMOTH'),
+                    player.id,
+                    `${getPlayerName(gameState, player.id)} may immediately play the drawn Item card.`,
+                    'MONSTER · FREE ITEM'
+                );
                 broadcastState();
                 return;
             } else {
@@ -588,10 +641,22 @@ function slayFaceUpMonster(playerId, monsterId, source = 'attack') {
     if (monster.effect_id === 'MONSTER_MEGA_SLIME') {
         player.ap += 1;
         io.emit('message', `${getPlayerName(gameState, player.id)} gained +1 AP from defeating Mega Slime!`);
+        emitPublicCardEffect(
+            monster,
+            player.id,
+            `${getPlayerName(gameState, player.id)} gained an extra action point.`,
+            'MONSTER · EXTRA AP'
+        );
     }
     if (player.leader?.effect_id === 'LEADER_BERSERKER') {
         dealCards(2, player.id, 'The Raging Manticore');
         io.emit('message', `${getPlayerName(gameState, player.id)} drew 2 cards from The Raging Manticore after slaying ${monster.name}.`);
+        emitPublicCardEffect(
+            player.leader,
+            player.id,
+            `${getPlayerName(gameState, player.id)} draws 2 cards after slaying ${monster.name}.`,
+            'PARTY LEADER · BONUS DRAW'
+        );
     }
     if (monster.rewardAction === 'DRAW_1') dealCards(1, playerId);
     if (monster.rewardAction === 'DRAW_2') dealCards(2, playerId);
@@ -921,7 +986,17 @@ function advanceTurn(currentPlayerId) {
     if (nextPlayer) {
         clearUntilNextTurnProtections(nextPlayer);
         nextPlayer.usedLeaderSkillThisTurn = false;
-        nextPlayer.ap = (nextPlayer.slainMonsters || []).some(monster => monster.effect_id === 'MONSTER_MEGA_SLIME') ? 4 : 3;
+        const megaSlime = (nextPlayer.slainMonsters || [])
+            .find(monster => monster.effect_id === 'MONSTER_MEGA_SLIME');
+        nextPlayer.ap = megaSlime ? 4 : 3;
+        if (megaSlime) {
+            emitPublicCardEffect(
+                megaSlime,
+                nextPlayer.id,
+                `${getPlayerName(gameState, nextPlayer.id)} starts the turn with 4 action points.`,
+                'MONSTER · EXTRA AP'
+            );
+        }
     }
 
     Object.values(gameState.players).forEach(player => {
@@ -965,6 +1040,19 @@ function advanceEndTurnMonsterEffect() {
         type: 'END_TURN_MONSTER_CHOICE', effect,
         playerToChoose: player.id, originalActor: player.id, optional: true
     };
+    const monsterNameByEffect = {
+        CLAWED_NIGHTMARE_PULL: 'Clawed Nightmare',
+        GORETELODONT_DRAW: 'Goretelodont',
+        SCAVENGER_GRIFFIN_STEAL: 'Scavenger Griffin'
+    };
+    const monster = (player.slainMonsters || [])
+        .find(card => card.name === monsterNameByEffect[effect]);
+    emitPublicCardEffect(
+        monster,
+        player.id,
+        `${getPlayerName(gameState, player.id)} may use ${monster?.name || 'an end-turn Monster'} now.`,
+        'MONSTER · END-TURN EFFECT'
+    );
     return true;
 }
 
@@ -1341,6 +1429,12 @@ function resumeExpansionChoices() {
             type: 'LUMBERING_DEMON_DRAW', playerToChoose: player.id,
             originalActor: player.id, source: sequence.source
         };
+        emitPublicCardEffect(
+            (player.slainMonsters || []).find(card => card.effect_id === 'MONSTER_LUMBERING_DEMON'),
+            player.id,
+            `${getPlayerName(gameState, player.id)} may replace a draw by drawing 2 cards and discarding 1.`,
+            'MONSTER · REPLACEMENT DRAW'
+        );
         return;
     }
 
@@ -1352,6 +1446,14 @@ function resumeExpansionChoices() {
         if (!player) continue;
         dealCards(1, player.id, entry.source);
         io.emit('message', `${getPlayerName(gameState, player.id)} drew a card from ${entry.source}.`);
+        const sourceCard = (player.slainMonsters || []).find(card => card.name === entry.source)
+            || (player.leader?.name === entry.source ? player.leader : null);
+        emitPublicCardEffect(
+            sourceCard,
+            player.id,
+            `${getPlayerName(gameState, player.id)} draws a card because ${entry.source} activated.`,
+            `${sourceCard?.type === 'Party Leader' ? 'PARTY LEADER' : 'MONSTER'} · BONUS DRAW`
+        );
         if (gameState.pendingLumberingDraws?.length > 0) {
             resumeExpansionChoices();
             return;
@@ -1373,6 +1475,12 @@ function resumeExpansionChoices() {
                 type: 'DRAGON_WASP_REPLACEMENT', playerToChoose: player.id,
                 originalActor: player.id, trigger
             };
+            emitPublicCardEffect(
+                (player.slainMonsters || []).find(card => card.effect_id === 'MONSTER_DRAGON_WASP'),
+                player.id,
+                `${getPlayerName(gameState, player.id)} may discard 2 cards to save a Hero.`,
+                'MONSTER · SAVE HERO'
+            );
             return;
         }
         if (trigger.type === 'FERAL_DRAGON_DRAW') {
@@ -1395,6 +1503,12 @@ function resumeExpansionChoices() {
                 type: 'CALAMITY_MONGREL_REPLACE', playerToChoose: player.id,
                 originalActor: player.id, cardId: card.id
             };
+            emitPublicCardEffect(
+                (player.slainMonsters || []).find(monster => monster.effect_id === 'MONSTER_CALAMITY_MONGREL'),
+                player.id,
+                `${getPlayerName(gameState, player.id)} may replace the drawn Challenge with 2 new cards.`,
+                'MONSTER · REPLACE CARD'
+            );
             return;
         }
         if (trigger.type === 'DOOMBRINGER_RETRIEVE') {
@@ -1406,6 +1520,12 @@ function resumeExpansionChoices() {
                 allowedTypes: ['Hero Card', 'Item Card', 'Cursed Item Card', 'Magic Card', 'Modifier Card', 'Challenge Card']
             };
             io.emit('message', `${getPlayerName(gameState, player.id)} may retrieve a card from the discard pile with Doombringer.`);
+            emitPublicCardEffect(
+                (player.slainMonsters || []).find(card => card.effect_id === 'MONSTER_DOOMBRINGER'),
+                player.id,
+                `${getPlayerName(gameState, player.id)} may retrieve a card from the discard pile.`,
+                'MONSTER · DISCARD SEARCH'
+            );
             return;
         }
         if (['WANDERING_BEHEMOTH_DRAW', 'REEF_RIPPER_DRAW'].includes(trigger.type)) {
@@ -1414,6 +1534,14 @@ function resumeExpansionChoices() {
                 type: 'MONSTER_OPTIONAL_DRAW', source: trigger.type === 'REEF_RIPPER_DRAW' ? 'Reef Ripper' : 'Wandering Behemoth',
                 playerToChoose: player.id, originalActor: player.id, optional: true
             };
+            const sourceMonster = (player.slainMonsters || [])
+                .find(card => card.name === gameState.pendingAction.source);
+            emitPublicCardEffect(
+                sourceMonster,
+                player.id,
+                `${getPlayerName(gameState, player.id)} may draw a card because ${sourceMonster?.name || 'a Monster'} activated.`,
+                'MONSTER · OPTIONAL DRAW'
+            );
             return;
         }
         if (trigger.type === 'SAFFYRE_PHOENIX_PLAY') {
@@ -1425,6 +1553,12 @@ function resumeExpansionChoices() {
                 source: 'Saffyre Phoenix'
             };
             io.emit('message', `${getPlayerName(gameState, player.id)} may immediately play a Hero for 0 AP with Saffyre Phoenix.`);
+            emitPublicCardEffect(
+                (player.slainMonsters || []).find(card => card.effect_id === 'MONSTER_SAFFYRE_PHOENIX'),
+                player.id,
+                `${getPlayerName(gameState, player.id)} may immediately play a Hero for 0 AP.`,
+                'MONSTER · FREE HERO'
+            );
             return;
         }
     }
@@ -1917,6 +2051,13 @@ function resolvePendingRoll() {
                 if (hasAries) {
                     io.emit('message', `${getPlayerName(gameState, player.id)} draws a card due to Artic Aries!`);
                     dealCards(1, rollerId);
+                    const articAries = player.slainMonsters.find(m => m.effect_id === 'MONSTER_ARTIC_ARIES');
+                    emitPublicCardEffect(
+                        articAries,
+                        player.id,
+                        `${getPlayerName(gameState, player.id)} draws a card after a successful Hero roll.`,
+                        'MONSTER · BONUS DRAW'
+                    );
                 }
 
                 const targetingPlan = TARGETING_SKILLS.includes(hero.skill_id)
@@ -2144,11 +2285,23 @@ function resolvePendingRoll() {
                 if (monster.effect_id === 'MONSTER_MEGA_SLIME') {
                     player.ap += 1;
                     io.emit('message', `${getPlayerName(gameState, player.id)} gained +1 AP from defeating Mega Slime!`);
+                    emitPublicCardEffect(
+                        monster,
+                        player.id,
+                        `${getPlayerName(gameState, player.id)} gained an extra action point.`,
+                        'MONSTER · EXTRA AP'
+                    );
                 }
 
                 if (player.leader?.effect_id === 'LEADER_BERSERKER') {
                     dealCards(2, player.id, 'The Raging Manticore');
                     io.emit('message', `${getPlayerName(gameState, player.id)} drew 2 cards from The Raging Manticore after slaying ${monster.name}.`);
+                    emitPublicCardEffect(
+                        player.leader,
+                        player.id,
+                        `${getPlayerName(gameState, player.id)} draws 2 cards after slaying ${monster.name}.`,
+                        'PARTY LEADER · BONUS DRAW'
+                    );
                 }
 
                 // Process Reward
@@ -2710,6 +2863,14 @@ ioServer.on('connection', (socket) => {
             if (player.cannotBeChallenged && !hasOwlbear) {
                 io.emit('message', `${getPlayerName(gameState, socket.id)}'s ${card.name} cannot be challenged (Iron Resolve)!`);
             }
+            if (hasOwlbear) {
+                emitPublicCardEffect(
+                    player.slainMonsters.find(monster => monster.effect_id === 'MONSTER_WARWORN_OWLBEAR'),
+                    player.id,
+                    `${getPlayerName(gameState, player.id)} played ${card.name} without opening a Challenge.`,
+                    'MONSTER · CHALLENGE IMMUNITY'
+                );
+            }
             gameState.pendingChallenge = {
                 rollerId: socket.id,
                 card: card,
@@ -2811,6 +2972,12 @@ ioServer.on('connection', (socket) => {
                 if (card.type === 'Magic Card' && player.leader && player.leader.effect_id === 'LEADER_WIZARD') {
                     dealCards(1, socket.id);
                     io.emit('message', "The Cloaked Sage (Wizard) grants a free drawn card for playing Magic!");
+                    emitPublicCardEffect(
+                        player.leader,
+                        player.id,
+                        `${getPlayerName(gameState, player.id)} draws a card after playing Magic.`,
+                        'PARTY LEADER · BONUS DRAW'
+                    );
                 }
                 
                 gameState.pendingChallenge = {
@@ -3438,6 +3605,11 @@ ioServer.on('connection', (socket) => {
                 finalTotal: rollDetails.total,
                 reason: type === 'ATTACK' ? 'to attack a monster' : 'for a skill'
             });
+            emitRollCardEffects(
+                player,
+                rollDetails.breakdown,
+                type === 'ATTACK' ? 'the Monster attack roll' : 'the Hero effect roll'
+            );
             queueFearlessFlameChoices([{ playerId: socket.id, rollSide: 'ROLL' }]);
             broadcastState();
         } 
@@ -3497,6 +3669,16 @@ ioServer.on('connection', (socket) => {
                     challengerTotal: pRoll.challengerBase, challengerModifierTotal: 0, challengerFinalTotal: pRoll.challengerBase,
                     reason: 'for a CHALLENGE!'
                 });
+                emitRollCardEffects(
+                    gameState.players[pRoll.activeId],
+                    pRoll.activeBreakdown,
+                    'the Challenge roll'
+                );
+                emitRollCardEffects(
+                    gameState.players[pRoll.challengerId],
+                    pRoll.challengerBreakdown,
+                    'the Challenge roll'
+                );
                 queueFearlessFlameChoices([
                     { playerId: pRoll.activeId, rollSide: 'ACTIVE' },
                     { playerId: pRoll.challengerId, rollSide: 'CHALLENGER' }
@@ -3516,7 +3698,15 @@ ioServer.on('connection', (socket) => {
         if (!allowed.includes(modValue)) return false;
         if (gameState.pendingRoll.type === 'CHALLENGE' && !['ACTIVE', 'CHALLENGER'].includes(targetRoll)) return false;
         let appliedValue = modValue;
-        if (player.leader?.effect_id === 'LEADER_GUARDIAN') appliedValue += appliedValue > 0 ? 1 : -1;
+        if (player.leader?.effect_id === 'LEADER_GUARDIAN') {
+            appliedValue += appliedValue > 0 ? 1 : -1;
+            emitPublicCardEffect(
+                player.leader,
+                player.id,
+                `${player.leader.name} strengthened ${getPlayerName(gameState, player.id)}'s Modifier by 1.`,
+                'PARTY LEADER · MODIFIER BOOST'
+            );
+        }
         player.hand.splice(index, 1);
         gameState.discardPile.push(card);
         registerCardPlayed(card);
@@ -3546,6 +3736,12 @@ ioServer.on('connection', (socket) => {
                 gameState.pendingRoll.currentRoll += 1;
                 gameState.pendingRoll.modifierTotal += 1;
                 io.emit('message', `Abyss Queen grants +1 to ${getPlayerName(gameState, rollingPlayerId)}'s roll against the opponent's modifier!`);
+                emitPublicCardEffect(
+                    rollingPlayer.slainMonsters.find(monster => monster.effect_id === 'MONSTER_ABYSS_QUEEN'),
+                    rollingPlayer.id,
+                    `${getPlayerName(gameState, rollingPlayer.id)} gained +1 against an opponent's Modifier.`,
+                    'MONSTER · MODIFIER DEFENCE'
+                );
             }
             const roll = gameState.pendingRoll;
             io.emit('dice_roll_pending', {
@@ -3631,6 +3827,12 @@ ioServer.on('connection', (socket) => {
         player.usedNobleShamanThisTurn = true;
         gameState.passedModifiers = [];
         io.emit('message', `${getPlayerName(gameState, socket.id)} used The Noble Shaman to give -1 to a roll.`);
+        emitPublicCardEffect(
+            player.leader,
+            player.id,
+            `${getPlayerName(gameState, player.id)} gave -1 to the selected roll.`,
+            'PARTY LEADER · -1 ROLL'
+        );
         if (gameState.pendingRoll.type === 'CHALLENGE') {
             const roll = gameState.pendingRoll;
             io.emit('dice_roll_pending', {
@@ -3759,6 +3961,12 @@ ioServer.on('connection', (socket) => {
                 registerCardPlayed(card);
                 if (player.leader && player.leader.effect_id === 'LEADER_GUARDIAN') {
                     if (modValue > 0) modValue += 1; else if (modValue < 0) modValue -= 1;
+                    emitPublicCardEffect(
+                        player.leader,
+                        player.id,
+                        `${player.leader.name} strengthened ${getPlayerName(gameState, player.id)}'s Modifier by 1.`,
+                        'PARTY LEADER · MODIFIER BOOST'
+                    );
                 }
                 player.hand.splice(cardIndex, 1);
                 if (card.discard_hand_on_play) {
@@ -3819,6 +4027,12 @@ ioServer.on('connection', (socket) => {
                             gameState.pendingRoll.currentRoll += 1;
                             gameState.pendingRoll.modifierTotal += 1;
                             io.emit('message', `Abyss Queen grants +1 to ${getPlayerName(gameState, rollingPlayerId)}'s roll against the opponent's modifier!`);
+                            emitPublicCardEffect(
+                                rollingPlayer.slainMonsters.find(monster => monster.effect_id === 'MONSTER_ABYSS_QUEEN'),
+                                rollingPlayer.id,
+                                `${getPlayerName(gameState, rollingPlayer.id)} gained +1 against an opponent's Modifier.`,
+                                'MONSTER · MODIFIER DEFENCE'
+                            );
                         }
                     }
 
@@ -4624,6 +4838,12 @@ socket.on('resolve_immediate_play', (data) => {
             const dropped = challenger.hand.splice(dIdx, 1)[0];
             gameState.discardPile.push(dropped);
             io.emit('message', `${getPlayerName(gameState, socket.id)} must discard a card for challenging ${getPlayerName(gameState, challenged.id)} (Bloodwing)!`);
+            emitPublicCardEffect(
+                challenged.slainMonsters.find(monster => monster.effect_id === 'MONSTER_BLOODWING'),
+                challenged.id,
+                `${getPlayerName(gameState, socket.id)} discarded a card for challenging ${getPlayerName(gameState, challenged.id)}.`,
+                'MONSTER · CHALLENGE PENALTY'
+            );
         }
 
         // Transition to Dual-Roll State
@@ -5103,6 +5323,12 @@ socket.on('resolve_immediate_play', (data) => {
             player.hand.push(stolenCard);
 
             io.emit('message', `The Shadow Claw (Thief) stole a card from ${getPlayerName(gameState, targetData.targetPlayerId)}!`);
+            emitPublicCardEffect(
+                player.leader,
+                player.id,
+                `${getPlayerName(gameState, player.id)} pulled a card from ${getPlayerName(gameState, targetData.targetPlayerId)}.`,
+                'PARTY LEADER · PULL CARD'
+            );
             broadcastState();
         } else if (player.leader.effect_id === 'LEADER_NECROMANCER') {
             if (player.usedLeaderSkillThisTurn || player.ap < 2 || gameState.discardPile.length === 0) return;
@@ -5117,6 +5343,12 @@ socket.on('resolve_immediate_play', (data) => {
                 heroId: null
             };
             io.emit('message', `${getPlayerName(gameState, socket.id)} used The Gnawing Dread and is choosing a card from the discard pile.`);
+            emitPublicCardEffect(
+                player.leader,
+                player.id,
+                `${getPlayerName(gameState, player.id)} is retrieving a card from the discard pile.`,
+                'PARTY LEADER · DISCARD SEARCH'
+            );
             broadcastState();
         }
     });

@@ -4998,18 +4998,39 @@ socket.on('rex_major_reveal', ({ playerName, card }) => {
     setTimeout(() => overlay.remove(), 2600);
 });
 
-socket.on('monster_effect_triggered', ({
-    monsterId,
-    monsterName,
+const publicCardEffectQueue = [];
+let publicCardEffectActive = false;
+
+function showPublicCardEffect(effect) {
+    publicCardEffectQueue.push(effect);
+    if (!publicCardEffectActive) showNextPublicCardEffect();
+}
+
+function showNextPublicCardEffect() {
+    const {
+    card,
+    cardId,
+    cardName,
     message,
-    effectLabel = 'MONSTER EFFECT',
-    durationMs = 2400
-}) => {
-    const context = findCardContext(monsterId);
-    const card = context && context.card;
+    effectLabel = 'CARD EFFECT',
+    durationMs = 2400,
+    isMonster = false
+    } = publicCardEffectQueue.shift() || {};
+    if (!card && !cardId) {
+        publicCardEffectActive = false;
+        return;
+    }
+    publicCardEffectActive = true;
+    const context = !card && cardId ? findCardContext(cardId) : null;
+    const visibleCard = card || (context && context.card);
+    const visibleName = cardName || visibleCard?.name || 'Card';
     const visibleMs = Math.max(2400, Math.min(8000, Number(durationMs) || 2400));
-    showNotification(`${monsterName}: ${message}`);
-    if (!card) return;
+    showNotification(`${visibleName}: ${message}`);
+    if (!visibleCard) {
+        publicCardEffectActive = false;
+        showNextPublicCardEffect();
+        return;
+    }
     document.getElementById('monster-trigger-modal')?.remove();
     const overlay = document.createElement('div');
     overlay.id = 'monster-trigger-modal';
@@ -5020,13 +5041,56 @@ socket.on('monster_effect_triggered', ({
     overlay.innerHTML = `
         <div class="glass-panel rex-major-reveal-panel monster-trigger-panel">
             <span class="monster-trigger-kicker">${effectLabel}</span>
-            <h2>${monsterName} activated!</h2>
+            <h2>${visibleName} activated!</h2>
             <p>${message}</p>
-            ${renderCard(card, false, false, true)}
+            ${renderCard(visibleCard, false, false, isMonster)}
             <i class="monster-trigger-timer" aria-hidden="true"></i>
         </div>`;
     document.body.appendChild(overlay);
-    setTimeout(() => overlay.remove(), visibleMs);
+    setTimeout(() => {
+        overlay.remove();
+        publicCardEffectActive = false;
+        if (publicCardEffectQueue.length > 0) showNextPublicCardEffect();
+    }, visibleMs);
+}
+
+socket.on('monster_effect_triggered', ({
+    card,
+    monsterId,
+    monsterName,
+    message,
+    effectLabel = 'MONSTER EFFECT',
+    durationMs = 2400
+}) => {
+    showPublicCardEffect({
+        card,
+        cardId: monsterId,
+        cardName: monsterName,
+        message,
+        effectLabel,
+        durationMs,
+        isMonster: true
+    });
+});
+
+socket.on('party_leader_effect_triggered', ({
+    card,
+    cardId,
+    cardName,
+    playerName,
+    message,
+    effectLabel = 'PARTY LEADER',
+    durationMs = 3600
+}) => {
+    showPublicCardEffect({
+        card,
+        cardId,
+        cardName,
+        message: message || `${playerName} activated this Party Leader's effect.`,
+        effectLabel,
+        durationMs,
+        isMonster: false
+    });
 });
 
 
