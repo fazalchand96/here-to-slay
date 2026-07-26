@@ -6085,6 +6085,37 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
     display: none !important;
 }
 
+.monster-attack-bonus-badge {
+    position: absolute;
+    z-index: 9;
+    left: 50%;
+    bottom: 13%;
+    display: grid;
+    min-width: 72%;
+    padding: 3px 7px;
+    transform: translateX(-50%);
+    border: 1px solid rgba(105, 205, 255, .9);
+    border-radius: 8px;
+    background: linear-gradient(180deg, rgba(11, 43, 79, .96), rgba(4, 18, 42, .97));
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .78), inset 0 0 7px rgba(71, 185, 255, .28);
+    color: #fff4c7;
+    font-family: "Cinzel", serif;
+    line-height: 1.05;
+    text-align: center;
+    pointer-events: none;
+}
+
+.monster-attack-bonus-badge strong {
+    font-size: clamp(6px, .68vw, 10px);
+    letter-spacing: .04em;
+}
+
+.monster-attack-bonus-badge small {
+    color: #8fddff;
+    font-size: clamp(5px, .54vw, 8px);
+    letter-spacing: .05em;
+}
+
 #inspector-modal.full-card-art-inspector #inspector-modal-image {
     max-height: min(42vh, 420px) !important;
     width: auto !important;

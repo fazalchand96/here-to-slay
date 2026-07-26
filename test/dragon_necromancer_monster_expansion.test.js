@@ -67,6 +67,15 @@ test('Monster Expansion contains all 13 unique physical monsters', () => {
     assert.ok(monsterExpansion.every(card => card.effect_id?.startsWith('MONSTER_')));
 });
 
+test('Wandering Behemoth uses its printed rolls and additional-Hero attack bonus', () => {
+    const wanderingBehemoth = monsterExpansion.find(card => card.name === 'Wandering Behemoth');
+
+    assert.equal(wanderingBehemoth.slayRoll, 10);
+    assert.equal(wanderingBehemoth.penaltyRoll, 7);
+    assert.equal(wanderingBehemoth.rollType, 'HIGH_ROLL');
+    assert.equal(wanderingBehemoth.attack_bonus_per_additional_hero, 1);
+});
+
 test('Monster discard requirements are distinct from failed-roll penalties', () => {
     const byName = name => cards.find(card => card.name === name);
     const doombringer = byName('Doombringer');

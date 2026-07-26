@@ -1521,14 +1521,25 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
         badgeVal = card.roll_requirement;
     }
     // Tooltip detail (no extra node) keeps slay/fail/requirement reachable.
+    const attackBonusPerExtraHero = Number(card.attack_bonus_per_additional_hero || 0);
+    const attackBonusDetail = attackBonusPerExtraHero > 0
+        ? ` · Attack +${attackBonusPerExtraHero} per extra Hero`
+        : '';
     const detailTitle = (isMonster || card.type === 'Monster Card')
-        ? `${card.rollType === 'LOW_ROLL' ? `Slay ≤${card.slayRoll} · Fail ${card.penaltyRoll}+` : `Slay ${card.slayRoll}+ · Fail ${card.penaltyRoll}-`} · Needs ${card.requirement || '—'}`
+        ? `${card.rollType === 'LOW_ROLL' ? `Slay ≤${card.slayRoll} · Fail ${card.penaltyRoll}+` : `Slay ${card.slayRoll}+ · Fail ${card.penaltyRoll}-`} · Needs ${card.requirement || '—'}${attackBonusDetail}`
         : (card.requirement || card.name || '');
     // Premium Monster faces include their requirements in the image itself.
     // Only legacy, non-full-art cards need a live requirement label.
     const monsterRequirement = !isFullCardArt
         && (isMonster || card.type === 'Monster Card')
         ? `<div class="monster-requirement-badge">Req: ${formatMonsterRequirement(card)}</div>`
+        : '';
+    const monsterAttackBonus = (isMonster || card.type === 'Monster Card')
+        && attackBonusPerExtraHero > 0
+        ? `<div class="monster-attack-bonus-badge" aria-label="Attack plus ${attackBonusPerExtraHero} for every Hero after the first">
+                <strong>ATTACK +${attackBonusPerExtraHero}</strong>
+                <small>PER EXTRA HERO</small>
+            </div>`
         : '';
     const boardCardName = !isFullCardArt && (isMonster || card.type === 'Monster Card' || card.type === 'Hero Card')
         ? `<div class="board-card-name" title="${card.name || ''}">${card.name || 'Unknown'}</div>`
@@ -1603,6 +1614,7 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
         <div class="card${variantClass} type-${typeSlug}${classSlug ? ` class-${classSlug}` : ''}${artClass(card)}${fullCardArtClass(card)} ${glowClass}" id="${card.id}" data-id="${card.id}" title="${detailTitle}" style="--cc:${cardTint}; ${card.artUrl ? '' : artCropStyle(card.id)} ${inlineStyle}">
             <div class="card-req">${badgeVal}</div>
             ${monsterRequirement}
+            ${monsterAttackBonus}
             ${boardCardName}
             ${equippedBadge}
             <div class="card-face">
@@ -6710,6 +6722,11 @@ window.inspectCard = function(cardId, scopedContext = null) {
             : `Slay: ${card.slayRoll}+ | Fail: ${card.penaltyRoll}-\n\n`;
 
         descriptionText += `Requirement: ${card.requirement || 'None'}\n\n`;
+
+        const attackBonusPerExtraHero = Number(card.attack_bonus_per_additional_hero || 0);
+        if (attackBonusPerExtraHero > 0) {
+            descriptionText += `Attack bonus: +${attackBonusPerExtraHero} for each Hero after the first\n\n`;
+        }
 
         const directSlayRewards = {
             DRAW_1: 'Draw 1 card',

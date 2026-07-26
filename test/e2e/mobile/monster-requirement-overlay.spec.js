@@ -36,6 +36,19 @@ test('expansion Monsters use complete baked frames without HTML requirement over
                 requirement: '1 Necromancer, 1 Hero',
                 fullCardArtUrl: 'assets/skin/cards/monster-fullgen-v2/card_175.webp',
                 artUrl: 'assets/skin/cards/monster-fullgen-v2/card_175.webp'
+            },
+            {
+                id: 'card_219',
+                name: 'Wandering Behemoth',
+                type: 'Monster Card',
+                expansion: 'Monster Expansion',
+                requirement: '1 Hero',
+                slayRoll: 10,
+                penaltyRoll: 7,
+                rollType: 'HIGH_ROLL',
+                attack_bonus_per_additional_hero: 1,
+                fullCardArtUrl: 'assets/skin/cards/monster-fullgen-v2/card_219.webp',
+                artUrl: 'assets/skin/cards/monster-fullgen-v2/card_219.webp'
             }
         ];
 
@@ -61,7 +74,7 @@ test('expansion Monsters use complete baked frames without HTML requirement over
             .monster-requirement-test-stage #active-monsters {
                 position: static !important;
                 display: flex !important;
-                width: 520px !important;
+                width: 688px !important;
                 height: 245px !important;
                 gap: 18px !important;
             }
@@ -76,15 +89,18 @@ test('expansion Monsters use complete baked frames without HTML requirement over
                     gap: 8px !important;
                 }
                 .monster-requirement-test-stage #active-monsters > .card {
-                    width: 112px !important;
-                    height: 168px !important;
+                    width: 86px !important;
+                    height: 129px !important;
                 }
             }
         `
     });
 
     await expect(page.locator('#active-monsters .monster-requirement-badge')).toHaveCount(0);
-    await expect(page.locator('#active-monsters .card.full-card-art')).toHaveCount(3);
+    await expect(page.locator('#active-monsters .card.full-card-art')).toHaveCount(4);
+    await expect(page.locator('#active-monsters .monster-attack-bonus-badge')).toHaveCount(1);
+    await expect(page.locator('#active-monsters .monster-attack-bonus-badge')).toContainText('ATTACK +1');
+    await expect(page.locator('#active-monsters .monster-attack-bonus-badge')).toContainText('PER EXTRA HERO');
     await expect(page.locator('#active-monsters .card .card-img').nth(0)).toHaveCSS(
         'background-image',
         /monster-fullgen-v2\/card_208\.webp/

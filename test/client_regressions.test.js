@@ -216,6 +216,16 @@ test('expansion Monster requirements are baked into upgraded card art without a 
     });
 });
 
+test('additional-Hero Monster attack bonuses are explicit on cards and in the inspector', () => {
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const styleSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
+
+    assert.match(appSource, /class="monster-attack-bonus-badge"/);
+    assert.match(appSource, /PER EXTRA HERO/);
+    assert.match(appSource, /Attack bonus: \+\$\{attackBonusPerExtraHero\} for each Hero after the first/);
+    assert.match(styleSource, /\.monster-attack-bonus-badge \{/);
+});
+
 test('opponent boards use dedicated art and clearly mark the active player', () => {
     const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
     const styleSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
