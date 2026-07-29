@@ -1935,6 +1935,20 @@ function setRoomControlsBusy(busy) {
     if (join) join.disabled = busy;
 }
 
+window.inspectLobbyLeader = function(playerId) {
+    const player = latestGameState?.players?.[playerId];
+    const leader = player?.leader;
+    if (!leader) {
+        showNotification('This player has not rolled a Party Leader yet.');
+        return;
+    }
+    inspectCard(leader.id, {
+        card: leader,
+        location: 'leader',
+        owner: playerId
+    });
+};
+
 function enterJoinedRoom(roomCode, { spectator = false } = {}) {
     activeRoomCode = normalizeRoomCodeInput(roomCode);
     isSpectator = spectator === true;
@@ -2274,12 +2288,13 @@ socket.on('gameStateUpdate', (data) => {
 
         lobbyScreen?.classList.remove('hidden');
 
-        
+        const activeMe = myId || data.me;
 
         lobbyPlayers.innerHTML = (data.playerOrder || []).map((id, index) => {
             const p = data.players[id];
             const displayName = getPlayerName(p.id);
             const isHost = index === 0;
+            const canInspectLeader = Boolean(p.hasSelectedLeader && p.leader);
             
             let statusHtml = '';
             let avatarHtml = '<div class="roster-avatar empty">?</div>';
@@ -2290,14 +2305,18 @@ socket.on('gameStateUpdate', (data) => {
                     avatarHtml = `<div class="roster-avatar" style="background-image: url('${cardArt(p.leader)}')"></div>`;
                 }
             } else if (p.hasSelectedLeader && p.leader) {
-                statusHtml = `<span class="status-ready">✓ Ready</span>`;
+                statusHtml = `<span class="status-ready">✓ Ready</span><span class="roster-inspect-hint">Inspect</span>`;
                 avatarHtml = `<div class="roster-avatar" style="background-image: url('${cardArt(p.leader)}')"></div>`;
             } else {
                 statusHtml = `<span class="status-selecting">⏳ Selecting...</span>`;
             }
 
+            const tagName = canInspectLeader ? 'button' : 'div';
+            const inspectAttributes = canInspectLeader
+                ? ` type="button" data-lobby-leader-player-id="${id}" aria-label="Inspect selected Party Leader"`
+                : '';
             return `
-                <div class="roster-entry ${p.hasSelectedLeader ? 'is-ready' : ''}">
+                <${tagName} class="roster-entry ${p.hasSelectedLeader ? 'is-ready' : ''}${canInspectLeader ? ' is-inspectable' : ''}"${inspectAttributes}>
                     ${avatarHtml}
                     <div class="roster-info">
                         <div class="roster-name">
@@ -2306,13 +2325,13 @@ socket.on('gameStateUpdate', (data) => {
                         </div>
                         <div class="roster-status">${statusHtml} ${p.hasSelectedLeader && p.leader.class ? `<span class="roster-class">(${p.leader.class})</span>` : ''}</div>
                     </div>
-                </div>
+                </${tagName}>
             `;
         }).join('');
 
-
-
-        const activeMe = myId || data.me;
+        lobbyPlayers.querySelectorAll('[data-lobby-leader-player-id]').forEach(entry => {
+            entry.addEventListener('click', () => inspectLobbyLeader(entry.dataset.lobbyLeaderPlayerId));
+        });
 
         const nameInput = document.getElementById('player-name-input');
 
@@ -4579,6 +4598,18 @@ function challengeChoiceLabel(card) {
     return card.required_class ? card.name : 'Normal Challenge';
 }
 
+function challengeChoiceVisualClass(card) {
+    if (!card.required_class) return 'challenge-choice-normal';
+    const classStyles = {
+        Druid: 'challenge-choice-druid',
+        Warrior: 'challenge-choice-warrior',
+        Necromancer: 'challenge-choice-necromancer',
+        Berserker: 'challenge-choice-berserker',
+        Sorcerer: 'challenge-choice-sorcerer'
+    };
+    return classStyles[card.required_class] || 'challenge-choice-normal';
+}
+
 function renderChallengePrompt(data, announce = false) {
     const pending = data.pendingChallenge || {
         rollerId: data.rollerId,
@@ -4625,7 +4656,7 @@ function renderChallengePrompt(data, announce = false) {
             ${playableChoices.length ? `
                 <div class="challenge-choice-list">
                     ${playableChoices.map(({ card, requiredClass }) => `
-                        <button type="button" class="challenge-choice action-btn"
+                        <button type="button" class="challenge-choice action-btn ${challengeChoiceVisualClass(card)}"
                             data-challenge-card-id="${card.id}">
                             <span>${challengeChoiceLabel(card)}</span>
                             <small>${requiredClass
@@ -4638,7 +4669,7 @@ function renderChallengePrompt(data, announce = false) {
             ${lockedChoices.length ? `
                 <div class="challenge-locked-list">
                     ${lockedChoices.map(({ card, requiredClass }) => `
-                        <div class="challenge-choice is-locked" data-locked-challenge-card-id="${card.id}">
+                        <div class="challenge-choice is-locked ${challengeChoiceVisualClass(card)}" data-locked-challenge-card-id="${card.id}">
                             <span>🔒 ${card.name}</span>
                             <small>Needs a ${requiredClass} Hero in your Party</small>
                         </div>
@@ -6570,6 +6601,7 @@ function executeManualRoll() {
 
 function passModifierPhase() {
     const passBtn = document.getElementById('dice-pass-btn');
+    if (!passBtn || passBtn.disabled || hasPassedModifierPhase()) return;
     if (passBtn) {
         passBtn.disabled = true;
         passBtn.innerText = 'WAITING FOR OTHERS...';

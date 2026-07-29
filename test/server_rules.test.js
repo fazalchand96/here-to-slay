@@ -40,6 +40,7 @@ const {
     isActionPointTimerEligible,
     expireActionPoint,
     spendReloadActionPoints,
+    canPlayerSubmitModifierPlay,
     loadCards,
     gameState
 } = require('../server');
@@ -59,6 +60,27 @@ test('Thief Party Leader automatically finds the sole eligible duel opponent', (
     state.players.opponent.hand = [{ id: 'loot' }];
     state.players.opponent.connected = false;
     assert.deepEqual(getEligibleThiefLeaderTargets(state, 'thief'), []);
+});
+
+test('a Modifier pass locks that player until another Modifier resets the window', () => {
+    const state = {
+        state: 'WAITING_FOR_MODIFIERS',
+        pendingRoll: { type: 'HERO_SKILL' },
+        players: {
+            playerA: { id: 'playerA' },
+            playerB: { id: 'playerB' }
+        },
+        passedModifiers: []
+    };
+
+    assert.equal(canPlayerSubmitModifierPlay(state, 'playerA'), true);
+    state.passedModifiers.push('playerA');
+    assert.equal(canPlayerSubmitModifierPlay(state, 'playerA'), false);
+    assert.equal(canPlayerSubmitModifierPlay(state, 'playerB'), true);
+
+    // A successfully played Modifier starts a fresh response window.
+    state.passedModifiers = [];
+    assert.equal(canPlayerSubmitModifierPlay(state, 'playerA'), true);
 });
 
 test('action point timer allows 45 seconds only while the active player can act', () => {

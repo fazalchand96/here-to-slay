@@ -66,6 +66,33 @@ test('room recovery offers a main-menu exit and an idempotent same-room join', (
     assert.match(serverSource, /if \(socket\.data\.roomCode === session\.roomCode\)/);
 });
 
+test('both lobby screens use generated artwork and selected opponent leaders are inspectable', () => {
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const styleSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
+
+    assert.match(appSource, /window\.inspectLobbyLeader = function\(playerId\)/);
+    assert.match(appSource, /data-lobby-leader-player-id="\$\{id\}"/);
+    assert.match(appSource, /inspectCard\(leader\.id, \{[\s\S]*?location: 'leader',[\s\S]*?owner: playerId/);
+    assert.match(appSource, /roster-inspect-hint">Inspect/);
+    assert.match(styleSource, /#room-modal \.room-panel \{[\s\S]*?room-gate-v169\.webp/);
+    assert.match(styleSource, /#lobby-modal \.lobby-panel \{[\s\S]*?leader-lobby-v169\.webp/);
+    assert.match(styleSource, /\.roster-entry\.is-inspectable/);
+
+    for (const asset of [
+        'room-gate-v169.webp',
+        'leader-lobby-v169.webp',
+        'lobby-primary-v169.webp',
+        'lobby-secondary-v169.webp',
+        'lobby-field-v169.webp',
+        'lobby-roster-v169.webp'
+    ]) {
+        assert.match(styleSource, new RegExp(asset.replace('.', '\\.')));
+        const assetPath = path.join(__dirname, '..', 'public', 'assets', 'skin', 'lobby', asset);
+        assert.equal(fs.existsSync(assetPath), true);
+        assert.ok(fs.statSync(assetPath).size > 10_000, `Expected generated lobby artwork: ${asset}`);
+    }
+});
+
 test('Muscipula Rex shows every player a longer non-blocking free-draw banner', () => {
     const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
     const styleSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
@@ -184,12 +211,44 @@ test('Challenge prompt lists every legal card and keeps class-locked Challenges 
     assert.match(appSource, /function getChallengeCardChoices\(data\)/);
     assert.match(appSource, /data-challenge-card-id="\$\{card\.id\}"/);
     assert.match(appSource, /data-locked-challenge-card-id="\$\{card\.id\}"/);
-    assert.match(appSource, /Normal Challenge/);
-    assert.match(appSource, /socket\.timeout\(4000\)\.emit\('play_challenge'/);
-    assert.match(styleSource, /\.challenge-choice-list,/);
-    assert.match(styleSource, /\.challenge-choice\.is-locked/);
+      assert.match(appSource, /Normal Challenge/);
+      assert.match(appSource, /function challengeChoiceVisualClass\(card\)/);
+      assert.match(appSource, /challenge-choice-druid/);
+      assert.match(appSource, /challenge-choice-warrior/);
+      assert.match(appSource, /challenge-choice-necromancer/);
+      assert.match(appSource, /challenge-choice-berserker/);
+      assert.match(appSource, /challenge-choice-sorcerer/);
+      assert.match(appSource, /socket\.timeout\(4000\)\.emit\('play_challenge'/);
+      assert.match(styleSource, /\.challenge-choice-list,/);
+      assert.match(styleSource, /\.challenge-choice\.is-locked/);
+      for (const asset of [
+          'challenge-normal-v168.webp',
+          'challenge-druid-v168.webp',
+          'challenge-warrior-v168.webp',
+          'challenge-necromancer-v168.webp',
+          'challenge-berserker-v168.webp',
+          'challenge-sorcerer-v168.webp'
+      ]) {
+        assert.match(styleSource, new RegExp(asset.replace('.', '\\.')));
+        assert.equal(
+            fs.existsSync(path.join(__dirname, '..', 'public', 'assets', 'skin', 'buttons', asset)),
+            true
+        );
+    }
     assert.match(serverSource, /You need a \$\{challengeCard\.required_class\} Hero in your Party/);
     assert.match(serverSource, /reply\(\{\s*ok: true,\s*cardId: challengeCard\.id/);
+});
+
+test('passing the Modifier window stays locked until a Modifier is actually played', () => {
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const serverSource = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+
+    assert.match(serverSource, /passedModifiers: playerState\.passedModifiers \|\| \[\]/);
+    assert.match(serverSource, /function canPlayerSubmitModifierPlay\(state, playerId\)/);
+    assert.match(serverSource, /You already passed\. Wait until another Modifier is played\./);
+    assert.match(serverSource, /gameState\.passedModifiers = \[\];\s*startModifierTimer\(\)/);
+    assert.match(appSource, /if \(!passBtn \|\| passBtn\.disabled \|\| hasPassedModifierPhase\(\)\) return;/);
+    assert.match(appSource, /passButton\.disabled = passed/);
 });
 
 test('free Monster target actions use the inspector action container', () => {

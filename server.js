@@ -169,6 +169,16 @@ function startModifierTimer() {
     }, 15000);
 }
 
+function canPlayerSubmitModifierPlay(state, playerId) {
+    return Boolean(
+        state
+        && state.state === 'WAITING_FOR_MODIFIERS'
+        && state.pendingRoll
+        && state.players?.[playerId]
+        && !(state.passedModifiers || []).includes(playerId)
+    );
+}
+
 // Does any OPPONENT of `actorId` have a Hero that `actorId` could STEAL/DESTROY?
 // Used to skip a steal/destroy step that would otherwise soft-lock the actor when
 // no legal target exists (e.g. Entangling Trap's "then STEAL a Hero" with no
@@ -1656,6 +1666,7 @@ function broadcastState() {
             pendingAction: playerState.pendingAction,
             pendingCard: pendingCardForSocket,
             pendingRoll: playerState.pendingRoll,
+            passedModifiers: playerState.passedModifiers || [],
             pendingChallenge: playerState.pendingChallenge,
             activeMonsters: playerState.activeMonsters,
             discardPile: playerState.discardPile,
@@ -3955,6 +3966,13 @@ ioServer.on('connection', (socket) => {
 
         // 2. Process the modifier if they played one
         if (data.action === 'PLAY') {
+            if (!canPlayerSubmitModifierPlay(gameState, socket.id)) {
+                reply({
+                    ok: false,
+                    reason: 'You already passed. Wait until another Modifier is played.'
+                });
+                return;
+            }
             const player = gameState.players[socket.id];
             const cardId = data.cardId;
             const cardIndex = player.hand.findIndex(c => c.id === cardId);
@@ -5538,4 +5556,5 @@ module.exports = {
     isActionPointTimerEligible,
     expireActionPoint,
     spendReloadActionPoints,
+    canPlayerSubmitModifierPlay,
 };
