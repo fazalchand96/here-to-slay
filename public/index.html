@@ -268,10 +268,24 @@
 
                     <div id="hand-zone-label" class="area-label">Your Hand</div>
 
-                    <div class="card-container hand-container" id="player-hand">
+                    <div class="hand-carousel" id="hand-carousel">
+                        <button class="hand-carousel-arrow hand-carousel-prev" id="hand-carousel-prev"
+                            type="button" aria-label="Scroll hand left" onclick="scrollHandCarousel(-1)">&#8249;</button>
 
-                        <!-- Player hand cards -->
+                        <div class="card-container hand-container" id="player-hand">
 
+                            <!-- Player hand cards -->
+
+                        </div>
+
+                        <button class="hand-carousel-arrow hand-carousel-next" id="hand-carousel-next"
+                            type="button" aria-label="Scroll hand right" onclick="scrollHandCarousel(1)">&#8250;</button>
+
+                        <div class="hand-carousel-hud">
+                            <span id="hand-carousel-message" class="hand-carousel-message" aria-live="polite">0 Cards</span>
+                            <input id="hand-carousel-range" class="hand-carousel-range" type="range"
+                                min="0" max="1000" value="0" aria-label="Scroll through your hand">
+                        </div>
                     </div>
 
                 </div>

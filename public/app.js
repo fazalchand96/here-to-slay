@@ -369,36 +369,16 @@ document.addEventListener('click', triggerFullscreen, { once: true });
 
 
 
-// Ensure hand containers use stacking for landscape mobile
+// Keep cards at a readable size and let the hand carousel handle overflow.
 
 function applyMobileStacking() {
 
     const hand = document.getElementById('player-hand');
     const handCards = hand ? Array.from(hand.querySelectorAll('.card')) : [];
-    const handCount = handCards.length;
-    const handWidth = hand?.clientWidth || 0;
-    const handHeight = hand?.clientHeight || 0;
-    const cardAspect = 2.5 / 3.5;
-    const cardGap = 4;
-    const widthLimitedHeight = handCount && handWidth
-        ? ((handWidth - (cardGap * Math.max(0, handCount - 1))) / handCount) / cardAspect
-        : 106;
-    const heightLimitedHeight = handHeight ? handHeight - 12 : 106;
-    const fittedHeight = Math.max(52, Math.min(106, widthLimitedHeight, heightLimitedHeight));
-    const naturalWidth = fittedHeight * cardAspect;
-    const naturalTotalWidth = (naturalWidth * handCount) + (cardGap * Math.max(0, handCount - 1));
-    const requiredOverlap = handCount > 1 && handWidth
-        ? Math.max(0, (naturalTotalWidth - handWidth) / (handCount - 1))
-        : 0;
 
-    handCards.forEach((card, index) => {
-        card.style.setProperty('margin-left', index === 0 ? '0px' : `${cardGap - requiredOverlap}px`, 'important');
+    handCards.forEach((card) => {
+        card.style.setProperty('margin-left', '0px', 'important');
     });
-
-    if (hand) {
-        hand.style.setProperty('--hand-card-height', `${fittedHeight}px`);
-    }
-
 
     const partyCards = document.querySelectorAll('#player-party .card');
 
@@ -418,8 +398,71 @@ function applyMobileStacking() {
 
     });
 
+    requestAnimationFrame(syncHandCarousel);
+
 }
 
+let handCarouselSyncFrame = null;
+
+function syncHandCarousel() {
+    const shell = document.getElementById('hand-carousel');
+    const hand = document.getElementById('player-hand');
+    const range = document.getElementById('hand-carousel-range');
+    const message = document.getElementById('hand-carousel-message');
+    const previous = document.getElementById('hand-carousel-prev');
+    const next = document.getElementById('hand-carousel-next');
+    if (!shell || !hand || !range || !message) return;
+
+    const cardCount = hand.querySelectorAll('.card').length;
+    const maxScroll = Math.max(0, hand.scrollWidth - hand.clientWidth);
+    const canScroll = maxScroll > 2;
+    const largeHand = cardCount >= 6;
+    const position = canScroll ? Math.round((hand.scrollLeft / maxScroll) * 1000) : 0;
+
+    shell.classList.toggle('is-scrollable', canScroll);
+    shell.classList.toggle('has-large-hand', largeHand);
+    message.textContent = largeHand
+        ? `BIG HAND \u00b7 ${cardCount} CARDS`
+        : `${cardCount} CARD${cardCount === 1 ? '' : 'S'}`;
+    range.disabled = !canScroll;
+    range.value = String(position);
+    if (previous) previous.disabled = !canScroll || hand.scrollLeft <= 2;
+    if (next) next.disabled = !canScroll || hand.scrollLeft >= maxScroll - 2;
+}
+
+function scheduleHandCarouselSync() {
+    cancelAnimationFrame(handCarouselSyncFrame);
+    handCarouselSyncFrame = requestAnimationFrame(syncHandCarousel);
+}
+
+window.scrollHandCarousel = function(direction) {
+    const hand = document.getElementById('player-hand');
+    if (!hand) return;
+    const distance = Math.max(120, hand.clientWidth * 0.72);
+    hand.scrollBy({ left: Math.sign(direction) * distance, behavior: 'smooth' });
+};
+
+function setupHandCarousel() {
+    const hand = document.getElementById('player-hand');
+    const range = document.getElementById('hand-carousel-range');
+    if (!hand || !range || hand.dataset.carouselReady === 'true') return;
+    hand.dataset.carouselReady = 'true';
+
+    hand.addEventListener('scroll', scheduleHandCarouselSync, { passive: true });
+    hand.addEventListener('wheel', (event) => {
+        if (hand.scrollWidth <= hand.clientWidth + 2) return;
+        if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+        hand.scrollLeft += event.deltaY;
+        event.preventDefault();
+    }, { passive: false });
+    range.addEventListener('input', () => {
+        const maxScroll = Math.max(0, hand.scrollWidth - hand.clientWidth);
+        hand.scrollLeft = maxScroll * (Number(range.value) / 1000);
+    });
+    syncHandCarousel();
+}
+
+setupHandCarousel();
 window.addEventListener('resize', applyMobileStacking);
 
 
@@ -5070,13 +5113,14 @@ socket.on('rex_major_choice_closed', ({ choiceId }) => closeRexMajorChoice(choic
 socket.on('rex_major_reveal', ({ playerName, card }) => {
     if (!card) return;
     closeRexMajorChoice();
-    document.getElementById('rex-major-reveal-modal')?.remove();
-    const overlay = document.createElement('div');
-    overlay.id = 'rex-major-reveal-modal';
-    overlay.className = 'overlay rex-major-reveal-modal';
-    overlay.innerHTML = `<div class="glass-panel rex-major-reveal-panel"><h2>Rex Major!</h2><p>${playerName} revealed a Modifier and draws another card.</p>${renderCard(card, false, false)}</div>`;
-    document.body.appendChild(overlay);
-    setTimeout(() => overlay.remove(), 2600);
+    showPublicCardEffect({
+        card,
+        cardName: 'Rex Major',
+        message: `${playerName} revealed ${card.name} and draws another card.`,
+        effectLabel: 'MONSTER · REVEAL & DRAW',
+        durationMs: 2600,
+        isMonster: false
+    });
 });
 
 const publicCardEffectQueue = [];
@@ -6257,6 +6301,27 @@ window.startLeaderSkillTargeting = function() {
 
 };
 
+window.useThiefLeaderSkill = function() {
+    const eligibleTargets = (latestGameState?.playerOrder || []).filter(id => {
+        if (id === myId) return false;
+        const opponent = latestGameState?.players?.[id];
+        return opponent?.connected !== false && (opponent?.hand?.length || 0) > 0;
+    });
+
+    if (eligibleTargets.length === 0) {
+        showNotification('No opponent has a card to pull.');
+        closeInspectorModal();
+        return;
+    }
+    if (eligibleTargets.length === 1) {
+        socket.emit('use_leader_skill', { targetPlayerId: eligibleTargets[0] });
+        closeInspectorModal();
+        return;
+    }
+    startLeaderSkillTargeting();
+    closeInspectorModal();
+};
+
 
 
 function attackMonster(id) {
@@ -7008,13 +7073,7 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
                 if (myAp >= 1) {
 
-                    btn.onclick = () => {
-
-                        startLeaderSkillTargeting();
-
-                        closeInspectorModal();
-
-                    };
+                    btn.onclick = () => useThiefLeaderSkill();
 
                 } else {
 

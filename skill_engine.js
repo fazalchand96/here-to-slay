@@ -98,14 +98,6 @@ function resolveRexMajorChoice(gameState, io, playerId, choiceId, reveal) {
         card
     });
     io.emit('message', `${getPlayerName(gameState, playerId)} revealed ${card.name} due to Rex Major and draws another card!`);
-    emitMonsterEffect(
-        gameState,
-        io,
-        player,
-        'MONSTER_REX_MAJOR',
-        `${getPlayerName(gameState, playerId)} revealed a Modifier and draws another card.`,
-        'MONSTER · REVEAL & DRAW'
-    );
     const drawResult = drawCardsForEffect(gameState, io, 1, player, null, 'Rex Major');
 
     const holdTimer = setTimeout(() => {

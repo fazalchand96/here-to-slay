@@ -21,6 +21,36 @@ test('action point countdown is visible and warns during the final seconds', () 
     );
 });
 
+test('the player hand uses an always-visible horizontal carousel with a large-hand indicator', () => {
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+    const styleSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
+
+    assert.match(htmlSource, /id="hand-carousel"[\s\S]*?id="hand-carousel-prev"[\s\S]*?id="player-hand"[\s\S]*?id="hand-carousel-next"/);
+    assert.match(htmlSource, /id="hand-carousel-range"[\s\S]*?type="range"/);
+    assert.match(appSource, /window\.scrollHandCarousel = function\(direction\)/);
+    assert.match(appSource, /hand\.addEventListener\('scroll', scheduleHandCarouselSync/);
+    assert.match(appSource, /BIG HAND \\u00b7 \$\{cardCount\} CARDS/);
+    assert.match(styleSource, /#hand-carousel #player-hand \{[\s\S]*?overflow-x: auto !important;/);
+    assert.match(styleSource, /\.hand-carousel-range::-webkit-slider-runnable-track/);
+});
+
+test('public card reveals use the generated fantasy panel artwork', () => {
+    const styleSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
+    const imagePath = path.join(
+        __dirname,
+        '..',
+        'public',
+        'assets',
+        'skin',
+        'reveal-panel-v167.webp'
+    );
+
+    assert.match(styleSource, /\.monster-trigger-panel \{[\s\S]*?reveal-panel-v167\.webp/);
+    assert.equal(fs.existsSync(imagePath), true);
+    assert.ok(fs.statSync(imagePath).size > 100_000, 'Expected a real generated panel asset');
+});
+
 test('room recovery offers a main-menu exit and an idempotent same-room join', () => {
     const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
     const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
@@ -48,6 +78,36 @@ test('Muscipula Rex shows every player a longer non-blocking free-draw banner', 
     assert.match(appSource, /setTimeout\(\(\) => \{[\s\S]*?overlay\.remove\(\)[\s\S]*?showNextPublicCardEffect\(\)/);
     assert.match(styleSource, /\.monster-trigger-modal \{[\s\S]*?pointer-events: none !important;/);
     assert.match(styleSource, /monster-trigger-countdown var\(--monster-trigger-duration, 2400ms\)/);
+});
+
+test('Rex Major shows its revealed Modifier through the persistent public effect screen', () => {
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const skillSource = fs.readFileSync(path.join(__dirname, '..', 'skill_engine.js'), 'utf8');
+    const revealHandler = appSource.match(
+        /socket\.on\('rex_major_reveal'[\s\S]*?\n\}\);/
+    );
+
+    assert.ok(revealHandler, 'Expected the Rex Major reveal handler');
+    assert.match(revealHandler[0], /showPublicCardEffect\(/);
+    assert.match(revealHandler[0], /effectLabel: 'MONSTER · REVEAL & DRAW'/);
+    assert.match(revealHandler[0], /durationMs: 2600/);
+    assert.doesNotMatch(revealHandler[0], /rex-major-reveal-modal/);
+    assert.doesNotMatch(
+        skillSource.match(/function resolveRexMajorChoice[\s\S]*?function clearRexMajorChoices/)?.[0] || '',
+        /emitMonsterEffect\(/
+    );
+});
+
+test('Thief Party Leader auto-targets the only eligible duel opponent', () => {
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const serverSource = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+
+    assert.match(appSource, /window\.useThiefLeaderSkill = function\(\)/);
+    assert.match(appSource, /if \(eligibleTargets\.length === 1\)/);
+    assert.match(appSource, /socket\.emit\('use_leader_skill', \{ targetPlayerId: eligibleTargets\[0\] \}\)/);
+    assert.match(appSource, /btn\.onclick = \(\) => useThiefLeaderSkill\(\)/);
+    assert.match(serverSource, /function getEligibleThiefLeaderTargets\(/);
+    assert.match(serverSource, /eligibleTargets\.length === 1 \? eligibleTargets\[0\] : null/);
 });
 
 test('Feral Dragon shows every player the longer public draw-effect card', () => {

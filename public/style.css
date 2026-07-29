@@ -6555,6 +6555,197 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
     }
 }
 
+/* Hand carousel: cards keep a readable size and move horizontally instead of
+   compressing into an unreadable fan. The range control is an always-visible,
+   touch-friendly scrollbar; arrow buttons advance roughly one viewport. */
+#hand-carousel {
+    position: relative;
+    width: 100%;
+    height: 112px;
+    min-width: 0;
+    display: flex;
+    align-items: flex-start;
+    overflow: visible;
+}
+
+#hand-carousel #player-hand {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 3px 31px 17px !important;
+    gap: 7px !important;
+    justify-content: center !important;
+    align-items: flex-start !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scroll-behavior: smooth;
+    scroll-padding-inline: 31px;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+}
+
+#hand-carousel #player-hand::-webkit-scrollbar {
+    display: none;
+}
+
+#hand-carousel.is-scrollable #player-hand {
+    justify-content: flex-start !important;
+}
+
+#hand-carousel #player-hand .card,
+#hand-carousel #player-hand .card:not(:first-child),
+#hand-carousel #player-hand.cards-many .card:not(:first-child),
+#hand-carousel #player-hand.cards-crowded .card:not(:first-child),
+#hand-carousel #player-hand.cards-packed .card:not(:first-child) {
+    flex: 0 0 auto !important;
+    margin-left: 0 !important;
+}
+
+#hand-carousel #player-hand.cards-many::after {
+    display: none !important;
+}
+
+.hand-carousel-arrow {
+    position: absolute;
+    z-index: 24;
+    top: calc(50% - 13px);
+    width: 28px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    padding: 0 0 3px;
+    border: 0;
+    border-radius: 50%;
+    background: url('assets/skin/buttons/icon-round.webp') center/100% 100% no-repeat;
+    color: #fff0bc;
+    font: 900 27px/1 var(--font-display);
+    text-shadow: 0 2px 3px #120807;
+    filter: drop-shadow(0 3px 5px rgba(0, 0, 0, .7));
+    cursor: pointer;
+    transition: filter .16s ease, transform .16s ease, opacity .16s ease;
+}
+
+.hand-carousel-arrow:hover:not(:disabled),
+.hand-carousel-arrow:active:not(:disabled) {
+    filter: brightness(1.2) drop-shadow(0 3px 7px rgba(0, 0, 0, .78));
+    transform: scale(1.07);
+}
+
+.hand-carousel-arrow:disabled {
+    opacity: .32;
+    cursor: default;
+}
+
+.hand-carousel-prev { left: 1px; }
+.hand-carousel-next { right: 1px; }
+
+.hand-carousel-hud {
+    position: absolute;
+    z-index: 25;
+    left: 31px;
+    right: 31px;
+    bottom: 1px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    pointer-events: none;
+}
+
+.hand-carousel-message {
+    flex: 0 0 auto;
+    min-width: 48px;
+    color: rgba(236, 226, 203, .78);
+    font: 800 8px/1 var(--font-body);
+    letter-spacing: .08em;
+    text-align: center;
+    text-transform: uppercase;
+    white-space: nowrap;
+    text-shadow: 0 1px 2px #000;
+}
+
+.hand-carousel.has-large-hand .hand-carousel-message {
+    padding: 3px 7px;
+    border: 1px solid rgba(245, 199, 87, .72);
+    border-radius: 999px;
+    color: #fff0b6;
+    background: rgba(63, 31, 12, .88);
+    box-shadow: 0 0 10px rgba(235, 178, 57, .28);
+}
+
+.hand-carousel-range {
+    flex: 1 1 auto;
+    min-width: 34px;
+    height: 14px;
+    margin: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    pointer-events: auto;
+    cursor: ew-resize;
+}
+
+.hand-carousel-range::-webkit-slider-runnable-track {
+    height: 5px;
+    border: 1px solid rgba(224, 178, 84, .55);
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(13, 6, 28, .95), rgba(58, 34, 69, .9));
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, .8);
+}
+
+.hand-carousel-range::-webkit-slider-thumb {
+    width: 30px;
+    height: 11px;
+    margin-top: -4px;
+    border: 1px solid #3a210d;
+    border-radius: 999px;
+    appearance: none;
+    -webkit-appearance: none;
+    background: linear-gradient(180deg, #f6dc8c, #a86724);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .8), 0 0 6px rgba(232, 182, 65, .25);
+}
+
+.hand-carousel-range::-moz-range-track {
+    height: 5px;
+    border: 1px solid rgba(224, 178, 84, .55);
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(13, 6, 28, .95), rgba(58, 34, 69, .9));
+}
+
+.hand-carousel-range::-moz-range-thumb {
+    width: 30px;
+    height: 11px;
+    border: 1px solid #3a210d;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #f6dc8c, #a86724);
+}
+
+.hand-carousel-range:disabled {
+    cursor: default;
+    opacity: .46;
+}
+
+body.landscape #hand-carousel {
+    height: 108px;
+}
+
+body.landscape #hand-carousel #player-hand {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding-bottom: 16px !important;
+}
+
+#game-board.portrait #hand-carousel {
+    height: min(148px, 16dvh);
+}
+
+#game-board.portrait #hand-carousel #player-hand {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+}
+
 body.landscape #board-center .monsters-area,
 body.landscape #party-zone,
 #game-board.portrait #board-center .monsters-area,
@@ -9372,5 +9563,38 @@ body.landscape .action-point-timer-clock {
 
     #opponent-modal.own-party-view .party-monsters-only .own-party-monster-row[data-monster-count="4"] .party-monster-card-slot + .party-monster-card-slot {
         margin-left: -35px;
+    }
+}
+
+/* Final cascade guards for the carousel and generated reveal artwork. These
+   follow legacy landscape rules that intentionally used !important. */
+body.landscape #hand-carousel #player-hand {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+}
+
+body.landscape #hand-carousel #player-hand .card {
+    height: 88px !important;
+    max-height: 88px !important;
+}
+
+#game-board.portrait #hand-carousel #player-hand .card {
+    margin-left: 0 !important;
+}
+
+.monster-trigger-panel {
+    box-sizing: border-box !important;
+    border: clamp(26px, 5vw, 44px) solid transparent !important;
+    border-image: url('assets/skin/reveal-panel-v167.webp') 160 fill / 1 / 0 stretch !important;
+    padding: 3px clamp(4px, 1.4vw, 12px) 8px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    filter: drop-shadow(0 18px 35px rgba(0, 0, 0, .72));
+}
+
+@media (max-height: 520px) {
+    .monster-trigger-panel {
+        border-width: 22px !important;
+        padding: 1px 6px 5px !important;
     }
 }

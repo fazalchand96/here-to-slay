@@ -1306,7 +1306,8 @@ test('Rex Major privately offers a reveal before granting the extra draw', () =>
     assert.equal(result.revealed, true);
     assert.ok(alice.hand.includes(bonus));
     assert.equal(io.emits.filter(event => event.event === 'rex_major_reveal').length, 1);
-    assert.equal(io.find('monster_effect_triggered').payload.card, rexMajor);
+    assert.equal(io.find('rex_major_reveal').payload.card, modifier);
+    assert.equal(io.find('monster_effect_triggered'), undefined);
     clearRexMajorChoices(gs);
 });
 

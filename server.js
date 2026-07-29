@@ -2405,6 +2405,14 @@ function isValidItemEquipTarget(state, targetPlayerId, targetHeroId) {
     return Boolean(targetPlayer && (targetPlayer.party || []).some(hero => hero.id === targetHeroId));
 }
 
+function getEligibleThiefLeaderTargets(state, actorId) {
+    return (state.playerOrder || []).filter(playerId => {
+        if (playerId === actorId) return false;
+        const player = state.players?.[playerId];
+        return player?.connected !== false && (player?.hand?.length || 0) > 0;
+    });
+}
+
 // Apply the pre-reconnect disconnect fallback. Mid-match this deliberately
 // keeps the remaining sockets in the lobby, but clears every per-match field and
 // every board/pending-action field so a fresh match cannot inherit stale cards.
@@ -5375,12 +5383,14 @@ socket.on('resolve_immediate_play', (data) => {
                 return;
             }
 
-            if (!targetData || !targetData.targetPlayerId) return;
-            const targetPlayer = gameState.players[targetData.targetPlayerId];
-            if (!targetPlayer || targetPlayer.hand.length === 0) {
+            const eligibleTargets = getEligibleThiefLeaderTargets(gameState, socket.id);
+            const targetPlayerId = targetData?.targetPlayerId
+                || (eligibleTargets.length === 1 ? eligibleTargets[0] : null);
+            if (!targetPlayerId || !eligibleTargets.includes(targetPlayerId)) {
                 io.to(socket.id).emit('message', "Opponent has no cards in hand!");
                 return;
             }
+            const targetPlayer = gameState.players[targetPlayerId];
 
             player.ap -= 1;
             player.usedLeaderSkillThisTurn = true;
@@ -5389,11 +5399,11 @@ socket.on('resolve_immediate_play', (data) => {
             const stolenCard = targetPlayer.hand.splice(randomIdx, 1)[0];
             player.hand.push(stolenCard);
 
-            io.emit('message', `The Shadow Claw (Thief) stole a card from ${getPlayerName(gameState, targetData.targetPlayerId)}!`);
+            io.emit('message', `The Shadow Claw (Thief) stole a card from ${getPlayerName(gameState, targetPlayerId)}!`);
             emitPublicCardEffect(
                 player.leader,
                 player.id,
-                `${getPlayerName(gameState, player.id)} pulled a card from ${getPlayerName(gameState, targetData.targetPlayerId)}.`,
+                `${getPlayerName(gameState, player.id)} pulled a card from ${getPlayerName(gameState, targetPlayerId)}.`,
                 'PARTY LEADER · PULL CARD'
             );
             broadcastState();
@@ -5503,6 +5513,7 @@ module.exports = {
     gameState,
     removePlayerAndResetMatch,
     isValidItemEquipTarget,
+    getEligibleThiefLeaderTargets,
     clearUntilNextTurnProtections,
     playerHasEffectiveClass,
     RECONNECT_GRACE_MS,

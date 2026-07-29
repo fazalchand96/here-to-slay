@@ -17,6 +17,7 @@ const {
     checkWinCondition,
     checkShamanagaArrivalWin,
     isValidItemEquipTarget,
+    getEligibleThiefLeaderTargets,
     clearUntilNextTurnProtections,
     playerHasEffectiveClass,
     getConnectedChallengeOpponentIds,
@@ -42,6 +43,23 @@ const {
     loadCards,
     gameState
 } = require('../server');
+
+test('Thief Party Leader automatically finds the sole eligible duel opponent', () => {
+    const state = {
+        playerOrder: ['thief', 'opponent'],
+        players: {
+            thief: { id: 'thief', hand: [] },
+            opponent: { id: 'opponent', hand: [{ id: 'loot' }], connected: true }
+        }
+    };
+
+    assert.deepEqual(getEligibleThiefLeaderTargets(state, 'thief'), ['opponent']);
+    state.players.opponent.hand = [];
+    assert.deepEqual(getEligibleThiefLeaderTargets(state, 'thief'), []);
+    state.players.opponent.hand = [{ id: 'loot' }];
+    state.players.opponent.connected = false;
+    assert.deepEqual(getEligibleThiefLeaderTargets(state, 'thief'), []);
+});
 
 test('action point timer allows 45 seconds only while the active player can act', () => {
     const state = {
