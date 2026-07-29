@@ -50,6 +50,7 @@ function createInitialGameState() {
     pendingAction: null, // { type, playerToChoose, amount, originalActor }
     pendingRoll: null, // { type: 'SKILL'|'ATTACK', rollerId, targetId, baseRoll, currentRoll, passedPlayers: [] }
     pendingChallenge: null, // { rollerId, card, passedPlayers: [] }
+    pendingSilentShieldActorIds: [],
     mainDeck: [],
     monsterDeck: [],
     discardPile: [],
@@ -346,7 +347,13 @@ function pendingActionForTargetingPlan(plan, rollerId, skillId, heroId) {
     if (plan.type === 'DESTROY') {
         return { type: 'DESTROY', playerToChoose: rollerId, originalActor: rollerId };
     }
-    return { type: plan.type, originalActor: rollerId, skillId, heroId };
+    return {
+        type: plan.type,
+        originalActor: rollerId,
+        skillId,
+        heroId,
+        ...(plan.targetAction ? { targetAction: plan.targetAction } : {})
+    };
 }
 
 function queueLightningLabrysPlayerChoice(state, originalActor, remainingChoices) {
@@ -873,6 +880,7 @@ function resetGameForNextMatch() {
     gameState.pendingShamanagaSacrifice = null;
     gameState.pendingSmokReveal = null;
     gameState.pendingSilentShieldActorId = null;
+    gameState.pendingSilentShieldActorIds = [];
     gameState.freePlayQueue = [];
     gameState.forcedEndTurnPlayerId = null;
     gameState.waitingForInput = false;
@@ -1404,8 +1412,10 @@ function resumeExpansionChoices() {
         }
     }
 
-    if (gameState.pendingSilentShieldActorId) {
-        const playerId = gameState.pendingSilentShieldActorId;
+    while ((gameState.pendingSilentShieldActorIds || []).length > 0
+        || gameState.pendingSilentShieldActorId) {
+        const playerId = (gameState.pendingSilentShieldActorIds || []).shift()
+            || gameState.pendingSilentShieldActorId;
         gameState.pendingSilentShieldActorId = null;
         if (gameState.players[playerId]?.silentShieldActive && gameState.discardPile.some(card => card.type === 'Hero Card')) {
             gameState.state = 'WAITING_FOR_SKILL_TARGET';
@@ -1955,9 +1965,11 @@ function grantExpansionModifierDraws(pendingRoll, finalForEntry) {
 
 function playerHasEffectiveClass(player, requiredClass) {
     if (!player || !requiredClass) return false;
-    // Expansion Challenges say the class must be "in your Party". Party
-    // Leaders sit outside the Hero Party and therefore never satisfy this.
-    return (player.party || []).some(hero => effectiveHeroClass(hero) === requiredClass);
+    // Class-specific Challenge cards explicitly allow the matching Party Leader.
+    // This exception is scoped to Challenge eligibility; ordinary class-counting
+    // effects continue to count Hero cards only.
+    return player.leader?.class === requiredClass
+        || (player.party || []).some(hero => effectiveHeroClass(hero) === requiredClass);
 }
 
 function prepareMinusFourRetrievals(pendingRoll, finalForEntry) {
@@ -3213,6 +3225,25 @@ ioServer.on('connection', (socket) => {
             const selected = gameState.discardPile.find(card => card.id === targetData.targetCardId);
             const allowedTypes = gameState.pendingAction.allowedTypes;
             if (!selected || (allowedTypes && !allowedTypes.includes(selected.type))) return;
+        }
+        if (gameState.pendingAction.type === 'SKILL_TARGET_HERO') {
+            const targetPlayerId = targetData?.targetPlayerId;
+            const targetPlayer = gameState.players[targetPlayerId];
+            const targetHero = targetPlayer?.party?.find(card =>
+                card.id === targetData?.targetHeroId && card.type === 'Hero Card');
+            if (!targetPlayer || targetPlayerId === rollerId || !targetHero) return;
+
+            const targetAction = gameState.pendingAction.targetAction;
+            const destroyProtected = targetAction === 'DESTROY'
+                && (targetPlayer.cannotBeDestroyed
+                    || (targetPlayer.slainMonsters || []).some(monster =>
+                        monster.effect_id === 'MONSTER_TERRATUGA'));
+            const stealProtected = targetAction === 'STEAL' && targetPlayer.cannotBeStolen;
+            if (destroyProtected || stealProtected) {
+                socket.emit('message', `${getPlayerName(gameState, targetPlayerId)} is protected. Choose another Hero.`);
+                broadcastState();
+                return;
+            }
         }
 
         // Reset state
@@ -4911,7 +4942,7 @@ socket.on('resolve_immediate_play', (data) => {
             return;
         }
         if (challengeCard.required_class && !playerHasEffectiveClass(challenger, challengeCard.required_class)) {
-            reject(`You need a ${challengeCard.required_class} Hero in your Party to play this Challenge.`);
+            reject(`You need a ${challengeCard.required_class} Hero or Party Leader to play this Challenge.`);
             return;
         }
 
@@ -5490,6 +5521,8 @@ function startGame() {
     gameState.pendingEndTurnEffects = null;
     gameState.pendingShamanagaSacrifice = null;
     gameState.pendingSmokReveal = null;
+    gameState.pendingSilentShieldActorId = null;
+    gameState.pendingSilentShieldActorIds = [];
     if (currentSession().modifierTimer) clearTimeout(currentSession().modifierTimer);
     clearChallengeTimer();
     resetActionPointTimerTracking();

@@ -446,11 +446,12 @@ test('Items and Cursed Items may target Heroes belonging to either player', () =
     assert.equal(isValidItemEquipTarget(state, 'missing-player', 'alice-hero'), false);
 });
 
-test('class-gated Challenges require a Hero in the Party and never count the Party Leader', () => {
-    assert.equal(playerHasEffectiveClass(pl({ leader: leader('LEADER_DRUID', 'Druid') }), 'Druid'), false);
+test('class-gated Challenges count either a matching Hero or the matching Party Leader', () => {
+    assert.equal(playerHasEffectiveClass(pl({ leader: leader('LEADER_DRUID', 'Druid') }), 'Druid'), true);
     assert.equal(playerHasEffectiveClass(pl({ party: [heroOf('Wizard', { equippedItem: { ...item('ITEM_MASK', 'Warrior Mask'), class: 'Warrior' } })] }), 'Warrior'), true);
     assert.equal(playerHasEffectiveClass(pl({ party: [heroOf('Wizard')] }), 'Druid'), false);
-    assert.equal(playerHasEffectiveClass(pl({ leader: leader('LEADER_NECROMANCER', 'Necromancer') }), 'Necromancer'), false);
+    assert.equal(playerHasEffectiveClass(pl({ leader: leader('LEADER_NECROMANCER', 'Necromancer') }), 'Necromancer'), true);
+    assert.equal(playerHasEffectiveClass(pl({ leader: leader('LEADER_SORCERER', 'Sorcerer') }), 'Sorcerer'), true);
     assert.equal(playerHasEffectiveClass(pl({ party: [heroOf('Bard', { equippedItem: { ...item('ITEM_MASK', 'Berserker Mask'), class: 'Berserker' } })] }), 'Berserker'), true);
 });
 

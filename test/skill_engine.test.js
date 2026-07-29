@@ -10,7 +10,8 @@ const {
     executeSkill, executeMagic, hasOpponentHeroTarget, getTargetingSkillPlan, drawCardsWithPassives,
     triggerCrownedSerpent, prepareImmediateItemPlay, markButtonsFreePlay,
     returnEquippedItemToOwner, effectiveHeroClass, hasEquippedEffect, refundTemporalHourglass,
-    triggerCursedGlove, triggerSoulTethers, resolveRexMajorChoice, clearRexMajorChoices
+    triggerCursedGlove, triggerSoulTethers, recordSacrificeEvent,
+    resolveRexMajorChoice, clearRexMajorChoices
 } = require('../skill_engine');
 
 // ---------------------------------------------------------------------------
@@ -150,8 +151,25 @@ test('Silent Shield marks every successful destroy for an optional Hero retrieva
     const owner = player('p2', { party: [hero('Target', { id: 'target' })] });
     const state = makeState([attacker, owner]);
     executeSkill(state, makeIo(), 'DESTROY_HERO', 'p1', null, { targetPlayerId: 'p2', targetHeroId: 'target' });
-    assert.equal(state.pendingSilentShieldActorId, 'p1');
+    assert.deepEqual(state.pendingSilentShieldActorIds, ['p1']);
     assert.equal(state.discardPile[0].id, 'target');
+});
+
+test('Silent Shield queues one retrieval for every Hero sacrificed or destroyed', () => {
+    const shieldOwner = player('p1', { silentShieldActive: true });
+    const firstVictim = player('p2', { party: [hero('First', { id: 'first' })] });
+    const secondVictim = player('p3', { party: [hero('Second', { id: 'second' })] });
+    const state = makeState([shieldOwner, firstVictim, secondVictim]);
+
+    recordSacrificeEvent(state, shieldOwner, hero('Offering', { id: 'offering' }), { isHero: true });
+    executeSkill(state, makeIo(), 'DESTROY_HERO', 'p1', null, {
+        targetPlayerId: 'p2', targetHeroId: 'first'
+    });
+    executeSkill(state, makeIo(), 'DESTROY_HERO', 'p1', null, {
+        targetPlayerId: 'p3', targetHeroId: 'second'
+    });
+
+    assert.deepEqual(state.pendingSilentShieldActorIds, ['p1', 'p1', 'p1']);
 });
 
 let cardSeq = 0;
@@ -1210,6 +1228,23 @@ test('SKILL_TIPSY_TOOTIE swaps itself for a stolen hero', () => {
     assert.ok(alice.party.includes(target));      // alice gained the stolen hero
     assert.ok(bob.party.includes(tipsy));         // bob received Tipsy Tootie
     assert.ok(!alice.party.includes(tipsy));
+});
+
+test('SKILL_TIPSY_TOOTIE only swaps the exact Tipsy card that used the skill', () => {
+    const target = hero('Target', { id: 't1' });
+    const otherTipsy = hero('Tipsy Tootie', { id: 'tp-old' });
+    const actingTipsy = hero('Tipsy Tootie', { id: 'tp-acting' });
+    const bob = player('bob', { party: [target] });
+    const alice = player('alice', { party: [otherTipsy, actingTipsy] });
+    const gs = makeState([alice, bob]);
+
+    executeSkill(gs, makeIo(), 'SKILL_TIPSY_TOOTIE', 'alice', 'tp-acting', {
+        targetPlayerId: 'bob', targetHeroId: 't1'
+    });
+
+    assert.ok(alice.party.includes(otherTipsy));
+    assert.ok(alice.party.includes(target));
+    assert.ok(bob.party.includes(actingTipsy));
 });
 
 test('SKILL_FLUFFY destroys multiple targeted heroes, skipping protected ones', () => {

@@ -70,7 +70,21 @@ test('portrait uses five separately rendered backgrounds with baked HUD and cont
     assert.match(styleSource, /#game-board\.portrait #player-win-tracker \{[\s\S]*?background: transparent !important;/);
     assert.match(styleSource, /#game-board\.portrait #discard-draw-btn,[\s\S]*?#game-board\.portrait #end-turn-btn \{[\s\S]*?background: transparent !important;/);
     assert.match(styleSource, /#game-board\.portrait #action-point-timer \{[\s\S]*?background: transparent !important;/);
-    assert.match(styleSource, /#game-board\.portrait #board-center \.monsters-area \.card \{[\s\S]*?82px/);
+    assert.match(styleSource, /SCREENSHOT QA CORRECTIONS v174/);
+    assert.match(styleSource, /html body #game-board\.portrait #board-center \.monsters-area \.card \{[\s\S]*?64px/);
+    assert.match(styleSource, /html body #game-board\.portrait #turn-indicator,[\s\S]*?display: none !important;/);
+    assert.match(styleSource, /html body #game-board\.portrait #player-party \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\)/);
+    assert.match(styleSource, /html body #game-board\.portrait #party-dock \{[\s\S]*?minmax\(0, 1\.45fr\)/);
+    assert.match(styleSource, /html body #game-board\.portrait > #game-menu-btn \{[\s\S]*?left: 2\.1%/);
+});
+
+test('landscape photo QA keeps Monsters visible and opponent plaque text compact', () => {
+    const styleSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
+
+    assert.match(styleSource, /html body\.landscape #game-board #board-center \.monsters-area \{[\s\S]*?top: 17\.2%/);
+    assert.match(styleSource, /html body\.landscape #game-board #board-center \.monsters-area \.card \{[\s\S]*?96px/);
+    assert.match(styleSource, /html body\.landscape #game-board #opponents-bar \.opponent-stat:nth-child\(1\)[\s\S]*?content: "H"/);
+    assert.match(styleSource, /html body\.landscape #game-board #opponents-bar \.opponent-name-text \{[\s\S]*?text-overflow: ellipsis/);
 });
 
 test('the player hand uses an always-visible horizontal carousel with a large-hand indicator', () => {
@@ -281,6 +295,7 @@ test('Challenge prompt lists every legal card and keeps class-locked Challenges 
     const serverSource = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
 
     assert.match(appSource, /function getChallengeCardChoices\(data\)/);
+    assert.match(appSource, /player\.leader\?\.class === requiredClass/);
     assert.match(appSource, /data-challenge-card-id="\$\{card\.id\}"/);
     assert.match(appSource, /data-locked-challenge-card-id="\$\{card\.id\}"/);
       assert.match(appSource, /Normal Challenge/);
@@ -307,8 +322,30 @@ test('Challenge prompt lists every legal card and keeps class-locked Challenges 
             true
         );
     }
-    assert.match(serverSource, /You need a \$\{challengeCard\.required_class\} Hero in your Party/);
+    assert.match(serverSource, /You need a \$\{challengeCard\.required_class\} Hero or Party Leader/);
     assert.match(serverSource, /reply\(\{\s*ok: true,\s*cardId: challengeCard\.id/);
+});
+
+test('Challenge phase uses a modifier-style split layout with a large card on the left', () => {
+    const styleSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
+
+    assert.match(styleSource, /CHALLENGE SPLIT LAYOUT v176/);
+    assert.match(
+        styleSource,
+        /#event-console #challenge-modal:not\(\.hidden\) \{[\s\S]*?display: grid !important;[\s\S]*?grid-template-columns: minmax\(175px, \.78fr\) minmax\(300px, 1\.42fr\)/
+    );
+    assert.match(
+        styleSource,
+        /#event-console #challenge-modal #challenge-card-display \{[\s\S]*?grid-column: 1 !important;[\s\S]*?grid-row: 1 \/ 3 !important;/
+    );
+    assert.match(
+        styleSource,
+        /#event-console #challenge-modal #challenge-action-area \{[\s\S]*?grid-column: 2 !important;/
+    );
+    assert.match(
+        styleSource,
+        /@media \(orientation: portrait\), \(max-width: 600px\) \{[\s\S]*?#event-console #challenge-modal:not\(\.hidden\)/
+    );
 });
 
 test('passing the Modifier window stays locked until a Modifier is actually played', () => {
@@ -367,7 +404,7 @@ test('Item targeting keeps both own and opponent Party boards available', () => 
     );
     assert.match(
         appSource,
-        /const targetingParty = !spectator && \(myTargetMode \|\| isLocalTargeting \|\| isSelfItemTargeting\)/
+        /const targetingParty = !spectator && \(isLocalTargeting \|\| isSelfItemTargeting \|\| targetsOwnParty\)/
     );
     assert.match(
         appSource,
@@ -376,6 +413,20 @@ test('Item targeting keeps both own and opponent Party boards available', () => 
     assert.match(
         appSource,
         /window\.openOpponentModal = function\(id, requestedSection = 'classes'\)[\s\S]*?buildClassPartyGrid\(opp, false\)/
+    );
+});
+
+test('deferred opponent-Hero skills do not mark the local Party dock as a target', () => {
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+
+    assert.match(appSource, /const targetsOwnParty = myTargetMode && currentPendingAction/);
+    assert.doesNotMatch(
+        appSource,
+        /const targetingParty = !spectator && \(myTargetMode \|\|/
+    );
+    assert.match(
+        appSource,
+        /data\.state === 'WAITING_FOR_SKILL_TARGET'[\s\S]*?isSkillTargeting = false;[\s\S]*?isPlayerTargeting = false;/
     );
 });
 

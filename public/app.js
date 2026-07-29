@@ -2807,7 +2807,12 @@ function buildBoardParts(data, ctx) {
         ? previewHeroes.map(hero => `<span class="party-dock-card" style="background-image:url('${cardArt(hero)}')" title="${hero.name}"></span>`).join('')
         : `<span class="party-dock-empty">Your Heroes will appear here</span>`;
     const hiddenHeroCount = Math.max(0, (me.party || []).length - previewHeroes.length);
-    const targetingParty = !spectator && (myTargetMode || isLocalTargeting || isSelfItemTargeting);
+    const targetsOwnParty = myTargetMode && currentPendingAction
+        && ['EQUIP', 'EXCHANGE_STEP_2', 'RETURN_ITEM', 'PENALTY',
+            'DRUID_SKILL_SACRIFICE', 'LIGHTNING_LABRYS_SACRIFICE',
+            'DRAGONS_BILE_SACRIFICE', 'ORACON_SACRIFICE']
+            .includes(currentPendingAction.type);
+    const targetingParty = !spectator && (isLocalTargeting || isSelfItemTargeting || targetsOwnParty);
     const perspectiveName = getPlayerName(perspectiveId);
     const partyTitle = spectator ? `${perspectiveName}'s Party` : 'Your Party';
     const partyInstruction = spectator
@@ -3463,6 +3468,20 @@ function renderBoard(data) {
             targetBanner?.classList.remove('hidden');
 
             document.body?.classList.add('target-mode-active');
+
+            // This server state is authoritative. Clear client-only targeting
+            // modes left behind by the card play so the wrong board cannot stay
+            // highlighted (notably Tipsy Tootie's own Party).
+            myTargetMode = false;
+            isSkillTargeting = false;
+            isPlayerTargeting = false;
+            isSelfItemTargeting = false;
+            isLeaderSkillTargeting = false;
+            isLocalTargeting = false;
+            if (data.pendingAction.type !== 'SKILL_TARGET_MULTI') {
+                isMultiTargeting = false;
+                multiTargetSelected = [];
+            }
 
             
 
@@ -4594,6 +4613,7 @@ function getChallengeCardChoices(data) {
     return challengeCards.map(card => {
         const requiredClass = card.required_class || null;
         const eligible = !requiredClass
+            || player.leader?.class === requiredClass
             || (player.party || []).some(hero => effectiveHeroClass(hero) === requiredClass);
         return { card, requiredClass, eligible };
     });
@@ -4665,7 +4685,7 @@ function renderChallengePrompt(data, announce = false) {
                             data-challenge-card-id="${card.id}">
                             <span>${challengeChoiceLabel(card)}</span>
                             <small>${requiredClass
-                                ? `${requiredClass} Hero required · +${card.challenge_bonus || 0} roll`
+                                ? `${requiredClass} Hero or Party Leader · +${card.challenge_bonus || 0} roll`
                                 : 'Standard roll-off'}</small>
                         </button>
                     `).join('')}
@@ -4676,7 +4696,7 @@ function renderChallengePrompt(data, announce = false) {
                     ${lockedChoices.map(({ card, requiredClass }) => `
                         <div class="challenge-choice is-locked ${challengeChoiceVisualClass(card)}" data-locked-challenge-card-id="${card.id}">
                             <span>🔒 ${card.name}</span>
-                            <small>Needs a ${requiredClass} Hero in your Party</small>
+                            <small>Needs a ${requiredClass} Hero or Party Leader</small>
                         </div>
                     `).join('')}
                 </div>

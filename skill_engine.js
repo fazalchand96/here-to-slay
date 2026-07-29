@@ -244,8 +244,16 @@ function queueCommittedHeroRemovalTriggers(gameState, owner, card, {
     const slain = owner.slainMonsters || [];
     if (isHero) {
         triggerSoulTethers(gameState, owner);
-        if (initiatorId && gameState.players?.[initiatorId]?.silentShieldActive) {
-            gameState.pendingSilentShieldActorId = initiatorId;
+        // Silent Shield fires once for every committed Hero removal. A sacrifice
+        // belongs to the Hero's owner even when an older call site does not pass
+        // an explicit initiator; a destroy still belongs to its attacker.
+        const silentShieldActorId = initiatorId
+            || (eventType === 'SACRIFICE' ? owner.id : null);
+        if (silentShieldActorId && gameState.players?.[silentShieldActorId]?.silentShieldActive) {
+            if (!Array.isArray(gameState.pendingSilentShieldActorIds)) {
+                gameState.pendingSilentShieldActorIds = [];
+            }
+            gameState.pendingSilentShieldActorIds.push(silentShieldActorId);
         }
         if (eventType === 'DESTROY'
             && slain.some(monster => monster.effect_id === 'MONSTER_DRACOS')) {
@@ -1893,24 +1901,24 @@ case 'DESTROY_HERO':
             break;
         }
 
-        case 'SKILL_TIPSY_TOOTIE':
+        case 'SKILL_TIPSY_TOOTIE': {
             if (targetData && targetData.targetPlayerId && targetData.targetHeroId) {
                 const tp = gameState.players[targetData.targetPlayerId];
-                if (tp && !tp.cannotBeStolen) {
-                    const tHeroIndex = tp.party.findIndex(h => h.id === targetData.targetHeroId);
+                const tipsyIndex = player.party.findIndex(h =>
+                    h.id === heroId && h.type === 'Hero Card');
+                if (tp && tp.id !== player.id && !tp.cannotBeStolen && tipsyIndex !== -1) {
+                    const tHeroIndex = tp.party.findIndex(h =>
+                        h.id === targetData.targetHeroId && h.type === 'Hero Card');
                     if (tHeroIndex !== -1) {
                         const targetHero = tp.party[tHeroIndex];
-                        // 1. Steal the target hero
-                        tp.party.splice(tHeroIndex, 1);
-                        player.party.push(targetHero);
-                        triggerCursedGlove(gameState, tp, player);
+                        const tipsy = player.party[tipsyIndex];
 
-                        // 2. Move Tipsy Tootie to their party
-                        const tipsyIndex = player.party.findIndex(h => h.name === 'Tipsy Tootie');
-                        if (tipsyIndex !== -1) {
-                            const tipsy = player.party.splice(tipsyIndex, 1)[0];
-                            tp.party.push(tipsy);
-                        }
+                        // Commit both halves only after both exact cards validate.
+                        tp.party.splice(tHeroIndex, 1);
+                        player.party.splice(tipsyIndex, 1);
+                        player.party.push(targetHero);
+                        tp.party.push(tipsy);
+                        triggerCursedGlove(gameState, tp, player);
 
                         actionMessage = `${getPlayerName(gameState, player.id)} swapped Tipsy Tootie for ${targetHero.name} from ${getPlayerName(gameState, tp.id)}!`;
                     }
@@ -1919,6 +1927,7 @@ case 'DESTROY_HERO':
                 }
             }
             break;
+        }
 
         default:
             actionMessage = `Unrecognized skill ${skillId}.`;

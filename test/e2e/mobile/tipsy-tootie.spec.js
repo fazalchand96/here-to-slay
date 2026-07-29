@@ -38,9 +38,20 @@ test('Tipsy Tootie: selecting an opponent hero resolves the swap', async ({ brow
     await host.waitForTimeout(600);
 
     // The swap resolved: host gained the stolen hero, p2 received Tipsy Tootie.
-    const hostHasStolen = await host.locator('#player-party [data-id="card_030"]').count();
-    const paAfter = await host.evaluate(() => window.latestGameState.pendingAction);
-    expect(hostHasStolen, 'host should gain the stolen hero').toBeGreaterThan(0);
+    const resolved = await host.evaluate(() => {
+        const state = window.latestGameState;
+        const me = state.players[window.myId];
+        const opponentId = state.playerOrder.find(id => id !== window.myId);
+        const opponent = state.players[opponentId];
+        return {
+            hostHasStolen: me.party.some(card => card.id === 'card_030'),
+            opponentHasTipsy: opponent.party.some(card => card.id === 'card_031'),
+            pendingAction: state.pendingAction,
+        };
+    });
+    expect(resolved.hostHasStolen, 'host should gain the stolen hero').toBe(true);
+    expect(resolved.opponentHasTipsy, 'opponent should receive Tipsy Tootie').toBe(true);
+    const paAfter = resolved.pendingAction;
     expect(paAfter, 'pending action should clear').toBeNull();
 
     expect(errors).toEqual([]);
