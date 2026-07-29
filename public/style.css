@@ -6555,6 +6555,245 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
     }
 }
 
+/* ==========================================================================
+   INTEGRATED LANDSCAPE BOARD v171
+   Five opponent plaques, the nine-class tracker and the timer frame are now
+   physical parts of each AP-state background. CSS carries only live text,
+   counters, gem fills and the active-opponent crystal glow.
+   ========================================================================== */
+body.landscape #game-board {
+    background-image: url('assets/skin/premium-tabletop-landscape-integrated-ap0-v171.webp') !important;
+}
+
+body.landscape #opponents-bar {
+    left: 18.25% !important;
+    top: 4.75% !important;
+    width: 67.5% !important;
+    height: 8.9% !important;
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    gap: 1.15% !important;
+    padding: 0 !important;
+    overflow: visible !important;
+}
+
+#opponents-bar .opponent-chip,
+body.landscape #opponents-bar .opponent-chip {
+    position: relative !important;
+    isolation: isolate !important;
+    display: grid !important;
+    grid-template-rows: 56% 44% !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 9% 5% 8% !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    color: #fff1c9 !important;
+    transform: none !important;
+    animation: none !important;
+}
+
+#opponents-bar .opponent-chip-name {
+    align-self: center !important;
+    padding: 0 16% 0 5% !important;
+    font-size: clamp(.43rem, 1.13vw, .68rem) !important;
+    text-align: left !important;
+}
+
+#opponents-bar .opponent-chip-stats {
+    align-self: center !important;
+    padding: 0 4% !important;
+    gap: 1% !important;
+    font-size: clamp(.36rem, .82vw, .54rem) !important;
+}
+
+#opponents-bar .opponent-stat {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 2px !important;
+    width: 31% !important;
+}
+
+.opponent-turn-label {
+    display: none !important;
+}
+
+#opponents-bar .opponent-chip.is-active-turn {
+    z-index: 3 !important;
+    background: transparent !important;
+    background-image: none !important;
+    filter: none !important;
+    transform: none !important;
+    animation: none !important;
+}
+
+#opponents-bar .opponent-chip.is-active-turn::before {
+    content: "" !important;
+    display: block !important;
+    position: absolute !important;
+    z-index: -1 !important;
+    top: 12% !important;
+    right: 0.5% !important;
+    width: 13.5% !important;
+    aspect-ratio: 1 !important;
+    border-radius: 28% !important;
+    background:
+        radial-gradient(circle, rgba(245, 239, 255, .98) 0 9%, rgba(145, 101, 255, .95) 23%, rgba(79, 40, 191, .78) 45%, rgba(73, 33, 176, 0) 72%) !important;
+    filter: drop-shadow(0 0 4px rgba(151, 103, 255, .95)) drop-shadow(0 0 9px rgba(101, 61, 221, .75)) !important;
+    pointer-events: none !important;
+    animation: opponent-crystal-blink-v171 1.35s ease-in-out infinite !important;
+}
+
+@keyframes opponent-crystal-blink-v171 {
+    0%, 100% { opacity: .34; transform: scale(.84) rotate(45deg); }
+    48% { opacity: 1; transform: scale(1.18) rotate(45deg); }
+}
+
+body.landscape #player-win-tracker {
+    position: absolute !important;
+    left: 7.35% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: 4.35% !important;
+    width: 13.75% !important;
+    height: 7.35% !important;
+    aspect-ratio: auto !important;
+    display: block !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+    overflow: visible !important;
+}
+
+body.landscape #player-win-tracker .wt-classes {
+    position: relative !important;
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+body.landscape #player-win-tracker .wt-class-label {
+    position: absolute !important;
+    left: 8% !important;
+    right: 8% !important;
+    top: 15% !important;
+    font-size: clamp(.34rem, .72vw, .51rem) !important;
+    line-height: 1 !important;
+}
+
+body.landscape #player-win-tracker .wt-class-gems {
+    position: absolute !important;
+    left: 7% !important;
+    bottom: 12% !important;
+    width: 86% !important;
+    display: grid !important;
+    grid-template-columns: repeat(9, minmax(0, 1fr)) !important;
+    align-items: center !important;
+    gap: 0 !important;
+    transform: none !important;
+}
+
+body.landscape #player-win-tracker .wt-class-gems em {
+    width: clamp(4px, .74vw, 10px) !important;
+}
+
+body.landscape #action-point-timer {
+    position: absolute !important;
+    left: 84.7% !important;
+    right: auto !important;
+    top: 71.35% !important;
+    width: 11.15% !important;
+    height: 7.3% !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: .85% 1.35% 1.05% !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+body.landscape #action-point-timer::after {
+    left: 13% !important;
+    right: 13% !important;
+    bottom: 12% !important;
+}
+
+body.landscape #action-point-timer.timer-warning,
+body.landscape #action-point-timer.timer-danger {
+    background: transparent !important;
+    background-image: none !important;
+    animation: integrated-action-timer-pulse 700ms ease-in-out infinite !important;
+}
+
+@keyframes integrated-action-timer-pulse {
+    0%, 100% { opacity: 1; filter: none; }
+    50% { opacity: .78; filter: brightness(1.22); }
+}
+
+/* The existing top-left chat button stays untouched. Only its opened panel now
+   grows from the lower-right corner of the board. */
+body.chat-open #event-console-empty {
+    top: auto !important;
+    right: 1.2% !important;
+    bottom: 2% !important;
+    left: auto !important;
+    width: min(36vw, 360px) !important;
+    max-width: 88vw !important;
+    max-height: min(58dvh, 420px) !important;
+    transform-origin: right bottom !important;
+}
+
+/* Match the transparent click targets to the circular controls in v171 art. */
+body.landscape #game-menu-btn {
+    left: 10.25% !important;
+    top: 6.75% !important;
+}
+
+body.landscape #mute-btn {
+    right: 9.55% !important;
+    top: 6.75% !important;
+}
+
+body.landscape.chat-open #event-console-empty {
+    top: auto !important;
+    right: 1.2% !important;
+    bottom: 2% !important;
+    left: auto !important;
+    width: min(36vw, 360px) !important;
+    max-width: 88vw !important;
+    max-height: min(58dvh, 420px) !important;
+    transform-origin: right bottom !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #opponents-bar .opponent-chip.is-active-turn::before {
+        opacity: .9 !important;
+        transform: rotate(45deg) !important;
+        animation: none !important;
+    }
+}
+
 /* Hand carousel: cards keep a readable size and move horizontally instead of
    compressing into an unreadable fan. The range control is an always-visible,
    touch-friendly scrollbar; arrow buttons advance roughly one viewport. */
@@ -9971,25 +10210,27 @@ body.landscape #hand-carousel #player-hand .card {
 
 #lobby-modal .roster-entry,
 #lobby-modal .roster-entry.is-ready {
-    --roster-socket-x: 15.8%;
-    --roster-socket-size: 78%;
+    --lobby-roster-art: url('assets/skin/lobby/lobby-roster-engraved-empty-v172.webp');
     position: relative !important;
     box-sizing: border-box !important;
     display: grid !important;
-    grid-template-columns: 29% minmax(0, 1fr) !important;
+    grid-template-columns: 30% minmax(0, 1fr) !important;
     align-items: center !important;
     width: 100% !important;
     min-width: 0 !important;
     min-height: 0 !important;
-    aspect-ratio: 4 / 1;
+    aspect-ratio: 3 / 1;
     margin: 0 !important;
-    padding: 4px 7px 4px 2.5% !important;
-    gap: 3px !important;
+    padding: 5px 5% 5px 1.5% !important;
+    gap: 0 !important;
     overflow: hidden !important;
     appearance: none;
     border: 0 !important;
     border-radius: 0 !important;
-    background: url('assets/skin/lobby/lobby-roster-v169.webp') center / 100% 100% no-repeat !important;
+    background-image: var(--lobby-roster-art) !important;
+    background-position: center !important;
+    background-size: 100% 100% !important;
+    background-repeat: no-repeat !important;
     box-shadow: none !important;
     color: #f8edd8 !important;
     font: inherit;
@@ -10007,51 +10248,47 @@ body.landscape #hand-carousel #player-hand .card {
     outline-offset: -3px;
 }
 
-#lobby-modal .roster-avatar {
-    position: absolute !important;
-    top: 50% !important;
-    left: var(--roster-socket-x) !important;
-    width: auto !important;
-    height: var(--roster-socket-size) !important;
-    aspect-ratio: 1;
-    transform: translate(-50%, -50%) !important;
-    margin: 0 !important;
-    border: 0 !important;
-    border-radius: 50% !important;
-    background-color: rgba(8, 6, 8, .78) !important;
-    background-position: center !important;
-    background-repeat: no-repeat !important;
-    background-size: contain !important;
-    box-shadow: inset 0 0 7px rgba(0, 0, 0, .8) !important;
-}
-
 #lobby-modal .roster-info,
 #lobby-modal .roster-name,
 #lobby-modal .roster-status {
     min-width: 0 !important;
+    max-width: 100% !important;
 }
 
 #lobby-modal .roster-info {
     grid-column: 2 !important;
+    overflow: hidden !important;
+    padding: 0 1% 0 4% !important;
 }
 
 #lobby-modal .roster-name {
-    font-size: clamp(.55rem, 1.45dvh, .77rem) !important;
+    overflow: hidden !important;
+    font-size: clamp(.58rem, 1.55dvh, .82rem) !important;
     line-height: 1.05 !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
 }
 
 #lobby-modal .roster-status,
 #lobby-modal .roster-class,
 #lobby-modal .roster-inspect-hint {
-    font-size: clamp(.42rem, 1.05dvh, .58rem) !important;
+    font-size: clamp(.42rem, 1.08dvh, .6rem) !important;
     line-height: 1.05 !important;
 }
 
 #lobby-modal .roster-status {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
     gap: 2px 4px;
+    overflow: hidden !important;
+    white-space: nowrap !important;
+}
+
+#lobby-modal .roster-status > * {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 #lobby-modal .roster-inspect-hint {
@@ -10217,4 +10454,213 @@ body.landscape #hand-carousel #player-hand .card {
         top: 46px !important;
         right: 42px !important;
     }
+}
+
+/* v171 source-order lock: later legacy skin rules must not repaint the HUD that
+   is now physically integrated into the landscape background. */
+body.landscape #game-board {
+    background-image: url('assets/skin/premium-tabletop-landscape-integrated-ap0-v171.webp') !important;
+}
+
+body.landscape #opponents-bar {
+    left: 18.25% !important;
+    top: 4.75% !important;
+    width: 67.5% !important;
+    height: 8.9% !important;
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    gap: 1.15% !important;
+    padding: 0 !important;
+    overflow: visible !important;
+}
+
+#opponents-bar .opponent-chip,
+body.landscape #opponents-bar .opponent-chip {
+    position: relative !important;
+    isolation: isolate !important;
+    display: grid !important;
+    grid-template-rows: 56% 44% !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 9% 5% 8% !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    color: #fff1c9 !important;
+    transform: none !important;
+    animation: none !important;
+}
+
+#opponents-bar .opponent-chip-name {
+    align-self: center !important;
+    padding: 0 16% 0 5% !important;
+    font-size: clamp(.43rem, 1.13vw, .68rem) !important;
+    text-align: left !important;
+}
+
+#opponents-bar .opponent-chip-stats {
+    align-self: center !important;
+    padding: 0 4% !important;
+    gap: 1% !important;
+    font-size: clamp(.36rem, .82vw, .54rem) !important;
+}
+
+#opponents-bar .opponent-stat {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 2px !important;
+    width: 31% !important;
+}
+
+#opponents-bar .opponent-chip.is-active-turn {
+    z-index: 3 !important;
+    background: transparent !important;
+    background-image: none !important;
+    filter: none !important;
+    transform: none !important;
+    animation: none !important;
+}
+
+#opponents-bar .opponent-chip.is-active-turn::before {
+    content: "" !important;
+    display: block !important;
+    position: absolute !important;
+    z-index: -1 !important;
+    top: 12% !important;
+    right: .5% !important;
+    width: 13.5% !important;
+    aspect-ratio: 1 !important;
+    border-radius: 28% !important;
+    background: radial-gradient(circle, rgba(245, 239, 255, .98) 0 9%, rgba(145, 101, 255, .95) 23%, rgba(79, 40, 191, .78) 45%, rgba(73, 33, 176, 0) 72%) !important;
+    filter: drop-shadow(0 0 4px rgba(151, 103, 255, .95)) drop-shadow(0 0 9px rgba(101, 61, 221, .75)) !important;
+    pointer-events: none !important;
+    animation: opponent-crystal-blink-v171 1.35s ease-in-out infinite !important;
+}
+
+body.landscape #player-win-tracker {
+    position: absolute !important;
+    left: 7.35% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: 4.35% !important;
+    width: 13.75% !important;
+    height: 7.35% !important;
+    aspect-ratio: auto !important;
+    display: block !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+    overflow: visible !important;
+}
+
+body.landscape #player-win-tracker .wt-classes {
+    position: relative !important;
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+body.landscape #player-win-tracker .wt-class-label {
+    position: absolute !important;
+    left: 8% !important;
+    right: 8% !important;
+    top: 15% !important;
+    font-size: clamp(.34rem, .72vw, .51rem) !important;
+    line-height: 1 !important;
+}
+
+body.landscape #player-win-tracker .wt-class-gems {
+    position: absolute !important;
+    left: 7% !important;
+    bottom: 12% !important;
+    width: 86% !important;
+    display: grid !important;
+    grid-template-columns: repeat(9, minmax(0, 1fr)) !important;
+    align-items: center !important;
+    gap: 0 !important;
+    transform: none !important;
+}
+
+body.landscape #player-win-tracker .wt-class-gems em {
+    width: clamp(4px, .74vw, 10px) !important;
+}
+
+body.landscape #action-point-timer {
+    position: absolute !important;
+    left: 84.7% !important;
+    right: auto !important;
+    top: 71.35% !important;
+    width: 11.15% !important;
+    height: 7.3% !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: .85% 1.35% 1.05% !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+body.landscape #action-point-timer::after {
+    left: 13% !important;
+    right: 13% !important;
+    bottom: 12% !important;
+}
+
+body.landscape #action-point-timer.timer-warning,
+body.landscape #action-point-timer.timer-danger {
+    background: transparent !important;
+    background-image: none !important;
+    animation: integrated-action-timer-pulse 700ms ease-in-out infinite !important;
+}
+
+body.chat-open #event-console-empty {
+    top: auto !important;
+    right: 1.2% !important;
+    bottom: 2% !important;
+    left: auto !important;
+    width: min(36vw, 360px) !important;
+    max-width: 88vw !important;
+    max-height: min(58dvh, 420px) !important;
+    transform-origin: right bottom !important;
+}
+
+body.landscape #game-menu-btn {
+    left: 10.25% !important;
+    top: 6.75% !important;
+}
+
+body.landscape #mute-btn {
+    right: 9.55% !important;
+    top: 6.75% !important;
+}
+
+body.landscape.chat-open #event-console-empty {
+    top: auto !important;
+    right: 1.2% !important;
+    bottom: 2% !important;
+    left: auto !important;
+    width: min(36vw, 360px) !important;
+    max-width: 88vw !important;
+    max-height: min(58dvh, 420px) !important;
+    transform-origin: right bottom !important;
 }

@@ -21,6 +21,27 @@ test('action point countdown is visible and warns during the final seconds', () 
     );
 });
 
+test('landscape HUD frames are baked into every AP background', () => {
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const styleSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
+    const skinDir = path.join(__dirname, '..', 'public', 'assets', 'skin');
+
+    for (let ap = 0; ap <= 4; ap += 1) {
+        const asset = `premium-tabletop-landscape-integrated-ap${ap}-v171.webp`;
+        assert.match(appSource, new RegExp(asset.replace('.', '\\.')));
+        const assetPath = path.join(skinDir, asset);
+        assert.equal(fs.existsSync(assetPath), true);
+        assert.ok(fs.statSync(assetPath).size > 200_000, `Expected generated integrated board: ${asset}`);
+    }
+
+    assert.doesNotMatch(appSource, /opponent-turn-label">TURN/);
+    assert.match(styleSource, /grid-template-columns: repeat\(5, minmax\(0, 1fr\)\) !important;/);
+    assert.match(styleSource, /opponent-crystal-blink-v171/);
+    assert.match(styleSource, /#player-win-tracker \.wt-class-gems \{[\s\S]*?repeat\(9, minmax\(0, 1fr\)\)/);
+    assert.match(styleSource, /body\.landscape #action-point-timer \{[\s\S]*?background: transparent !important;/);
+    assert.match(styleSource, /body\.chat-open #event-console-empty \{[\s\S]*?top: auto !important;[\s\S]*?bottom: 2% !important;/);
+});
+
 test('the player hand uses an always-visible horizontal carousel with a large-hand indicator', () => {
     const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
     const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
@@ -78,9 +99,13 @@ test('both lobby screens use generated artwork and selected opponent leaders are
     assert.match(styleSource, /#room-modal \.room-panel \{[\s\S]*?room-gate-v169\.webp/);
     assert.match(styleSource, /#lobby-modal \.lobby-panel \{[\s\S]*?leader-lobby-v169\.webp/);
     assert.match(styleSource, /\.roster-entry\.is-inspectable/);
-    assert.match(styleSource, /--roster-socket-x: 15\.8%;/);
-    assert.match(styleSource, /#lobby-modal \.roster-avatar \{[\s\S]*?left: var\(--roster-socket-x\) !important;[\s\S]*?transform: translate\(-50%, -50%\) !important;[\s\S]*?background-position: center !important;[\s\S]*?background-size: contain !important;/);
-    assert.match(styleSource, /#lobby-modal \.roster-info \{[\s\S]*?grid-column: 2 !important;/);
+    assert.match(appSource, /function lobbyLeaderRosterArt\(leader\)/);
+    assert.match(appSource, /leader-rosters-v172\/\$\{leaderId\}\.webp/);
+    assert.match(appSource, /style="--lobby-roster-art: url\('\$\{rosterArt\}'\)"/);
+    assert.doesNotMatch(appSource, /class="roster-avatar/);
+    assert.match(styleSource, /#lobby-modal \.roster-entry,[\s\S]*?aspect-ratio: 3 \/ 1;[\s\S]*?background-image: var\(--lobby-roster-art\) !important;/);
+    assert.match(styleSource, /#lobby-modal \.roster-name \{[\s\S]*?text-overflow: ellipsis !important;[\s\S]*?white-space: nowrap !important;/);
+    assert.match(styleSource, /#lobby-modal \.roster-info \{[\s\S]*?grid-column: 2 !important;[\s\S]*?overflow: hidden !important;/);
 
     for (const asset of [
         'room-gate-v169.webp',
@@ -88,12 +113,24 @@ test('both lobby screens use generated artwork and selected opponent leaders are
         'lobby-primary-v169.webp',
         'lobby-secondary-v169.webp',
         'lobby-field-v169.webp',
-        'lobby-roster-v169.webp'
+        'lobby-roster-engraved-empty-v172.webp'
     ]) {
         assert.match(styleSource, new RegExp(asset.replace('.', '\\.')));
         const assetPath = path.join(__dirname, '..', 'public', 'assets', 'skin', 'lobby', asset);
         assert.equal(fs.existsSync(assetPath), true);
         assert.ok(fs.statSync(assetPath).size > 10_000, `Expected generated lobby artwork: ${asset}`);
+    }
+
+    for (const leaderId of [
+        'card_132', 'card_133', 'card_134', 'card_135', 'card_136', 'card_137',
+        'card_171', 'card_172', 'card_173', 'card_174', 'card_221'
+    ]) {
+        const assetPath = path.join(
+            __dirname, '..', 'public', 'assets', 'skin', 'lobby',
+            'leader-rosters-v172', `${leaderId}.webp`
+        );
+        assert.equal(fs.existsSync(assetPath), true, `Missing baked lobby leader roster: ${leaderId}`);
+        assert.ok(fs.statSync(assetPath).size > 20_000, `Expected baked leader artwork: ${leaderId}`);
     }
 });
 
@@ -349,25 +386,16 @@ test('additional-Hero Monster attack bonuses are explicit on cards and in the in
     assert.match(styleSource, /\.monster-attack-bonus-badge \{/);
 });
 
-test('opponent boards use dedicated art and clearly mark the active player', () => {
+test('opponent boards use baked slots and pulse only the active crystal', () => {
     const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
     const styleSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
 
     assert.match(appSource, /const isActiveOpponent = data\.activePlayerSocketId === id/);
     assert.match(appSource, /is-active-turn/);
-    assert.match(appSource, /opponent-turn-label/);
-    assert.match(styleSource, /assets\/skin\/boards\/opponent-board-idle\.webp/);
-    assert.match(styleSource, /assets\/skin\/boards\/opponent-board-active\.webp/);
-    assert.match(styleSource, /\.opponent-chip\.is-active-turn[\s\S]*?filter: none !important/);
-    assert.doesNotMatch(styleSource, /\.opponent-chip\.is-active-turn[\s\S]*?brightness\(1\.32\)/);
-    assert.doesNotMatch(styleSource, /rgba\(255, 247, 169, \.95\)/);
-    ['opponent-board-idle.webp', 'opponent-board-active.webp'].forEach(file => {
-        assert.equal(
-            fs.existsSync(path.join(__dirname, '..', 'public', 'assets', 'skin', 'boards', file)),
-            true,
-            `${file} should exist`
-        );
-    });
+    assert.doesNotMatch(appSource, /opponent-turn-label/);
+    assert.match(styleSource, /body\.landscape #opponents-bar \{[\s\S]*?grid-template-columns: repeat\(5/);
+    assert.match(styleSource, /#opponents-bar \.opponent-chip\.is-active-turn::before \{[\s\S]*?opponent-crystal-blink-v171/);
+    assert.match(styleSource, /body\.landscape #opponents-bar \.opponent-chip \{[\s\S]*?background: transparent !important;/);
 });
 
 test('the redundant DRAW control is hidden while the draw-pile hotspot remains active', () => {
@@ -378,12 +406,11 @@ test('the redundant DRAW control is hidden while the draw-pile hotspot remains a
     assert.match(htmlSource, /id="draw-card-btn" class="action-btn hidden"/);
     assert.match(htmlSource, /id="main-deck" role="button"[\s\S]*?aria-label="Draw a card"/);
     assert.match(appSource, /mainDeckHotspot\.addEventListener\('click', \(\) => drawCardBtn\.click\(\)\)/);
-    assert.match(appSource, /premium-tabletop-landscape-nodraw\.webp/);
+    assert.match(appSource, /premium-tabletop-landscape-integrated-ap0-v171\.webp/);
     assert.doesNotMatch(appSource, /['"]assets\/skin\/premium-tabletop-landscape\.webp['"]/);
     assert.match(styleSource, /body\.landscape #draw-card-btn \{[\s\S]*?display: none !important;[\s\S]*?pointer-events: none !important;/);
     [
-        'premium-tabletop-landscape-nodraw.webp',
-        ...[1, 2, 3, 4].map(ap => `premium-tabletop-landscape-nodraw-ap${ap}-v80.webp`)
+        ...[0, 1, 2, 3, 4].map(ap => `premium-tabletop-landscape-integrated-ap${ap}-v171.webp`)
     ].forEach(file => {
         assert.equal(
             fs.existsSync(path.join(__dirname, '..', 'public', 'assets', 'skin', file)),

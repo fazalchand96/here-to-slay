@@ -515,11 +515,11 @@ checkOrientationAndLayout(); // Call initially
 
 const PREMIUM_BOARD_BACKGROUNDS = Object.freeze({
     landscape: Object.freeze([
-        'assets/skin/premium-tabletop-landscape-nodraw.webp',
-        'assets/skin/premium-tabletop-landscape-nodraw-ap1-v80.webp',
-        'assets/skin/premium-tabletop-landscape-nodraw-ap2-v80.webp',
-        'assets/skin/premium-tabletop-landscape-nodraw-ap3-v80.webp',
-        'assets/skin/premium-tabletop-landscape-nodraw-ap4-v80.webp'
+        'assets/skin/premium-tabletop-landscape-integrated-ap0-v171.webp',
+        'assets/skin/premium-tabletop-landscape-integrated-ap1-v171.webp',
+        'assets/skin/premium-tabletop-landscape-integrated-ap2-v171.webp',
+        'assets/skin/premium-tabletop-landscape-integrated-ap3-v171.webp',
+        'assets/skin/premium-tabletop-landscape-integrated-ap4-v171.webp'
     ]),
     portrait: Object.freeze([
         'assets/skin/premium-tabletop-portrait.webp',
@@ -1398,6 +1398,19 @@ function artCropStyle(id) {
 function cardArt(card) {
     return (card && (card.artUrl || card.imageUrl)) || '';
 }
+
+const LOBBY_LEADER_ROSTER_IDS = new Set([
+    'card_132', 'card_133', 'card_134', 'card_135', 'card_136', 'card_137',
+    'card_171', 'card_172', 'card_173', 'card_174', 'card_221'
+]);
+
+function lobbyLeaderRosterArt(leader) {
+    const leaderId = leader && LOBBY_LEADER_ROSTER_IDS.has(leader.id) ? leader.id : null;
+    return leaderId
+        ? `assets/skin/lobby/leader-rosters-v172/${leaderId}.webp`
+        : 'assets/skin/lobby/lobby-roster-engraved-empty-v172.webp';
+}
+
 // Marks an element as showing real art, so CSS shows it edge-to-edge (cover)
 // rather than applying the wiki-scan crop.
 function artClass(card) {
@@ -2296,16 +2309,11 @@ socket.on('gameStateUpdate', (data) => {
             const canInspectLeader = Boolean(p.hasSelectedLeader && p.leader);
             
             let statusHtml = '';
-            let avatarHtml = '<div class="roster-avatar empty">?</div>';
             
             if (p.connected === false) {
                 statusHtml = `<span class="status-away">↻ Reconnecting...</span>`;
-                if (p.leader) {
-                    avatarHtml = `<div class="roster-avatar" style="background-image: url('${cardArt(p.leader)}')"></div>`;
-                }
             } else if (p.hasSelectedLeader && p.leader) {
                 statusHtml = `<span class="status-ready">✓ Ready</span><span class="roster-inspect-hint">Inspect</span>`;
-                avatarHtml = `<div class="roster-avatar" style="background-image: url('${cardArt(p.leader)}')"></div>`;
             } else {
                 statusHtml = `<span class="status-selecting">⏳ Selecting...</span>`;
             }
@@ -2314,9 +2322,9 @@ socket.on('gameStateUpdate', (data) => {
             const inspectAttributes = canInspectLeader
                 ? ` type="button" data-lobby-leader-player-id="${id}" aria-label="Inspect selected Party Leader"`
                 : '';
+            const rosterArt = lobbyLeaderRosterArt(p.leader);
             return `
-                <${tagName} class="roster-entry ${p.hasSelectedLeader ? 'is-ready' : ''}${canInspectLeader ? ' is-inspectable' : ''}"${inspectAttributes}>
-                    ${avatarHtml}
+                <${tagName} class="roster-entry ${p.hasSelectedLeader ? 'is-ready' : ''}${canInspectLeader ? ' is-inspectable' : ''}" style="--lobby-roster-art: url('${rosterArt}')"${inspectAttributes}>
                     <div class="roster-info">
                         <div class="roster-name">
                             ${displayName}
@@ -2762,7 +2770,6 @@ function buildBoardParts(data, ctx) {
         oppHtml += `
                 <div class="${chipClass}" ${chipClick} ${chipTitle}${isActiveOpponent ? ' aria-current="true"' : ''}>
                     <span class="opponent-chip-name">
-                        ${isActiveOpponent ? '<span class="opponent-turn-label">TURN</span>' : ''}
                         <span class="opponent-name-text">${displayName}</span>
                     </span>
                     <span class="opponent-chip-stats">
