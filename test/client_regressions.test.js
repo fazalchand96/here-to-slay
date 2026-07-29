@@ -42,6 +42,37 @@ test('landscape HUD frames are baked into every AP background', () => {
     assert.match(styleSource, /body\.chat-open #event-console-empty \{[\s\S]*?top: auto !important;[\s\S]*?bottom: 2% !important;/);
 });
 
+test('portrait uses five separately rendered backgrounds with baked HUD and controls', () => {
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const styleSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
+    const skinDir = path.join(__dirname, '..', 'public', 'assets', 'skin');
+    const assetBuffers = [];
+
+    for (let ap = 0; ap <= 4; ap += 1) {
+        const asset = `premium-tabletop-portrait-integrated-ap${ap}-v173.webp`;
+        assert.match(appSource, new RegExp(asset.replace('.', '\\.')));
+        const assetPath = path.join(skinDir, asset);
+        assert.equal(fs.existsSync(assetPath), true);
+        assert.ok(fs.statSync(assetPath).size > 400_000, `Expected full generated portrait board: ${asset}`);
+        assetBuffers.push(fs.readFileSync(assetPath));
+    }
+
+    for (let index = 1; index < assetBuffers.length; index += 1) {
+        assert.equal(
+            assetBuffers[index].equals(assetBuffers[index - 1]),
+            false,
+            `Portrait AP ${index} must be a separate full render`
+        );
+    }
+
+    assert.match(styleSource, /FULLY INTEGRATED PORTRAIT BOARD v173/);
+    assert.match(styleSource, /#game-board\.portrait #opponents-bar \{[\s\S]*?grid-template-columns: repeat\(5/);
+    assert.match(styleSource, /#game-board\.portrait #player-win-tracker \{[\s\S]*?background: transparent !important;/);
+    assert.match(styleSource, /#game-board\.portrait #discard-draw-btn,[\s\S]*?#game-board\.portrait #end-turn-btn \{[\s\S]*?background: transparent !important;/);
+    assert.match(styleSource, /#game-board\.portrait #action-point-timer \{[\s\S]*?background: transparent !important;/);
+    assert.match(styleSource, /#game-board\.portrait #board-center \.monsters-area \.card \{[\s\S]*?82px/);
+});
+
 test('the player hand uses an always-visible horizontal carousel with a large-hand indicator', () => {
     const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
     const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');

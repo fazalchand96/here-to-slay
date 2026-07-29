@@ -522,11 +522,11 @@ const PREMIUM_BOARD_BACKGROUNDS = Object.freeze({
         'assets/skin/premium-tabletop-landscape-integrated-ap4-v171.webp'
     ]),
     portrait: Object.freeze([
-        'assets/skin/premium-tabletop-portrait.webp',
-        'assets/skin/premium-tabletop-portrait-ap1-v80.webp',
-        'assets/skin/premium-tabletop-portrait-ap2-v80.webp',
-        'assets/skin/premium-tabletop-portrait-ap3-v80.webp',
-        'assets/skin/premium-tabletop-portrait-ap4-v80.webp'
+        'assets/skin/premium-tabletop-portrait-integrated-ap0-v173.webp',
+        'assets/skin/premium-tabletop-portrait-integrated-ap1-v173.webp',
+        'assets/skin/premium-tabletop-portrait-integrated-ap2-v173.webp',
+        'assets/skin/premium-tabletop-portrait-integrated-ap3-v173.webp',
+        'assets/skin/premium-tabletop-portrait-integrated-ap4-v173.webp'
     ])
 });
 

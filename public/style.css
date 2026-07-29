@@ -6786,6 +6786,362 @@ body.landscape.chat-open #event-console-empty {
     transform-origin: right bottom !important;
 }
 
+/* ==========================================================================
+   FULLY INTEGRATED PORTRAIT BOARD v173
+   The five opponent plaques, nine-class tracker, Reload/End controls, timer
+   mechanism and AP sockets are physical parts of every portrait AP background.
+   CSS supplies only live names, counters, progress fills and click targets.
+   ========================================================================== */
+#game-board.portrait {
+    background-image: url('assets/skin/premium-tabletop-portrait-integrated-ap0-v173.webp') !important;
+}
+
+#game-board.portrait #opponents-bar {
+    position: absolute !important;
+    left: 14% !important;
+    top: 1.8% !important;
+    width: 70.5% !important;
+    height: 5.9% !important;
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    gap: .75% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    background: transparent !important;
+    z-index: 8 !important;
+}
+
+#game-board.portrait #opponents-bar .opponent-chip {
+    position: relative !important;
+    isolation: isolate !important;
+    display: grid !important;
+    grid-template-rows: 58% 42% !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 9% 6% 8% !important;
+    gap: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    color: #fff1c9 !important;
+    transform: none !important;
+    animation: none !important;
+}
+
+#game-board.portrait #opponents-bar .opponent-chip-name {
+    align-self: center !important;
+    min-width: 0 !important;
+    padding: 0 17% 0 3% !important;
+    font-size: clamp(.3rem, 1.42vw, .5rem) !important;
+    line-height: 1 !important;
+    text-align: left !important;
+}
+
+#game-board.portrait #opponents-bar .opponent-name-text {
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+
+#game-board.portrait #opponents-bar .opponent-chip-stats {
+    align-self: center !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 0 2% !important;
+    gap: 1% !important;
+    font-size: clamp(.26rem, .95vw, .38rem) !important;
+    line-height: 1 !important;
+}
+
+#game-board.portrait #opponents-bar .opponent-stat {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 0 !important;
+    gap: 1px !important;
+    overflow: hidden !important;
+}
+
+#game-board.portrait #opponents-bar .opponent-stat-label {
+    font-size: 0 !important;
+}
+
+#game-board.portrait #opponents-bar .opponent-stat:nth-child(1) .opponent-stat-label::after,
+#game-board.portrait #opponents-bar .opponent-stat:nth-child(2) .opponent-stat-label::after,
+#game-board.portrait #opponents-bar .opponent-stat:nth-child(3) .opponent-stat-label::after {
+    font-size: clamp(.24rem, .82vw, .34rem) !important;
+}
+
+#game-board.portrait #opponents-bar .opponent-stat:nth-child(1) .opponent-stat-label::after { content: "H"; }
+#game-board.portrait #opponents-bar .opponent-stat:nth-child(2) .opponent-stat-label::after { content: "S"; }
+#game-board.portrait #opponents-bar .opponent-stat:nth-child(3) .opponent-stat-label::after { content: "C"; }
+
+#game-board.portrait #opponents-bar .opponent-chip.is-active-turn {
+    z-index: 3 !important;
+    background: transparent !important;
+    background-image: none !important;
+    filter: none !important;
+    transform: none !important;
+    animation: none !important;
+}
+
+#game-board.portrait #opponents-bar .opponent-chip.is-active-turn::before {
+    content: "" !important;
+    display: block !important;
+    position: absolute !important;
+    z-index: -1 !important;
+    top: 7% !important;
+    right: 1% !important;
+    width: 15% !important;
+    aspect-ratio: 1 !important;
+    border-radius: 28% !important;
+    background:
+        radial-gradient(circle, rgba(245, 239, 255, .98) 0 9%, rgba(145, 101, 255, .95) 23%, rgba(79, 40, 191, .78) 45%, rgba(73, 33, 176, 0) 72%) !important;
+    filter: drop-shadow(0 0 3px rgba(151, 103, 255, .95)) drop-shadow(0 0 7px rgba(101, 61, 221, .72)) !important;
+    pointer-events: none !important;
+    animation: opponent-crystal-blink-v171 1.35s ease-in-out infinite !important;
+}
+
+/* The generated full portrait board has slightly roomier gameplay wells. */
+#game-board.portrait #board-center .deck-area {
+    left: 22% !important;
+    top: 8% !important;
+    width: 52% !important;
+    height: 13.5% !important;
+}
+
+#game-board.portrait #board-center .monsters-area {
+    left: 8% !important;
+    top: 22.2% !important;
+    width: 80% !important;
+    height: 13.2% !important;
+}
+
+#game-board.portrait #board-center .monsters-area .card {
+    height: min(11.8dvh, 82px) !important;
+    max-height: min(11.8dvh, 82px) !important;
+}
+
+#game-board.portrait #party-zone {
+    left: 5.5% !important;
+    top: 36.3% !important;
+    width: 86% !important;
+    height: 33.1% !important;
+}
+
+#game-board.portrait #leader-slot {
+    left: 2.5% !important;
+    top: 44% !important;
+    width: 14% !important;
+    height: 16% !important;
+}
+
+#game-board.portrait #hand-zone {
+    left: 4.8% !important;
+    top: 71.1% !important;
+    width: 90.4% !important;
+    height: 18.2% !important;
+}
+
+/* Nine live class fills sit directly over the nine baked sockets. */
+#game-board.portrait #player-win-tracker {
+    position: absolute !important;
+    left: 2.1% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: .8% !important;
+    width: 35% !important;
+    height: 9.4% !important;
+    display: block !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    z-index: 7 !important;
+}
+
+#game-board.portrait #player-win-tracker .wt-classes {
+    position: relative !important;
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+#game-board.portrait #player-win-tracker .wt-class-label {
+    position: absolute !important;
+    left: 8% !important;
+    right: 8% !important;
+    top: 17% !important;
+    font-size: clamp(.34rem, 1.35vw, .54rem) !important;
+    line-height: 1 !important;
+}
+
+#game-board.portrait #player-win-tracker .wt-class-gems {
+    position: absolute !important;
+    left: 8% !important;
+    bottom: 40% !important;
+    width: 84% !important;
+    display: grid !important;
+    grid-template-columns: repeat(9, minmax(0, 1fr)) !important;
+    align-items: center !important;
+    gap: 0 !important;
+    transform: none !important;
+}
+
+#game-board.portrait #player-win-tracker .wt-class-gems em {
+    width: clamp(4px, 1.7vw, 8px) !important;
+}
+
+/* The lower controls are generated into the board. Their DOM nodes are only
+   interactive hotspots, with disabled-state shading over the baked objects. */
+html body #game-board.portrait #player-controls {
+    position: absolute !important;
+    left: 0 !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 11% !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    z-index: 8 !important;
+}
+
+#game-board.portrait #player-controls .btn-group {
+    display: contents !important;
+}
+
+#game-board.portrait #draw-card-btn {
+    display: none !important;
+    pointer-events: none !important;
+}
+
+#game-board.portrait #discard-draw-btn,
+#game-board.portrait #end-turn-btn {
+    position: absolute !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    color: transparent !important;
+    text-shadow: none !important;
+    filter: none !important;
+    opacity: 1 !important;
+}
+
+#game-board.portrait #discard-draw-btn {
+    left: 39% !important;
+    top: 10% !important;
+    width: 21.5% !important;
+    height: 84% !important;
+}
+
+#game-board.portrait #end-turn-btn {
+    left: 62% !important;
+    top: 19% !important;
+    width: 12.5% !important;
+    height: 70% !important;
+}
+
+#game-board.portrait #discard-draw-btn .action-icon,
+#game-board.portrait #end-turn-btn .action-icon {
+    display: none !important;
+}
+
+#game-board.portrait #discard-draw-btn:disabled,
+#game-board.portrait #end-turn-btn:disabled {
+    background: rgba(8, 5, 4, .34) !important;
+    box-shadow: inset 0 0 12px rgba(0, 0, 0, .62) !important;
+}
+
+/* Live countdown text and progress occupy the generated clock display only. */
+html body #game-board.portrait #action-point-timer {
+    position: absolute !important;
+    left: 75.6% !important;
+    right: auto !important;
+    top: 7% !important;
+    bottom: auto !important;
+    width: 23% !important;
+    height: 88% !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding:
+        clamp(18px, 5.5vw, 30px)
+        clamp(4px, 1.2vw, 8px)
+        clamp(8px, 2.2vw, 14px)
+        clamp(31px, 8.5vw, 48px) !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+#game-board.portrait #action-point-timer-player {
+    max-width: 100% !important;
+    font-size: clamp(.28rem, 1vw, .43rem) !important;
+    line-height: 1 !important;
+}
+
+#game-board.portrait .action-point-timer-clock {
+    min-width: 0 !important;
+    font-size: clamp(.62rem, 2.8vw, 1rem) !important;
+}
+
+#game-board.portrait #action-point-timer::after {
+    left: 39% !important;
+    right: 7% !important;
+    bottom: 15% !important;
+}
+
+#game-board.portrait #action-point-timer.timer-warning,
+#game-board.portrait #action-point-timer.timer-danger {
+    background: transparent !important;
+    background-image: none !important;
+    animation: integrated-action-timer-pulse 700ms ease-in-out infinite !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #game-board.portrait #opponents-bar .opponent-chip.is-active-turn::before,
+    #game-board.portrait #action-point-timer.timer-warning,
+    #game-board.portrait #action-point-timer.timer-danger {
+        animation: none !important;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     #opponents-bar .opponent-chip.is-active-turn::before {
         opacity: .9 !important;
