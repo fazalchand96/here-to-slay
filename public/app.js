@@ -2290,10 +2290,9 @@ socket.on('gameStateUpdate', (data) => {
 
         const activeMe = myId || data.me;
 
-        lobbyPlayers.innerHTML = (data.playerOrder || []).map((id, index) => {
+        lobbyPlayers.innerHTML = (data.playerOrder || []).map(id => {
             const p = data.players[id];
             const displayName = getPlayerName(p.id);
-            const isHost = index === 0;
             const canInspectLeader = Boolean(p.hasSelectedLeader && p.leader);
             
             let statusHtml = '';
@@ -2320,7 +2319,6 @@ socket.on('gameStateUpdate', (data) => {
                     ${avatarHtml}
                     <div class="roster-info">
                         <div class="roster-name">
-                            ${isHost ? '<span class="host-crown" title="Host">👑</span>' : ''} 
                             ${displayName}
                         </div>
                         <div class="roster-status">${statusHtml} ${p.hasSelectedLeader && p.leader.class ? `<span class="roster-class">(${p.leader.class})</span>` : ''}</div>

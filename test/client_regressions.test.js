@@ -74,9 +74,13 @@ test('both lobby screens use generated artwork and selected opponent leaders are
     assert.match(appSource, /data-lobby-leader-player-id="\$\{id\}"/);
     assert.match(appSource, /inspectCard\(leader\.id, \{[\s\S]*?location: 'leader',[\s\S]*?owner: playerId/);
     assert.match(appSource, /roster-inspect-hint">Inspect/);
+    assert.doesNotMatch(appSource, /host-crown/);
     assert.match(styleSource, /#room-modal \.room-panel \{[\s\S]*?room-gate-v169\.webp/);
     assert.match(styleSource, /#lobby-modal \.lobby-panel \{[\s\S]*?leader-lobby-v169\.webp/);
     assert.match(styleSource, /\.roster-entry\.is-inspectable/);
+    assert.match(styleSource, /--roster-socket-x: 15\.8%;/);
+    assert.match(styleSource, /#lobby-modal \.roster-avatar \{[\s\S]*?left: var\(--roster-socket-x\) !important;[\s\S]*?transform: translate\(-50%, -50%\) !important;[\s\S]*?background-position: center !important;[\s\S]*?background-size: contain !important;/);
+    assert.match(styleSource, /#lobby-modal \.roster-info \{[\s\S]*?grid-column: 2 !important;/);
 
     for (const asset of [
         'room-gate-v169.webp',
