@@ -12697,22 +12697,26 @@ html body.landscape #game-board #active-monsters {
 html body.landscape #game-board #active-monsters > .card,
 html body.landscape #game-board #active-monsters > .card:not(:first-child) {
     position: absolute !important;
-    top: 10.5% !important;
+    top: 6.0% !important;
+    height: min(18.9dvh, 112px) !important;
+    max-height: min(18.9dvh, 112px) !important;
     transform: none !important;
     translate: 0 0 !important;
 }
 
 html body.landscape #game-board #active-monsters > .card:nth-child(1) {
-    left: 5.8% !important;
+    left: 3.6% !important;
+    height: min(18.9dvh, 112px) !important;
+    max-height: min(18.9dvh, 112px) !important;
 }
 
 html body.landscape #game-board #active-monsters > .card:nth-child(2) {
-    left: 38.3% !important;
+    left: 37.6% !important;
 }
 
 html body.landscape #game-board #active-monsters > .card:nth-child(3) {
-    left: 75.7% !important;
-    top: 8.0% !important;
+    left: 71.9% !important;
+    top: 6.0% !important;
 }
 
 html body.landscape #game-board #party-zone {
