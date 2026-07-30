@@ -11368,3 +11368,523 @@ body.landscape.chat-open #event-console-empty {
     max-height: min(58dvh, 420px) !important;
     transform-origin: right bottom !important;
 }
+
+/* PORTRAIT_V184_FINAL_CASCADE */
+
+html body #game-board.portrait {
+    background-image: url('assets/skin/portrait-v184/portrait-board-neutral-v184.webp') !important;
+}
+
+html body #game-board.portrait::before {
+    content: "" !important;
+    display: block !important;
+    position: absolute !important;
+    left: 80.77% !important;
+    top: 46.65% !important;
+    width: 9.78% !important;
+    height: 29.01% !important;
+    z-index: 5 !important;
+    background: var(--portrait-ap-module) center / 100% 100% no-repeat !important;
+    pointer-events: none !important;
+}
+
+html body #game-board.portrait #opponents-bar {
+    left: 12.1% !important;
+    top: 1.35% !important;
+    width: 73.35% !important;
+    height: 8.35% !important;
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: .45% !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    z-index: 12 !important;
+}
+
+html body #game-board.portrait #opponents-bar .opponent-chip {
+    position: relative !important;
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    filter: none !important;
+    transform: none !important;
+    overflow: visible !important;
+}
+
+html body #game-board.portrait #opponents-bar .opponent-chip::after {
+    content: none !important;
+    display: none !important;
+}
+
+html body #game-board.portrait #opponents-bar .opponent-chip-name {
+    position: absolute !important;
+    left: 7% !important;
+    right: 8% !important;
+    top: 9% !important;
+    height: 29% !important;
+    display: grid !important;
+    place-items: center !important;
+    padding: 0 !important;
+    transform: translateX(var(--opponent-content-nudge)) !important;
+    color: #e8cca0 !important;
+    font: 800 clamp(.44rem, 2.15vw, .84rem)/1 "Cinzel", Georgia, serif !important;
+    letter-spacing: .05em !important;
+    text-align: center !important;
+    text-shadow: 0 1px 1px #050301, 0 0 5px rgba(204, 153, 81, .32) !important;
+}
+
+html body #game-board.portrait #opponents-bar .opponent-chip-stats {
+    position: absolute !important;
+    left: 4% !important;
+    right: 4% !important;
+    top: 54% !important;
+    width: auto !important;
+    height: 29% !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    transform: translateX(var(--opponent-content-nudge)) !important;
+}
+
+html body #game-board.portrait #opponents-bar .opponent-stat {
+    display: grid !important;
+    place-items: center !important;
+    width: auto !important;
+    min-width: 0 !important;
+    gap: 0 !important;
+}
+
+html body #game-board.portrait #opponents-bar .opponent-stat-label {
+    display: none !important;
+}
+
+html body #game-board.portrait #opponents-bar .opponent-stat-value {
+    color: #f2d8a6 !important;
+    font: 800 clamp(.43rem, 2vw, .78rem)/1 "Cinzel", Georgia, serif !important;
+    font-variant-numeric: tabular-nums !important;
+    text-shadow: 0 1px 2px #000, 0 0 5px rgba(194, 139, 65, .35) !important;
+}
+
+html body #game-board.portrait #opponents-bar .opponent-chip.is-active-turn {
+    background: transparent !important;
+    filter: none !important;
+    transform: none !important;
+    animation: none !important;
+}
+
+html body #game-board.portrait #opponents-bar .opponent-chip.is-active-turn::before {
+    content: "" !important;
+    display: block !important;
+    position: absolute !important;
+    inset: -1% -3% -2% -3% !important;
+    z-index: -1 !important;
+    width: auto !important;
+    height: auto !important;
+    aspect-ratio: auto !important;
+    border-radius: 0 !important;
+    background: url('assets/skin/portrait-v184/opponent-active-v184.webp') center / 100% 100% no-repeat !important;
+    filter: drop-shadow(0 0 5px rgba(98, 56, 222, .58)) !important;
+    transform: none !important;
+    animation: opponent-module-blink-v184 1.4s ease-in-out infinite !important;
+}
+
+html body #game-board.portrait #board-center .monsters-area {
+    left: 23.05% !important;
+    top: 29.25% !important;
+    width: 49.35% !important;
+    height: 13.75% !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    z-index: 7 !important;
+}
+
+html body #game-board.portrait #board-center .monsters-area > .area-label {
+    display: none !important;
+}
+
+html body #game-board.portrait #active-monsters {
+    width: 100% !important;
+    height: 100% !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    align-items: stretch !important;
+    gap: 6.55% !important;
+    padding: 0 !important;
+    overflow: visible !important;
+}
+
+html body #game-board.portrait #active-monsters > .card,
+html body #game-board.portrait #active-monsters > .card:not(:first-child) {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    transform: none !important;
+}
+
+html body #game-board.portrait #party-zone {
+    left: 7.65% !important;
+    top: 46.55% !important;
+    width: 84.6% !important;
+    height: 28.35% !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    z-index: 8 !important;
+}
+
+html body #game-board.portrait #party-zone > .area-label,
+html body #game-board.portrait #party-dock-copy,
+html body #game-board.portrait #party-dock::before {
+    display: none !important;
+    content: none !important;
+}
+
+html body #game-board.portrait #player-party,
+html body #game-board.portrait #party-dock {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    display: block !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+}
+
+html body #game-board.portrait #party-dock .party-dock-preview {
+    position: absolute !important;
+    left: 29.3% !important;
+    top: 22% !important;
+    width: 31.5% !important;
+    height: 46% !important;
+    display: block !important;
+    padding: 0 !important;
+    overflow: visible !important;
+}
+
+html body #game-board.portrait #party-dock .party-dock-slay {
+    position: absolute !important;
+    left: 60.5% !important;
+    top: 41% !important;
+    width: 25% !important;
+    height: 39% !important;
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+}
+
+html body #game-board.portrait #party-dock .party-dock-slay > strong,
+html body #game-board.portrait #party-dock .party-dock-slay > b,
+html body #game-board.portrait #party-dock .party-dock-slay > i {
+    display: none !important;
+}
+
+html body #game-board.portrait #hand-zone {
+    left: 8.35% !important;
+    top: 77.45% !important;
+    width: 83.45% !important;
+    height: 14.65% !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    z-index: 9 !important;
+}
+
+html body #game-board.portrait #hand-zone > .area-label {
+    display: none !important;
+}
+
+html body #game-board.portrait #hand-carousel {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+}
+
+html body #game-board.portrait #hand-carousel #player-hand {
+    width: 100% !important;
+    height: 100% !important;
+    padding: .9% 1.5% 5.5% !important;
+    gap: 1.35% !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+}
+
+html body #game-board.portrait #hand-carousel.is-scrollable #player-hand {
+    justify-content: flex-start !important;
+}
+
+html body #game-board.portrait #hand-carousel #player-hand > .card,
+html body #game-board.portrait #hand-carousel #player-hand > .card:not(:first-child) {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    height: 90% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+}
+
+html body #game-board.portrait #player-win-tracker {
+    left: .42% !important;
+    top: 91.51% !important;
+    bottom: auto !important;
+    width: 43.57% !important;
+    height: 8.49% !important;
+    display: block !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: var(--portrait-class-module) center / 100% 100% no-repeat !important;
+    box-shadow: none !important;
+    z-index: 10 !important;
+}
+
+html body #game-board.portrait #player-win-tracker .wt-class-gems,
+html body #game-board.portrait #player-win-tracker .wt-class-label-text {
+    display: none !important;
+}
+
+html body #game-board.portrait #player-win-tracker .wt-class-label {
+    position: absolute !important;
+    left: 67% !important;
+    top: 10% !important;
+    display: block !important;
+    color: #efd9a7 !important;
+    font: 800 clamp(.36rem, 1.65vw, .65rem)/1 "Cinzel", Georgia, serif !important;
+}
+
+html body #game-board.portrait #turn-indicator {
+    display: none !important;
+}
+
+html body #game-board.portrait #game-menu-btn {
+    left: 2.1% !important;
+    right: auto !important;
+    top: 2.8% !important;
+    width: 8.5% !important;
+    height: 5.3% !important;
+    border-radius: 50% !important;
+    font-size: clamp(.7rem, 4vw, 1.35rem) !important;
+}
+
+html body #game-board.portrait #mute-btn {
+    left: 85.6% !important;
+    right: auto !important;
+    top: 2.6% !important;
+    width: 5.8% !important;
+    height: 3.8% !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    color: transparent !important;
+    box-shadow: none !important;
+}
+
+html body #game-board.portrait #player-controls {
+    bottom: 0 !important;
+    height: 8.9% !important;
+    z-index: 13 !important;
+}
+
+html body #game-board.portrait #discard-draw-btn {
+    left: 44.5% !important;
+    top: 16% !important;
+    width: 15.3% !important;
+    height: 79% !important;
+}
+
+html body #game-board.portrait #end-turn-btn {
+    left: 61.2% !important;
+    top: 10% !important;
+    width: 13.2% !important;
+    height: 84% !important;
+}
+
+html body #game-board.portrait #action-point-timer {
+    left: 79.75% !important;
+    top: 7% !important;
+    width: 18.2% !important;
+    height: 88% !important;
+    padding: 35% 7% 12% 16% !important;
+}
+
+html body #game-board.portrait #party-dock .party-dock-copy {
+    display: none !important;
+}
+
+html body #game-board.portrait #party-dock .party-dock-preview {
+    left: 32.2% !important;
+    top: 17% !important;
+    width: 26.5% !important;
+    height: 34% !important;
+}
+
+html body #game-board.portrait #party-dock .party-dock-slay {
+    left: 58% !important;
+    top: 39% !important;
+    width: 23% !important;
+    height: 33% !important;
+}
+
+html body #game-board.portrait #hand-carousel #player-hand {
+    gap: .7% !important;
+}
+
+html body #game-board.portrait #hand-carousel #player-hand > .card,
+html body #game-board.portrait #hand-carousel #player-hand > .card:not(:first-child) {
+    height: 82% !important;
+}
+
+html body #game-board.portrait #game-menu-btn {
+    width: 7% !important;
+    height: 4.35% !important;
+}
+
+html body #game-board.portrait #game-menu-btn::after {
+    content: none !important;
+    display: none !important;
+}
+
+html body #game-board.portrait #opponents-bar .opponent-chip {
+    --opponent-content-nudge: 0px;
+}
+
+html body #game-board.portrait #opponents-bar .opponent-chip[data-opponent-slot="1"] { --opponent-content-nudge: .42vw; }
+html body #game-board.portrait #opponents-bar .opponent-chip[data-opponent-slot="2"] { --opponent-content-nudge: .74vw; }
+html body #game-board.portrait #opponents-bar .opponent-chip[data-opponent-slot="3"] { --opponent-content-nudge: 1.06vw; }
+html body #game-board.portrait #opponents-bar .opponent-chip[data-opponent-slot="4"],
+html body #game-board.portrait #opponents-bar .opponent-chip[data-opponent-slot="5"] { --opponent-content-nudge: 1.17vw; }
+
+@keyframes opponent-module-blink-v184 {
+    0%, 100% { opacity: .66; }
+    50% { opacity: 1; }
+}
+
+html body #game-board.portrait #active-monsters > .card {
+    border-radius: 2.5% !important;
+    box-shadow:
+        0 6px 7px rgba(0, 0, 0, .82),
+        0 1px 0 rgba(255, 226, 158, .26),
+        inset 0 -2px 0 rgba(18, 7, 4, .7) !important;
+}
+
+html body #game-board.portrait #party-dock .party-dock-preview,
+html body #game-board.portrait #party-dock .party-dock-slay-fan {
+    display: block !important;
+    overflow: visible !important;
+}
+
+html body #game-board.portrait #party-dock .party-dock-slay-fan {
+    position: absolute !important;
+    inset: 0 !important;
+}
+
+html body #game-board.portrait .party-dock-card,
+html body #game-board.portrait .party-dock-slain-card {
+    position: absolute !important;
+    top: 3% !important;
+    left: 50% !important;
+    width: 45% !important;
+    height: 94% !important;
+    border: 1px solid rgba(236, 197, 124, .66) !important;
+    border-radius: 4% !important;
+    background-position: center !important;
+    background-size: 100% 100% !important;
+    background-repeat: no-repeat !important;
+    box-shadow:
+        0 7px 8px rgba(0, 0, 0, .74),
+        2px 2px 0 #442919,
+        3px 3px 0 #170d08 !important;
+    transform-origin: 50% 94% !important;
+}
+
+html body #game-board.portrait :is(.party-dock-card, .party-dock-slain-card)[data-fan-index="0"] {
+    z-index: 1 !important;
+    transform: translateX(-82%) rotate(-11deg) !important;
+}
+
+html body #game-board.portrait :is(.party-dock-card, .party-dock-slain-card)[data-fan-index="1"] {
+    z-index: 2 !important;
+    transform: translateX(-50%) translateY(-4%) rotate(0deg) !important;
+}
+
+html body #game-board.portrait :is(.party-dock-card, .party-dock-slain-card)[data-fan-index="2"] {
+    z-index: 3 !important;
+    transform: translateX(-18%) rotate(11deg) !important;
+}
+
+html body #game-board.portrait .party-dock-empty {
+    display: none !important;
+}
+
+html body #game-board.portrait .party-dock-more,
+html body #game-board.portrait .party-dock-slay-more {
+    position: absolute !important;
+    right: -3% !important;
+    bottom: -5% !important;
+    z-index: 6 !important;
+    display: grid !important;
+    place-items: center !important;
+    min-width: 24px !important;
+    height: 24px !important;
+    padding: 0 5px !important;
+    border: 1px solid #d5aa5e !important;
+    border-radius: 999px !important;
+    color: #ffe9b7 !important;
+    background: #2c1710 !important;
+    font: 800 .62rem/1 "Cinzel", Georgia, serif !important;
+    box-shadow: 0 3px 7px #000 !important;
+}
+
+html body #game-board.portrait #hand-carousel #player-hand > .card {
+    border-radius: 3.5% !important;
+    transform-origin: 50% 100% !important;
+    box-shadow:
+        0 8px 9px rgba(0, 0, 0, .78),
+        2px 2px 0 #54331d,
+        4px 4px 0 #1b0e08,
+        inset 0 -2px 0 rgba(21, 9, 5, .5) !important;
+}
+
+html body #game-board.portrait #hand-carousel #player-hand > .card:nth-child(5n+1) { transform: perspective(600px) rotateY(2deg) rotateZ(-1.7deg) translateY(3%) !important; }
+html body #game-board.portrait #hand-carousel #player-hand > .card:nth-child(5n+2) { transform: perspective(600px) rotateY(1deg) rotateZ(-.7deg) translateY(1%) !important; }
+html body #game-board.portrait #hand-carousel #player-hand > .card:nth-child(5n+3) { transform: perspective(600px) rotateZ(0deg) !important; }
+html body #game-board.portrait #hand-carousel #player-hand > .card:nth-child(5n+4) { transform: perspective(600px) rotateY(-1deg) rotateZ(.7deg) translateY(1%) !important; }
+html body #game-board.portrait #hand-carousel #player-hand > .card:nth-child(5n) { transform: perspective(600px) rotateY(-2deg) rotateZ(1.7deg) translateY(3%) !important; }
+
+html body #game-board.portrait #hand-carousel #player-hand > .card:hover,
+html body #game-board.portrait #hand-carousel #player-hand > .card.selected {
+    z-index: 30 !important;
+    transform: translateY(-7%) scale(1.04) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html body #game-board.portrait #opponents-bar .opponent-chip.is-active-turn::before {
+        animation: none !important;
+        opacity: 1 !important;
+    }
+}

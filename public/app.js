@@ -522,23 +522,34 @@ const PREMIUM_BOARD_BACKGROUNDS = Object.freeze({
         'assets/skin/premium-tabletop-landscape-integrated-ap4-v171.webp'
     ]),
     portrait: Object.freeze([
-        'assets/skin/premium-tabletop-portrait-integrated-ap0-v173.webp',
-        'assets/skin/premium-tabletop-portrait-integrated-ap1-v173.webp',
-        'assets/skin/premium-tabletop-portrait-integrated-ap2-v173.webp',
-        'assets/skin/premium-tabletop-portrait-integrated-ap3-v173.webp',
-        'assets/skin/premium-tabletop-portrait-integrated-ap4-v173.webp'
+        'assets/skin/portrait-v184/portrait-board-neutral-v184.webp'
     ])
 });
 
-function updatePremiumBoardBackground(actionPoints) {
+const PORTRAIT_BOARD_MODULES = Object.freeze({
+    ap: Object.freeze(Array.from({ length: 5 }, (_, index) =>
+        `assets/skin/portrait-v184/ap-${index}of4-v184.webp`
+    )),
+    classes: Object.freeze(Array.from({ length: 10 }, (_, index) =>
+        `assets/skin/portrait-v184/classes-${index}of9-v184.webp`
+    ))
+});
+
+function updatePremiumBoardBackground(actionPoints, classProgress = 0) {
     const board = document.getElementById('game-board');
     if (!board) return;
 
     const orientation = document.body.classList.contains('portrait') ? 'portrait' : 'landscape';
     const ap = Math.min(4, Math.max(0, Math.floor(Number(actionPoints) || 0)));
-    const asset = PREMIUM_BOARD_BACKGROUNDS[orientation][ap];
+    const classes = Math.min(9, Math.max(0, Math.floor(Number(classProgress) || 0)));
+    const asset = orientation === 'portrait'
+        ? PREMIUM_BOARD_BACKGROUNDS.portrait[0]
+        : PREMIUM_BOARD_BACKGROUNDS.landscape[ap];
     board.style.setProperty('background-image', `url('${asset}')`, 'important');
     board.dataset.apBackground = `${orientation}-${ap}`;
+    board.dataset.classBackground = `${orientation}-${classes}`;
+    board.style.setProperty('--portrait-ap-module', `url('${PORTRAIT_BOARD_MODULES.ap[ap]}')`);
+    board.style.setProperty('--portrait-class-module', `url('${PORTRAIT_BOARD_MODULES.classes[classes]}')`);
 }
 
 
@@ -2738,6 +2749,7 @@ function buildBoardParts(data, ctx) {
 
     // --- Opponents bar (chips) ---
     let oppHtml = '';
+    let opponentSlot = 0;
     data.playerOrder.forEach(id => {
         if (id === perspectiveId) return;
         const opp = data.players[id];
@@ -2745,8 +2757,17 @@ function buildBoardParts(data, ctx) {
 
         const isAway = opp.connected === false;
         const isActiveOpponent = data.activePlayerSocketId === id;
-        const displayName = `${getPlayerName(id)}${isAway ? ' · AWAY' : ''}`;
+        const fullName = getPlayerName(id);
+        const nameParts = fullName.trim().split(/\s+/).filter(Boolean);
+        const singleName = nameParts[0] || '';
+        const trailingNumber = singleName.match(/\d+$/)?.[0] || '';
+        const initials = (nameParts.length > 1
+            ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`
+            : `${singleName[0] || ''}${trailingNumber || singleName[1] || ''}`)
+            .slice(0, 2)
+            .toUpperCase() || '?';
         const stats = calculateWinStats(opp);
+        opponentSlot += 1;
 
         let chipClass = "opponent-chip";
         let chipClick = `onclick="openOpponentModal('${id}')"`;
@@ -2768,9 +2789,9 @@ function buildBoardParts(data, ctx) {
         if (isActiveOpponent) chipClass += " is-active-turn";
 
         oppHtml += `
-                <div class="${chipClass}" ${chipClick} ${chipTitle}${isActiveOpponent ? ' aria-current="true"' : ''}>
+                <div class="${chipClass}" data-opponent-slot="${opponentSlot}" ${chipClick} ${chipTitle}${isActiveOpponent ? ' aria-current="true"' : ''}>
                     <span class="opponent-chip-name">
-                        <span class="opponent-name-text">${displayName}</span>
+                        <span class="opponent-name-text">${initials}</span>
                     </span>
                     <span class="opponent-chip-stats">
                         <span class="opponent-stat" title="Cards in hand"><span class="opponent-stat-label">HAND</span><span class="opponent-stat-value">${opp.hand.length}</span></span>
@@ -2802,11 +2823,18 @@ function buildBoardParts(data, ctx) {
         .filter(className => classCounts.has(className))
         .map(className => `<span class="party-dock-class" data-class="${className.toLowerCase()}" title="${className}">${className.slice(0, 1)}${classCounts.get(className) || ''}</span>`)
         .join('');
-    const previewHeroes = (me.party || []).slice(0, 4);
+    const portraitBoard = document.body.classList.contains('portrait');
+    const previewLimit = portraitBoard ? 3 : 4;
+    const previewHeroes = (me.party || []).slice(0, previewLimit);
     const previewCards = previewHeroes.length
-        ? previewHeroes.map(hero => `<span class="party-dock-card" style="background-image:url('${cardArt(hero)}')" title="${hero.name}"></span>`).join('')
+        ? previewHeroes.map((hero, index) => `<span class="party-dock-card" data-fan-index="${index}" style="background-image:url('${cardArt(hero)}')" title="${hero.name}"></span>`).join('')
         : `<span class="party-dock-empty">Your Heroes will appear here</span>`;
     const hiddenHeroCount = Math.max(0, (me.party || []).length - previewHeroes.length);
+    const slainPreview = (me.slainMonsters || []).slice(-3);
+    const slainPreviewCards = slainPreview
+        .map((monster, index) => `<span class="party-dock-slain-card" data-fan-index="${index}" style="background-image:url('${cardArt(monster)}')" title="${monster.name}"></span>`)
+        .join('');
+    const hiddenSlainCount = Math.max(0, (me.slainMonsters || []).length - slainPreview.length);
     const targetsOwnParty = myTargetMode && currentPendingAction
         && ['EQUIP', 'EXCHANGE_STEP_2', 'RETURN_ITEM', 'PENALTY',
             'DRUID_SKILL_SACRIFICE', 'LIGHTNING_LABRYS_SACRIFICE',
@@ -2834,6 +2862,7 @@ function buildBoardParts(data, ctx) {
             <span class="party-dock-preview">${previewCards}${hiddenHeroCount ? `<b class="party-dock-more">+${hiddenHeroCount}</b>` : ''}</span>
             <button class="party-dock-slay" type="button" onclick="event.stopPropagation();${monstersClick}"
                 aria-label="Open ${partyTitle} slain Monsters"${targetingParty ? ' disabled' : ''}>
+                <span class="party-dock-slay-fan">${slainPreviewCards}${hiddenSlainCount ? `<b class="party-dock-slay-more">+${hiddenSlainCount}</b>` : ''}</span>
                 <strong>Slain</strong><b>${myWinStats.monsters}/4</b><i>${[0, 1, 2, 3].map(i => `<em class="${i < myWinStats.monsters ? 'on' : ''}"></em>`).join('')}</i>
             </button>
         </div>`;
@@ -2846,14 +2875,14 @@ function buildBoardParts(data, ctx) {
     ).join('');
     const winTrackHtml = `
         <span class="wt-classes" title="Collect 9 different classes to win">
-            <span class="wt-class-label">Classes <b>${classProgress}/9</b></span>
+            <span class="wt-class-label"><span class="wt-class-label-text">Classes</span> <b>${classProgress}/9</b></span>
             <i class="wt-class-gems">${classGems}</i>
         </span>`;
 
     // --- My hand ---
     const handHtml = me.hand.map(c => renderCard(c, !spectator, true, false, isMyTurn)).join('');
 
-    return { oppHtml, monstersHtml, discardHtml, partyHtml, leaderHtml, winTrackHtml, handHtml };
+    return { oppHtml, monstersHtml, discardHtml, partyHtml, leaderHtml, winTrackHtml, handHtml, classProgress };
 }
 
 
@@ -4183,10 +4212,10 @@ function renderBoard(data) {
 
     setRegionHtml(myWinTracker, boardParts.winTrackHtml);
 
-    // AP is part of the full premium board artwork. AP 0 uses the native
-    // all-dark baseline; positive values select a full-board AI-edited variant.
+    // Portrait keeps one neutral generated board and swaps only the small AP and
+    // class modules. Landscape retains its five complete AP-specific renders.
     // Mega Slime can grant 4 AP, and any future higher value is capped visually.
-    updatePremiumBoardBackground(me.ap);
+    updatePremiumBoardBackground(me.ap, boardParts.classProgress);
 
     // Reward toast (Phase 7): celebrate when MY slain count grows. Client-side
     // only — reads slainMonsters, fires no socket events. Guarded by a remembered

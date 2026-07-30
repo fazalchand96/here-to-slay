@@ -42,40 +42,44 @@ test('landscape HUD frames are baked into every AP background', () => {
     assert.match(styleSource, /body\.chat-open #event-console-empty \{[\s\S]*?top: auto !important;[\s\S]*?bottom: 2% !important;/);
 });
 
-test('portrait uses five separately rendered backgrounds with baked HUD and controls', () => {
+test('portrait uses one generated board with lightweight AP, class, and turn modules', () => {
     const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
     const styleSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
-    const skinDir = path.join(__dirname, '..', 'public', 'assets', 'skin');
-    const assetBuffers = [];
+    const skinDir = path.join(__dirname, '..', 'public', 'assets', 'skin', 'portrait-v184');
+    const baseAsset = 'portrait-board-neutral-v184.webp';
 
+    assert.match(appSource, new RegExp(baseAsset.replace('.', '\\.')));
+    assert.ok(fs.statSync(path.join(skinDir, baseAsset)).size > 500_000);
+
+    const apBuffers = [];
     for (let ap = 0; ap <= 4; ap += 1) {
-        const asset = `premium-tabletop-portrait-integrated-ap${ap}-v173.webp`;
-        assert.match(appSource, new RegExp(asset.replace('.', '\\.')));
+        const asset = `ap-${ap}of4-v184.webp`;
         const assetPath = path.join(skinDir, asset);
         assert.equal(fs.existsSync(assetPath), true);
-        assert.ok(fs.statSync(assetPath).size > 400_000, `Expected full generated portrait board: ${asset}`);
-        assetBuffers.push(fs.readFileSync(assetPath));
+        assert.ok(fs.statSync(assetPath).size < 30_000, `Expected lightweight AP module: ${asset}`);
+        apBuffers.push(fs.readFileSync(assetPath));
     }
 
-    for (let index = 1; index < assetBuffers.length; index += 1) {
-        assert.equal(
-            assetBuffers[index].equals(assetBuffers[index - 1]),
-            false,
-            `Portrait AP ${index} must be a separate full render`
-        );
+    for (let classes = 0; classes <= 9; classes += 1) {
+        const asset = `classes-${classes}of9-v184.webp`;
+        const assetPath = path.join(skinDir, asset);
+        assert.equal(fs.existsSync(assetPath), true);
+        assert.ok(fs.statSync(assetPath).size < 30_000, `Expected lightweight class module: ${asset}`);
     }
 
-    assert.match(styleSource, /FULLY INTEGRATED PORTRAIT BOARD v173/);
-    assert.match(styleSource, /#game-board\.portrait #opponents-bar \{[\s\S]*?grid-template-columns: repeat\(5/);
-    assert.match(styleSource, /#game-board\.portrait #player-win-tracker \{[\s\S]*?background: transparent !important;/);
-    assert.match(styleSource, /#game-board\.portrait #discard-draw-btn,[\s\S]*?#game-board\.portrait #end-turn-btn \{[\s\S]*?background: transparent !important;/);
-    assert.match(styleSource, /#game-board\.portrait #action-point-timer \{[\s\S]*?background: transparent !important;/);
-    assert.match(styleSource, /SCREENSHOT QA CORRECTIONS v174/);
-    assert.match(styleSource, /html body #game-board\.portrait #board-center \.monsters-area \.card \{[\s\S]*?64px/);
-    assert.match(styleSource, /html body #game-board\.portrait #turn-indicator,[\s\S]*?display: none !important;/);
-    assert.match(styleSource, /html body #game-board\.portrait #player-party \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\)/);
-    assert.match(styleSource, /html body #game-board\.portrait #party-dock \{[\s\S]*?minmax\(0, 1\.45fr\)/);
-    assert.match(styleSource, /html body #game-board\.portrait > #game-menu-btn \{[\s\S]*?left: 2\.1%/);
+    assert.equal(fs.existsSync(path.join(skinDir, 'opponent-active-v184.webp')), true);
+    assert.match(appSource, /PORTRAIT_BOARD_MODULES/);
+    assert.match(appSource, /--portrait-ap-module/);
+    assert.match(appSource, /--portrait-class-module/);
+    assert.match(styleSource, /PORTRAIT_V184_FINAL_CASCADE/);
+    assert.match(styleSource, /html body #game-board\.portrait #opponents-bar \{[\s\S]*?grid-template-columns: repeat\(5/);
+    assert.match(styleSource, /opponent-active-v184\.webp/);
+    assert.match(styleSource, /html body #game-board\.portrait #active-monsters \{[\s\S]*?repeat\(3/);
+    assert.match(styleSource, /html body #game-board\.portrait #party-dock \.party-dock-preview \{[\s\S]*?width: 26\.5%/);
+    assert.match(styleSource, /html body #game-board\.portrait #hand-carousel #player-hand > \.card,[\s\S]*?height: 82%/);
+    assert.match(styleSource, /html body #game-board\.portrait #player-win-tracker \{[\s\S]*?--portrait-class-module/);
+    assert.match(styleSource, /html body #game-board\.portrait #turn-indicator \{[\s\S]*?display: none !important;/);
+    assert.equal(apBuffers[0].equals(apBuffers[4]), false);
 });
 
 test('landscape photo QA keeps Monsters visible and opponent plaque text compact', () => {

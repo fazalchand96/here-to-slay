@@ -25,7 +25,12 @@ test('6-player board screenshots', async ({ browser }, testInfo) => {
             await p.evaluate((cid) => window._socket.emit('debug_inject_to_party', { cardId: cid }), id);
         }
     }
-    await host.waitForTimeout(800);
+    // Exercise both portrait card fans and the generated opponent-turn module.
+    await host.evaluate(() => window._socket.emit('debug_add_slain_monster', { cardId: 'card_006' }));
+    await host.evaluate(() => window._socket.emit('debug_add_slain_monster', { cardId: 'card_009' }));
+    await host.locator('#end-turn-btn').click({ force: true });
+    await host.waitForFunction(() => window.latestGameState?.activePlayerSocketId !== window.myId);
+    await host.waitForTimeout(3_600);
 
     // Host view — the main board with all 5 opponents on the bar.
     await host.screenshot({ path: path.join(OUT, `6p-${proj}-host.png`), fullPage: false });
