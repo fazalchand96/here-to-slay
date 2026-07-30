@@ -480,7 +480,8 @@ const CLASS_INTROS = {
     Sorcerer: "I am the Sorcerer. A little fire fixes everything."
 };
 function leaderIntroLine(leader) {
-    return (leader && (AUDIO_MANIFEST.leaders?.[leader.id]?.introText || CLASS_INTROS[leader.class])) || "I shall lead this party to glory.";
+    const manifest = window.HTS_AUDIO_MANIFEST || {};
+    return (leader && (manifest.leaders?.[leader.id]?.introText || CLASS_INTROS[leader.class])) || "I shall lead this party to glory.";
 }
 // Speak the intro once per distinct leader (guards against lobby re-renders).
 function announceLeader(leader) {
