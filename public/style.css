@@ -11888,3 +11888,843 @@ html body #game-board.portrait #hand-carousel #player-hand > .card.selected {
         opacity: 1 !important;
     }
 }
+
+/* LANDSCAPE_V185_PRODUCTION_LOCK
+   Chosen landscape direction: option 1 layout, flattened 2D depth, blue class
+   tracker, high-quality baked background. Dynamic game data stays as HTML/CSS
+   overlays, but every region is pinned to the baked sockets to prevent drift. */
+html body.landscape #game-board {
+    position: relative !important;
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    overflow: hidden !important;
+    background-image: url('assets/skin/landscape-v185/landscape-board-empty-v185.png') !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    background-size: 100% 100% !important;
+}
+
+html body.landscape #game-board::before {
+    display: none !important;
+}
+
+html body.landscape #game-board::after {
+    content: "" !important;
+    position: absolute !important;
+    z-index: 2 !important;
+    left: 0 !important;
+    top: 73.33% !important;
+    width: 25.72% !important;
+    height: 20.19% !important;
+    background: var(--landscape-class-module) center / 100% 100% no-repeat !important;
+    pointer-events: none !important;
+}
+
+html body.landscape #board-top-bar,
+html body.landscape #board-center,
+html body.landscape #player-zone,
+html body.landscape #player-assets,
+html body.landscape #player-controls,
+html body.landscape #player-controls .btn-group {
+    display: contents !important;
+}
+
+html body.landscape #opponents-bar {
+    position: absolute !important;
+    left: 9.7% !important;
+    top: 3.2% !important;
+    width: 76.3% !important;
+    height: 13.6% !important;
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    align-items: stretch !important;
+    gap: 1.05% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    background: transparent !important;
+    border: 0 !important;
+}
+
+html body.landscape #opponents-bar .opponent-chip {
+    position: relative !important;
+    display: grid !important;
+    grid-template-rows: 44% 56% !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    padding: 9% 5% 8% !important;
+    background: transparent !important;
+    background-image: none !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    color: #ffe7a8 !important;
+    text-shadow: 0 2px 3px rgba(0, 0, 0, .95), 0 0 5px rgba(60, 140, 255, .3) !important;
+}
+
+html body.landscape #opponents-bar .opponent-chip::after {
+    content: "" !important;
+    position: absolute !important;
+    z-index: 2 !important;
+    left: 50.2% !important;
+    top: -13.5% !important;
+    width: 27.5% !important;
+    aspect-ratio: 1 !important;
+    transform: translateX(-50%) !important;
+    background: url('assets/skin/landscape-v185/opponents/opponent-crystal-idle-v185.png') center / 100% 100% no-repeat !important;
+    pointer-events: none !important;
+    opacity: .96 !important;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .72)) !important;
+}
+
+html body.landscape #opponents-bar .opponent-chip-name {
+    display: grid !important;
+    place-items: center !important;
+    align-self: stretch !important;
+    padding: 0 15% 0 8% !important;
+    font-family: var(--font-display) !important;
+    font-size: clamp(.44rem, 1.1vw, .76rem) !important;
+    letter-spacing: .08em !important;
+    line-height: 1 !important;
+    text-align: center !important;
+}
+
+html body.landscape #opponents-bar .opponent-chip-stats {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    padding: 0 !important;
+    font-size: clamp(.38rem, .95vw, .64rem) !important;
+}
+
+html body.landscape #opponents-bar .opponent-stat {
+    position: absolute !important;
+    display: block !important;
+    width: 20% !important;
+    height: 26% !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+}
+
+html body.landscape #opponents-bar .opponent-stat:nth-child(1) {
+    left: 22.8% !important;
+    top: 67.2% !important;
+}
+
+html body.landscape #opponents-bar .opponent-stat:nth-child(2) {
+    left: 42.4% !important;
+    top: 67.2% !important;
+}
+
+html body.landscape #opponents-bar .opponent-stat:nth-child(3) {
+    left: 61.9% !important;
+    top: 67.2% !important;
+}
+
+html body.landscape #opponents-bar .opponent-stat-label {
+    display: none !important;
+}
+
+html body.landscape #opponents-bar .opponent-stat-value {
+    display: grid !important;
+    place-items: center !important;
+    width: 100% !important;
+    height: 100% !important;
+    color: #ffeab4 !important;
+    font-family: var(--font-display) !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+    text-align: center !important;
+}
+
+html body.landscape #opponents-bar .opponent-chip.is-active-turn::before {
+    display: none !important;
+}
+
+html body.landscape #opponents-bar .opponent-chip.is-active-turn::after {
+    background-image: url('assets/skin/landscape-v185/opponents/opponent-crystal-active-v185.png') !important;
+    opacity: 1 !important;
+    animation: opponent-v185-crystal-pulse 1.25s ease-in-out infinite !important;
+    filter: drop-shadow(0 0 6px rgba(91, 181, 255, .96)) drop-shadow(0 0 12px rgba(40, 118, 255, .78)) !important;
+}
+
+@keyframes opponent-v185-crystal-pulse {
+    0%, 100% {
+        transform: translateX(-50%) scale(.96);
+        opacity: .84;
+    }
+    50% {
+        transform: translateX(-50%) scale(1.08);
+        opacity: 1;
+    }
+}
+
+html body.landscape #game-board > #main-deck,
+html body.landscape #game-board > #discard-pile {
+    position: absolute !important;
+    display: block !important;
+    width: 10.4% !important;
+    height: 23.6% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+    overflow: visible !important;
+}
+
+html body.landscape #game-board > #main-deck {
+    left: 8.25% !important;
+    top: 22.7% !important;
+}
+
+html body.landscape #game-board > #discard-pile {
+    left: 20.1% !important;
+    top: 22.7% !important;
+}
+
+html body.landscape #main-deck::before,
+html body.landscape #main-deck::after,
+html body.landscape #discard-pile::before,
+html body.landscape #discard-pile::after,
+html body.landscape #main-deck > span {
+    display: none !important;
+}
+
+html body.landscape #board-center .deck-area {
+    display: none !important;
+}
+
+html body.landscape #board-center .monsters-area {
+    position: absolute !important;
+    left: 34.8% !important;
+    top: 25.8% !important;
+    width: 41.2% !important;
+    height: 24.9% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    gap: 4.8% !important;
+    overflow: visible !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+}
+
+html body.landscape #board-center .monsters-area .area-label {
+    display: none !important;
+}
+
+html body.landscape #active-monsters {
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4.8% !important;
+    padding: 0 !important;
+    overflow: visible !important;
+}
+
+html body.landscape #active-monsters > .card,
+html body.landscape #active-monsters > .card:not(:first-child) {
+    flex: 0 0 auto !important;
+    height: min(23.2dvh, 136px) !important;
+    max-height: min(23.2dvh, 136px) !important;
+    min-height: 0 !important;
+    margin-left: 0 !important;
+    transform: none !important;
+    translate: 0 0 !important;
+    rotate: none !important;
+    scale: none !important;
+}
+
+html body.landscape #party-zone {
+    position: absolute !important;
+    left: 25.8% !important;
+    top: 52.0% !important;
+    width: 56.2% !important;
+    height: 20.9% !important;
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+}
+
+html body.landscape #party-zone > .area-label {
+    display: none !important;
+}
+
+html body.landscape #player-party {
+    position: absolute !important;
+    inset: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    overflow: visible !important;
+}
+
+html body.landscape #party-dock {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-columns: 33% 36% 27% !important;
+    gap: 2% !important;
+    align-items: center !important;
+    padding: 3% 2.5% !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+html body.landscape #party-dock::before,
+html body.landscape #party-dock .party-dock-open {
+    display: none !important;
+}
+
+html body.landscape .party-dock-copy {
+    padding-left: 2% !important;
+}
+
+html body.landscape .party-dock-copy > strong {
+    font-size: clamp(.52rem, 1.45vw, .88rem) !important;
+}
+
+html body.landscape .party-dock-copy small {
+    font-size: clamp(.42rem, .9vw, .6rem) !important;
+}
+
+html body.landscape .party-dock-class {
+    background: #0a62bf !important;
+    border-color: rgba(138, 207, 255, .7) !important;
+}
+
+html body.landscape .party-dock-preview {
+    justify-content: center !important;
+    padding-left: 0 !important;
+}
+
+html body.landscape .party-dock-card,
+html body.landscape .party-dock-slain-card {
+    width: clamp(29px, 3.75vw, 54px) !important;
+    aspect-ratio: 2 / 3 !important;
+    border-radius: 5px !important;
+    background-size: cover !important;
+    background-position: center !important;
+}
+
+html body.landscape .party-dock-slay {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    justify-items: center !important;
+    gap: 1px !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+}
+
+html body.landscape .party-dock-slay-fan {
+    display: flex !important;
+    justify-content: center !important;
+    min-height: 0 !important;
+}
+
+html body.landscape .party-dock-slay strong,
+html body.landscape .party-dock-slay > b,
+html body.landscape .party-dock-slay i {
+    display: none !important;
+}
+
+html body.landscape #leader-slot {
+    position: absolute !important;
+    left: 14.8% !important;
+    top: 50.8% !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: 9.2% !important;
+    height: 21.2% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    align-self: auto !important;
+    justify-self: auto !important;
+    grid-area: auto !important;
+    grid-row: auto !important;
+    grid-column: auto !important;
+}
+
+html body.landscape #leader-slot .card {
+    height: min(20.4dvh, 126px) !important;
+    max-height: min(20.4dvh, 126px) !important;
+    min-height: 0 !important;
+    transform: none !important;
+    translate: 0 0 !important;
+    rotate: none !important;
+    scale: none !important;
+    margin: 0 !important;
+}
+
+html body.landscape #hand-zone {
+    position: absolute !important;
+    left: 26.0% !important;
+    top: 75.2% !important;
+    width: 51.3% !important;
+    height: 22.3% !important;
+    display: flex !important;
+    align-items: center !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+}
+
+html body.landscape #hand-zone > .area-label {
+    display: none !important;
+}
+
+html body.landscape #hand-carousel {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+html body.landscape #hand-carousel #player-hand {
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 2.1% !important;
+    padding: 1.6% 7.5% 3.4% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(50, 147, 255, .9) rgba(2, 11, 24, .45) !important;
+}
+
+html body.landscape #hand-carousel.is-scrollable #player-hand {
+    justify-content: flex-start !important;
+}
+
+html body.landscape #hand-carousel #player-hand::-webkit-scrollbar {
+    display: block !important;
+    height: 5px !important;
+}
+
+html body.landscape #hand-carousel #player-hand::-webkit-scrollbar-track {
+    background: rgba(2, 11, 24, .45) !important;
+    border-radius: 999px !important;
+}
+
+html body.landscape #hand-carousel #player-hand::-webkit-scrollbar-thumb {
+    background: linear-gradient(90deg, #1c76da, #70c8ff) !important;
+    border-radius: 999px !important;
+}
+
+html body.landscape #hand-carousel #player-hand > .card,
+html body.landscape #hand-carousel #player-hand > .card:not(:first-child),
+html body.landscape #hand-carousel #player-hand.cards-many .card:not(:first-child),
+html body.landscape #hand-carousel #player-hand.cards-crowded .card:not(:first-child),
+html body.landscape #hand-carousel #player-hand.cards-packed .card:not(:first-child) {
+    flex: 0 0 auto !important;
+    height: min(20.6dvh, 124px) !important;
+    max-height: min(20.6dvh, 124px) !important;
+    min-height: 0 !important;
+    margin-left: 0 !important;
+    transform: none !important;
+}
+
+html body.landscape #player-win-tracker {
+    position: absolute !important;
+    left: .7% !important;
+    bottom: 7.1% !important;
+    top: auto !important;
+    right: auto !important;
+    width: 21.2% !important;
+    height: 12.4% !important;
+    display: block !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    z-index: 4 !important;
+}
+
+html body.landscape #player-win-tracker .wt-class-label {
+    display: none !important;
+}
+
+html body.landscape #player-win-tracker .wt-class-label-text {
+    display: none !important;
+}
+
+html body.landscape #player-win-tracker .wt-class-gems {
+    display: none !important;
+}
+
+html body.landscape #player-win-tracker .wt-class-gems em {
+    width: min(2.05vw, 21px) !important;
+    aspect-ratio: 1 !important;
+    border-radius: 999px !important;
+    border: 1px solid rgba(74, 168, 255, .75) !important;
+    background: rgba(3, 20, 45, .64) !important;
+}
+
+html body.landscape #player-win-tracker .wt-class-gems em.on {
+    background: radial-gradient(circle, #a8e8ff 0 17%, #2a9cff 42%, #064ea9 78%) !important;
+    box-shadow: 0 0 7px rgba(52, 158, 255, .85) !important;
+}
+
+html body.landscape #action-point-timer {
+    position: absolute !important;
+    left: 86.25% !important;
+    top: 64.15% !important;
+    width: 8.85% !important;
+    height: 13.1% !important;
+    display: grid !important;
+    place-items: center !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    color: #ffe8b4 !important;
+    isolation: isolate !important;
+}
+
+html body.landscape #action-point-timer::before {
+    content: "" !important;
+    position: absolute !important;
+    z-index: 0 !important;
+    left: 50.5% !important;
+    top: 50.5% !important;
+    width: min(6.2vw, 47px) !important;
+    aspect-ratio: 1 !important;
+    transform: translate(-50%, -50%) !important;
+    border-radius: 999px !important;
+    background:
+        conic-gradient(
+            from -90deg,
+            rgba(98, 199, 255, .98) calc(var(--timer-progress, 1) * 1turn),
+            rgba(4, 14, 31, .38) 0
+        ) !important;
+    -webkit-mask: radial-gradient(circle, transparent 0 48%, #000 50% 72%, transparent 74%) !important;
+    mask: radial-gradient(circle, transparent 0 48%, #000 50% 72%, transparent 74%) !important;
+    filter: drop-shadow(0 0 5px rgba(68, 173, 255, .78)) !important;
+    pointer-events: none !important;
+}
+
+html body.landscape #action-point-timer::after {
+    content: "" !important;
+    position: absolute !important;
+    z-index: 0 !important;
+    left: 27% !important;
+    right: 27% !important;
+    bottom: 16% !important;
+    height: 3px !important;
+    border-radius: 999px !important;
+    background: linear-gradient(90deg, #174f95, #79d7ff) !important;
+    box-shadow: 0 0 5px rgba(72, 174, 255, .75) !important;
+    transform: scaleX(var(--timer-progress, 1)) !important;
+    transform-origin: left center !important;
+    pointer-events: none !important;
+}
+
+html body.landscape #action-point-timer-player {
+    display: none !important;
+}
+
+html body.landscape #action-point-timer .action-point-timer-clock {
+    display: inline-flex !important;
+    align-items: baseline !important;
+    justify-content: center !important;
+    gap: 1px !important;
+    font-family: var(--font-display) !important;
+    font-size: clamp(.62rem, 2.35vw, 1.38rem) !important;
+    font-weight: 900 !important;
+    transform: translate(3%, -1%) !important;
+    position: relative !important;
+    z-index: 1 !important;
+    text-shadow: 0 2px 4px #000, 0 0 8px rgba(54, 148, 255, .65) !important;
+}
+
+html body.landscape #action-point-timer.timer-warning::before {
+    filter: drop-shadow(0 0 7px rgba(255, 211, 91, .86)) !important;
+    background:
+        conic-gradient(
+            from -90deg,
+            rgba(255, 215, 94, .98) calc(var(--timer-progress, 1) * 1turn),
+            rgba(38, 20, 3, .45) 0
+        ) !important;
+}
+
+html body.landscape #action-point-timer.timer-danger::before {
+    filter: drop-shadow(0 0 8px rgba(255, 70, 55, .95)) !important;
+    background:
+        conic-gradient(
+            from -90deg,
+            rgba(255, 75, 58, .98) calc(var(--timer-progress, 1) * 1turn),
+            rgba(45, 3, 4, .48) 0
+        ) !important;
+}
+
+html body.landscape #discard-draw-btn,
+html body.landscape #end-turn-btn {
+    position: absolute !important;
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    color: transparent !important;
+}
+
+html body.landscape #discard-draw-btn {
+    left: 80.6% !important;
+    top: 83.2% !important;
+    width: 7.5% !important;
+    height: 6.5% !important;
+}
+
+html body.landscape #end-turn-btn {
+    left: 91.1% !important;
+    top: 84.9% !important;
+    width: 6.6% !important;
+    height: 8.9% !important;
+}
+
+html body.landscape #discard-draw-btn .action-icon,
+html body.landscape #end-turn-btn .action-icon {
+    opacity: 0 !important;
+}
+
+html body.landscape #game-menu-btn {
+    left: 1.0% !important;
+    top: 1.8% !important;
+}
+
+html body.landscape #mute-btn {
+    right: 1.1% !important;
+    top: 1.8% !important;
+}
+
+html body.landscape #turn-indicator,
+html body.landscape #draw-card-btn,
+html body.landscape .deck-area,
+html body.landscape #landscape-tray-bg,
+html body.landscape #portrait-divider,
+html body.landscape .player-profile-box {
+    display: none !important;
+}
+
+/* v185 geometry corrections that intentionally outrank the older v174 QA lock. */
+html body.landscape #game-board #board-center .monsters-area {
+    left: 34.8% !important;
+    top: 25.8% !important;
+    width: 41.2% !important;
+    height: 24.9% !important;
+}
+
+html body.landscape #game-board #board-center .monsters-area .card,
+html body.landscape #game-board #active-monsters > .card,
+html body.landscape #game-board #active-monsters > .card:not(:first-child) {
+    height: min(23.2dvh, 136px) !important;
+    max-height: min(23.2dvh, 136px) !important;
+    min-height: 0 !important;
+    transform: none !important;
+    translate: 0 0 !important;
+    rotate: none !important;
+    scale: none !important;
+    margin-left: 0 !important;
+}
+
+html body.landscape #game-board #opponents-bar .opponent-chip {
+    overflow: visible !important;
+}
+
+html body.landscape #game-board #opponents-bar .opponent-chip::after {
+    display: block !important;
+}
+
+/* v185 hard alignment pass: keep live overlays locked to the baked sockets. */
+html body.landscape #game-board #opponents-bar {
+    left: 10.65% !important;
+    top: 1.75% !important;
+    width: 81.65% !important;
+    height: 18.25% !important;
+    max-height: none !important;
+    gap: .95% !important;
+    align-items: stretch !important;
+}
+
+html body.landscape #game-board #opponents-bar .opponent-chip {
+    height: 100% !important;
+    max-height: none !important;
+    padding: 0 !important;
+    overflow: visible !important;
+}
+
+html body.landscape #game-board #opponents-bar .opponent-chip::after {
+    inset: auto !important;
+    left: calc(50.2% + var(--opponent-v185-nudge-x, 0px)) !important;
+    top: 7.1% !important;
+    width: 22.5% !important;
+    height: 34.5% !important;
+    transform: translate(-50%, -50%) !important;
+    border-radius: 999px !important;
+}
+
+html body.landscape #game-board #opponents-bar .opponent-chip-name {
+    position: absolute !important;
+    left: 9% !important;
+    right: 14% !important;
+    top: 22.5% !important;
+    height: 18% !important;
+    padding: 0 !important;
+}
+
+html body.landscape #game-board #opponents-bar .opponent-chip-stats {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+html body.landscape #game-board #opponents-bar .opponent-stat {
+    position: absolute !important;
+    display: grid !important;
+    place-items: center !important;
+    width: 17% !important;
+    height: 18% !important;
+    transform: translate(-50%, -50%) !important;
+}
+
+html body.landscape #game-board #opponents-bar .opponent-chip[data-opponent-slot="2"] {
+    --opponent-v185-nudge-x: -5px;
+}
+
+html body.landscape #game-board #opponents-bar .opponent-chip[data-opponent-slot="3"] {
+    --opponent-v185-nudge-x: -10px;
+}
+
+html body.landscape #game-board #opponents-bar .opponent-chip[data-opponent-slot="4"] {
+    --opponent-v185-nudge-x: -19px;
+}
+
+html body.landscape #game-board #opponents-bar .opponent-chip[data-opponent-slot="5"] {
+    --opponent-v185-nudge-x: -25px;
+}
+
+html body.landscape #game-board #opponents-bar .opponent-stat:nth-child(1) {
+    left: calc(24.6% + var(--opponent-v185-nudge-x, 0px)) !important;
+    top: 76.0% !important;
+}
+
+html body.landscape #game-board #opponents-bar .opponent-stat:nth-child(2) {
+    left: calc(50.0% + var(--opponent-v185-nudge-x, 0px)) !important;
+    top: 76.0% !important;
+}
+
+html body.landscape #game-board #opponents-bar .opponent-stat:nth-child(3) {
+    left: calc(75.4% + var(--opponent-v185-nudge-x, 0px)) !important;
+    top: 76.0% !important;
+}
+
+html body.landscape #game-board #opponents-bar .opponent-stat-value {
+    font-size: clamp(.52rem, 1.18vw, .88rem) !important;
+}
+
+html body.landscape #game-board #action-point-timer {
+    left: 86.25% !important;
+    top: 65.15% !important;
+    width: 8.85% !important;
+    height: 13.1% !important;
+    max-height: none !important;
+}
+
+html body.landscape #game-board #action-point-timer::before {
+    left: 75.0% !important;
+    top: 71.0% !important;
+    width: min(6.2vw, 48px) !important;
+}
+
+html body.landscape #game-board #action-point-timer::after {
+    left: 58% !important;
+    right: 4% !important;
+    bottom: 1% !important;
+}
+
+html body.landscape #game-board #action-point-timer .action-point-timer-clock {
+    position: absolute !important;
+    left: 75.0% !important;
+    top: 71.0% !important;
+    transform: translate(-50%, -50%) !important;
+}
+
+html body.landscape #game-board #board-center .monsters-area {
+    left: 35.7% !important;
+    top: 25.8% !important;
+    width: 38.0% !important;
+    height: 22.2% !important;
+}
+
+html body.landscape #game-board #active-monsters {
+    position: relative !important;
+    display: block !important;
+}
+
+html body.landscape #game-board #active-monsters > .card,
+html body.landscape #game-board #active-monsters > .card:not(:first-child) {
+    position: absolute !important;
+    top: 10.5% !important;
+    transform: none !important;
+    translate: 0 0 !important;
+}
+
+html body.landscape #game-board #active-monsters > .card:nth-child(1) {
+    left: 5.8% !important;
+}
+
+html body.landscape #game-board #active-monsters > .card:nth-child(2) {
+    left: 38.3% !important;
+}
+
+html body.landscape #game-board #active-monsters > .card:nth-child(3) {
+    left: 75.7% !important;
+    top: 8.0% !important;
+}
+
+html body.landscape #game-board #party-zone {
+    left: 26.95% !important;
+    top: 51.65% !important;
+    width: 53.28% !important;
+    height: 20.42% !important;
+}
+
+html body.landscape #game-board #hand-zone {
+    left: 29.06% !important;
+    top: 75.97% !important;
+    width: 46.48% !important;
+    height: 22.22% !important;
+}

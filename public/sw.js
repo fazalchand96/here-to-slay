@@ -1,7 +1,7 @@
 // Service Worker for Here To Slay Mobile PWA
 // App code changes often, while card and board art rarely changes. Keeping those
 // caches separate prevents every code deployment from downloading all art again.
-const SHELL_CACHE = 'hts-shell-v184';
+const SHELL_CACHE = 'hts-shell-v186';
 // Keep this stable across code-only deploys. Bump it only when an existing
 // image/audio URL is replaced with different content.
 const MEDIA_CACHE = 'hts-media-v4';
@@ -11,6 +11,7 @@ const PRECACHE_ASSETS = [
   '/index.html',
   '/style.css',
   '/deck-stage.generated.css',
+  '/audio_manifest.js',
   '/app.js',
   '/anim.js',
   '/manifest.json'
@@ -99,7 +100,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   const isMedia = ['audio', 'font', 'image'].includes(event.request.destination) ||
-    /\.(?:avif|gif|ico|jpe?g|ogg|png|svg|webp|woff2?)$/.test(url.pathname);
+    /\.(?:avif|gif|ico|jpe?g|mp3|ogg|png|svg|webp|woff2?)$/.test(url.pathname);
   if (isMedia) {
     event.respondWith(mediaCacheFirst(event.request));
   }

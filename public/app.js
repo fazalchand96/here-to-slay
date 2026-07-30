@@ -54,17 +54,11 @@ socket.on('session_token', payload => {
     try { localStorage.setItem(`${SESSION_TOKEN_PREFIX}${roomCode}`, token); } catch (e) {}
 });
 
-// --- AUDIO MANAGER ---
-// The synth engine below covers every sound procedurally. To upgrade any one of
-// them to a richer RECORDED file, do TWO things:
-//   1. drop the file in public/sounds/  (any of .ogg/.mp3/.wav/.m4a)
-//   2. uncomment its line in SOUND_FILES below (filename incl. extension)
-// That's it — the file then auto-overrides the synth for that sound, and a
-// missing/failed file silently falls back to synth. Also add the path to
-// PRECACHE_ASSETS in sw.js so it's available offline. Per-name volume can be
-// given as [filename, volume]; a bare string uses the default 0.6.
+// --- LEGACY AUDIO MUTE STATE ---
+// Premium files are resolved through audio_manifest.js; missing files stay silent.
 const SOUND_FILES = {
-    dice: 'dice.ogg',          // shipped
+    // Legacy synth overrides are intentionally disabled. Premium files are
+    // resolved through audio_manifest.js and PremiumAudio below.
     // tap: 'tap.ogg',         // careful: plays on every press — keep it very short
     // open: 'open.ogg',
     // close: 'close.ogg',
@@ -90,7 +84,7 @@ Object.entries(SOUND_FILES).forEach(([name, spec]) => {
     const [file, vol] = Array.isArray(spec) ? spec : [spec, 0.6];
     const audio = new Audio('/sounds/' + file);
     audio.volume = vol;
-    audio.addEventListener('error', () => { audio.src = ''; }); // missing file → synth fallback
+    audio.addEventListener('error', () => { audio.src = ''; });
     sfx[name] = audio;
 });
 
@@ -175,15 +169,13 @@ const Sound = (() => {
         join:      () => blip(660, { type: 'sine', dur: 0.12, vol: 0.16, slideTo: 880 }),
         win:       () => arp([523, 659, 784, 1047], { type: 'triangle', dur: 0.5, vol: 0.2, stagger: 0.12 }),
         lose:      () => arp([392, 330, 262], { type: 'triangle', dur: 0.5, vol: 0.2, stagger: 0.14 }),
-        dice:      () => noise({ dur: 0.3, vol: 0.3, type: 'bandpass', freq: 1500 }) // synth fallback; dice.ogg used when present
+        dice:      () => noise({ dur: 0.3, vol: 0.3, type: 'bandpass', freq: 1500 })
     };
 
     return {
         unlock,
         play(name) {
-            if (muted) return;
-            const r = recipes[name];
-            if (r) { try { r(); } catch (e) { /* never let audio break the game */ } }
+            return null;
         },
         toggleMute() {
             muted = !muted;
@@ -194,16 +186,255 @@ const Sound = (() => {
     };
 })();
 
-// Public API (unchanged signature): prefer a real audio file when one ships,
-// otherwise synthesize. Existing playSound('dice'/'slash'/'magic') calls keep working.
+// Public API (unchanged signature): existing playSound(...) calls now resolve to
+// premium manifest assets and stay silent when an asset has not been produced yet.
 function playSound(name) {
-    const file = sfx[name];
-    if (file && file.src) {
-        try { file.currentTime = 0; file.play().catch(() => {}); } catch (e) {}
-        return;
-    }
-    Sound.play(name);
+    return window.PremiumAudio ? window.PremiumAudio.playSfx(name) : null;
 }
+
+const PremiumAudio = (() => {
+    const manifest = window.HTS_AUDIO_MANIFEST || {};
+    const defaults = manifest.defaults || {};
+    const volumes = {
+        master: 0.8,
+        sfx: 0.72,
+        voice: 0.9,
+        music: 0.32,
+        ...(manifest.volumes || {})
+    };
+    const cache = new Map();
+    const missing = new Set();
+    const lastLeaderVoiceAt = new Map();
+    let unlocked = false;
+    let currentMusicKey = '';
+    let currentMusic = null;
+    let activeVoice = null;
+    let lastGlobalVoiceAt = 0;
+    let lastTimerCueSecond = null;
+    let lastLocalHandCount = null;
+
+    function isMuted() {
+        return Sound.isMuted();
+    }
+    function channelVolume(channel, spec = {}) {
+        const raw = volumes.master * (volumes[channel] || 1) * (spec.volume ?? 1);
+        return Math.max(0, Math.min(1, raw));
+    }
+    function specFrom(value) {
+        if (!value) return null;
+        return typeof value === 'string' ? { src: value } : value;
+    }
+    function audioFor(src, channel, spec = {}) {
+        if (!src || missing.has(src)) return null;
+        let audio = cache.get(src);
+        if (!audio) {
+            audio = new Audio(src);
+            audio.preload = 'auto';
+            audio.addEventListener('error', () => {
+                missing.add(src);
+                cache.delete(src);
+            }, { once: true });
+            cache.set(src, audio);
+        }
+        audio.volume = channelVolume(channel, spec);
+        return audio;
+    }
+    function playFile(src, channel, spec = {}) {
+        if (isMuted() || !src || missing.has(src)) return null;
+        const audio = audioFor(src, channel, spec);
+        if (!audio) return null;
+        audio.loop = !!spec.loop;
+        try {
+            if (spec.restart !== false) audio.currentTime = 0;
+            const result = audio.play();
+            if (result && typeof result.catch === 'function') result.catch(() => {});
+            return audio;
+        } catch (e) {
+            return null;
+        }
+    }
+    function playSfx(key) {
+        const spec = specFrom(manifest.sfx?.[key]);
+        if (!spec) return null;
+        return playFile(spec.src, 'sfx', spec);
+    }
+    function pick(list) {
+        if (!Array.isArray(list) || !list.length) return '';
+        const available = list.filter(src => src && !missing.has(src));
+        if (!available.length) return '';
+        return available[Math.floor(Math.random() * available.length)];
+    }
+    function leaderForPlayer(state, playerId) {
+        return state?.players?.[playerId]?.leader || null;
+    }
+    function playVoiceForLeader(leader, voiceEvent, eventSpec = {}, options = {}) {
+        if (isMuted() || !leader || !voiceEvent) return false;
+        const src = pick(manifest.leaders?.[leader.id]?.voice?.[voiceEvent]);
+        if (!src) return false;
+        const now = Date.now();
+        const globalCooldown = options.globalCooldownMs ?? eventSpec.globalCooldownMs ?? defaults.globalVoiceCooldownMs ?? 4200;
+        const leaderCooldown = options.leaderCooldownMs ?? eventSpec.leaderCooldownMs ?? defaults.leaderVoiceCooldownMs ?? 10000;
+        if (!options.force) {
+            if (now - lastGlobalVoiceAt < globalCooldown) return false;
+            if (now - (lastLeaderVoiceAt.get(leader.id) || 0) < leaderCooldown) return false;
+            if (activeVoice && !activeVoice.paused && !activeVoice.ended) return false;
+        }
+        const audio = playFile(src, 'voice', eventSpec);
+        if (!audio) return false;
+        activeVoice = audio;
+        lastGlobalVoiceAt = now;
+        lastLeaderVoiceAt.set(leader.id, now);
+        return true;
+    }
+    function maybePlayVoice(eventKey, context = {}) {
+        const eventSpec = manifest.events?.[eventKey] || {};
+        const chance = context.chance ?? eventSpec.chance ?? defaults.voiceChance ?? 0.18;
+        if (!context.force && Math.random() > chance) return false;
+        const state = context.state || latestGameState;
+        const actorLeader = context.leader || leaderForPlayer(state, context.actorId);
+        const played = playVoiceForLeader(
+            actorLeader,
+            context.voiceEvent || eventSpec.voiceEvent,
+            eventSpec,
+            context
+        );
+        if (played || !eventSpec.victimVoiceEvent || !context.targetId) return played;
+        const victimChance = context.victimChance ?? eventSpec.victimChance ?? 0.22;
+        if (Math.random() > victimChance) return false;
+        return playVoiceForLeader(
+            leaderForPlayer(state, context.targetId),
+            eventSpec.victimVoiceEvent,
+            eventSpec,
+            context
+        );
+    }
+    function playEvent(eventKey, context = {}) {
+        const eventSpec = manifest.events?.[eventKey] || {};
+        if (context.sfx || eventSpec.sfx) playSfx(context.sfx || eventSpec.sfx);
+        maybePlayVoice(eventKey, context);
+    }
+    function playMusic(key) {
+        if (currentMusicKey === key) {
+            if (currentMusic && unlocked && !isMuted() && currentMusic.paused) currentMusic.play().catch(() => {});
+            return;
+        }
+        if (currentMusic) {
+            try { currentMusic.pause(); currentMusic.currentTime = 0; } catch (e) {}
+        }
+        currentMusicKey = key || '';
+        currentMusic = null;
+        const spec = specFrom(key && manifest.music?.[key]);
+        if (!spec) return;
+        currentMusic = audioFor(spec.src, 'music', { ...spec, loop: spec.loop !== false });
+        if (!currentMusic) return;
+        currentMusic.loop = spec.loop !== false;
+        if (unlocked && !isMuted()) currentMusic.play().catch(() => {});
+    }
+    function syncMute() {
+        if (isMuted()) {
+            if (activeVoice) activeVoice.pause();
+            if (currentMusic) currentMusic.pause();
+        } else if (currentMusic && unlocked) {
+            currentMusic.play().catch(() => {});
+        }
+    }
+    function unlock() {
+        unlocked = true;
+        syncMute();
+    }
+    function countPartyCards(player) {
+        return (player?.party || []).length;
+    }
+    function detectRemoval(priorPlayer, nextPlayer) {
+        const beforeIds = new Set((priorPlayer?.party || []).map(card => card.id));
+        const afterIds = new Set((nextPlayer?.party || []).map(card => card.id));
+        let removed = 0;
+        beforeIds.forEach(id => { if (!afterIds.has(id)) removed += 1; });
+        return removed;
+    }
+    function handleStateUpdate(prev, next, perspectiveId) {
+        if (!next) return;
+        const isLobby = next.state === 'LOBBY';
+        const inGame = next.state && next.state !== 'LOBBY' && next.state !== 'GAMEOVER';
+        playMusic(isLobby ? 'lobby' : (inGame ? 'game' : ''));
+
+        const me = next.players?.[perspectiveId];
+        const handCount = me?.hand?.filter(card => card.type !== 'Hidden').length;
+        if (Number.isFinite(handCount)) {
+            if (lastLocalHandCount !== null && handCount > lastLocalHandCount) {
+                playEvent('draw', { actorId: perspectiveId, state: next });
+            }
+            lastLocalHandCount = handCount;
+        }
+
+        if (!prev?.players || !next.players) return;
+        Object.keys(next.players).forEach(playerId => {
+            const prevPlayer = prev.players[playerId];
+            const nextPlayer = next.players[playerId];
+            const priorSlain = prevPlayer?.slainMonsters?.length || 0;
+            const nextSlain = nextPlayer?.slainMonsters?.length || 0;
+            if (nextSlain > priorSlain) {
+                playEvent('monster_slayed', { actorId: playerId, state: next });
+            }
+            const removed = detectRemoval(prevPlayer, nextPlayer);
+            if (removed > 0) {
+                playEvent('sacrifice', { actorId: playerId, state: next, chance: Math.min(0.55, 0.25 + removed * 0.1) });
+            }
+            const priorCards = countPartyCards(prevPlayer);
+            const nextCards = countPartyCards(nextPlayer);
+            if (nextCards > priorCards && nextPlayer?.leader?.effect_id === 'LEADER_NECROMANCER') {
+                maybePlayVoice('card_played', { actorId: playerId, state: next, voiceEvent: 'success', chance: 0.24 });
+            }
+        });
+    }
+    function timerCue(seconds) {
+        if (lastTimerCueSecond === seconds) return;
+        lastTimerCueSecond = seconds;
+        if (seconds <= 5) playEvent('timer_urgent');
+        else if (seconds <= 10) playEvent('timer_warning');
+    }
+    function playerIdByVisibleName(state, text) {
+        const normalized = String(text || '').toLowerCase();
+        return Object.keys(state?.players || {}).find(playerId => {
+            const player = state.players[playerId];
+            const names = [
+                player?.name,
+                getPlayerName(playerId),
+                `Player ${String(playerId).substring(0, 4)}`
+            ].filter(Boolean).map(name => String(name).toLowerCase());
+            return names.some(name => normalized.includes(name));
+        }) || null;
+    }
+    function handleMessage(message, state) {
+        const text = String(message || '');
+        if (!text || !state?.players) return;
+        const actorId = playerIdByVisibleName(state, text);
+        const possessiveMatch = text.match(/(?:stole|destroyed|sacrificed)\s+(.+?)'s/i);
+        const targetId = possessiveMatch ? playerIdByVisibleName(state, possessiveMatch[1]) : null;
+        if (/\bSTOLE\b|\bstole\b/.test(text)) {
+            playEvent('hero_stolen', { actorId, targetId, state });
+        } else if (/\bDESTROYED\b|\bdestroyed\b/.test(text)) {
+            playEvent('hero_destroyed', { actorId, targetId, state });
+        } else if (/\bsacrificed\b|\bsacrifice\b/i.test(text)) {
+            playEvent('sacrifice', { actorId, targetId, state });
+        }
+    }
+
+    return {
+        unlock,
+        syncMute,
+        playSfx,
+        playEvent,
+        maybePlayVoice,
+        playVoiceForLeader,
+        playMusic,
+        handleStateUpdate,
+        handleMessage,
+        timerCue,
+        missingAssets: missing
+    };
+})();
+window.PremiumAudio = PremiumAudio;
 
 function triggerHaptic(pattern) {
     if (Sound.isMuted()) return; // one "silence" switch covers sound + vibration
@@ -223,6 +454,7 @@ function triggerHaptic(pattern) {
 // a handler stops propagation. Passive — never blocks scrolling/tapping.
 document.addEventListener('pointerdown', (e) => {
     Sound.unlock();
+    PremiumAudio.unlock();
     const el = e.target.closest(
         'button, .card, .action-btn, .opponent-chip, .tavern-leader-card, [onclick], .clickable'
     );
@@ -232,18 +464,23 @@ document.addEventListener('pointerdown', (e) => {
     }
 }, { capture: true, passive: true });
 
-// Party-leader class intro lines. Spoken via the Web Speech API (no asset files)
-// and shown as a quote under the leader card when a leader is assigned/rerolled.
+// Party-leader intro copy is shown in the lobby. Spoken versions come from the
+// ElevenLabs files listed in audio_manifest.js.
 const CLASS_INTROS = {
     Fighter:  "I am the Fighter. Strength settles every argument.",
     Bard:     "I am the Bard. Let the song of battle begin!",
     Guardian: "I am the Guardian. None shall pass my watch.",
     Ranger:   "I am the Ranger. My aim never wavers.",
     Thief:    "I am the Thief. What's yours is already mine.",
-    Wizard:   "I am the Wizard. Power beyond your reckoning."
+    Wizard:   "I am the Wizard. Power beyond your reckoning.",
+    Druid:    "I am the Druid. Balance bends every fate.",
+    Warrior:  "I am the Warrior. Arm me well and watch them fall.",
+    Necromancer: "I am the Necromancer. Nothing useful stays buried.",
+    Berserker: "I am the Berserker. Point me at trouble.",
+    Sorcerer: "I am the Sorcerer. A little fire fixes everything."
 };
 function leaderIntroLine(leader) {
-    return (leader && CLASS_INTROS[leader.class]) || "I shall lead this party to glory.";
+    return (leader && (AUDIO_MANIFEST.leaders?.[leader.id]?.introText || CLASS_INTROS[leader.class])) || "I shall lead this party to glory.";
 }
 // Speak the intro once per distinct leader (guards against lobby re-renders).
 function announceLeader(leader) {
@@ -251,17 +488,8 @@ function announceLeader(leader) {
     const key = leader.id || leader.name;
     if (window._lastLeaderAnnounced === key) return;
     window._lastLeaderAnnounced = key;
-    if (Sound.isMuted()) return;
-    playSound('skill'); // a small flourish under the voice
+    PremiumAudio.playEvent('leader_selected', { leader, force: true });
     triggerHaptic([20, 30, 20]);
-    try {
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel(); // drop any queued line (e.g. a quick reroll)
-            const u = new SpeechSynthesisUtterance(leaderIntroLine(leader));
-            u.rate = 0.95; u.pitch = 0.9; u.volume = 0.9;
-            window.speechSynthesis.speak(u);
-        }
-    } catch (e) { /* TTS unsupported — the on-screen quote still shows */ }
 }
 
 
@@ -515,11 +743,11 @@ checkOrientationAndLayout(); // Call initially
 
 const PREMIUM_BOARD_BACKGROUNDS = Object.freeze({
     landscape: Object.freeze([
-        'assets/skin/premium-tabletop-landscape-integrated-ap0-v171.webp',
-        'assets/skin/premium-tabletop-landscape-integrated-ap1-v171.webp',
-        'assets/skin/premium-tabletop-landscape-integrated-ap2-v171.webp',
-        'assets/skin/premium-tabletop-landscape-integrated-ap3-v171.webp',
-        'assets/skin/premium-tabletop-landscape-integrated-ap4-v171.webp'
+        'assets/skin/landscape-v185/landscape-board-empty-v185.png',
+        'assets/skin/landscape-v185/landscape-board-empty-v185.png',
+        'assets/skin/landscape-v185/landscape-board-empty-v185.png',
+        'assets/skin/landscape-v185/landscape-board-empty-v185.png',
+        'assets/skin/landscape-v185/landscape-board-empty-v185.png'
     ]),
     portrait: Object.freeze([
         'assets/skin/portrait-v184/portrait-board-neutral-v184.webp'
@@ -532,6 +760,12 @@ const PORTRAIT_BOARD_MODULES = Object.freeze({
     )),
     classes: Object.freeze(Array.from({ length: 10 }, (_, index) =>
         `assets/skin/portrait-v184/classes-${index}of9-v184.webp`
+    ))
+});
+
+const LANDSCAPE_BOARD_MODULES = Object.freeze({
+    classes: Object.freeze(Array.from({ length: 10 }, (_, index) =>
+        `assets/skin/landscape-v185/classes/classes-${index}of9-v185.png`
     ))
 });
 
@@ -550,6 +784,7 @@ function updatePremiumBoardBackground(actionPoints, classProgress = 0) {
     board.dataset.classBackground = `${orientation}-${classes}`;
     board.style.setProperty('--portrait-ap-module', `url('${PORTRAIT_BOARD_MODULES.ap[ap]}')`);
     board.style.setProperty('--portrait-class-module', `url('${PORTRAIT_BOARD_MODULES.classes[classes]}')`);
+    board.style.setProperty('--landscape-class-module', `url('${LANDSCAPE_BOARD_MODULES.classes[classes]}')`);
 }
 
 
@@ -867,7 +1102,7 @@ function syncActionPointCountdown(data) {
         const shouldWarn = seconds === 10 || (seconds >= 1 && seconds <= 5);
         if (shouldWarn && !actionPointCountdownWarnings.has(seconds)) {
             actionPointCountdownWarnings.add(seconds);
-            playSound(seconds <= 5 ? 'timerUrgent' : 'timerWarning');
+            PremiumAudio.timerCue(seconds);
             if (isMine && [5, 3, 1].includes(seconds)) triggerHaptic(seconds === 1 ? [50, 40, 90] : 35);
         }
     };
@@ -2283,6 +2518,7 @@ socket.on('gameStateUpdate', (data) => {
 
 
     latestGameState = data;
+    PremiumAudio.handleStateUpdate(previousGameState, data, myId);
     syncActionPointCountdown(data);
     updateWaitingOverlay(data);
 
@@ -2607,6 +2843,12 @@ socket.on('game_over', (data) => {
     const myName = getPlayerName(socket.id);
     const iWon = data.winnerName && myName && data.winnerName === myName;
     playSound(iWon ? 'win' : 'lose');
+    PremiumAudio.maybePlayVoice(iWon ? 'win' : 'lose', {
+        actorId: iWon ? myId : latestGameState?.winner,
+        targetId: iWon ? null : myId,
+        state: latestGameState,
+        force: true
+    });
     triggerHaptic(iWon ? [60, 50, 60, 50, 120] : [120, 60, 120]);
 
     // Hide game board and show victory modal
@@ -4213,7 +4455,8 @@ function renderBoard(data) {
     setRegionHtml(myWinTracker, boardParts.winTrackHtml);
 
     // Portrait keeps one neutral generated board and swaps only the small AP and
-    // class modules. Landscape retains its five complete AP-specific renders.
+    // class modules. Landscape v185 uses one high-quality neutral board with live
+    // CSS overlays for AP, class progress and text.
     // Mega Slime can grant 4 AP, and any future higher value is capped visually.
     updatePremiumBoardBackground(me.ap, boardParts.classProgress);
 
@@ -4389,7 +4632,7 @@ socket.on('dice_roll_pending', (data) => {
             die1?.classList.add('rolling');
             die2?.classList.add('rolling');
             startDiceSprite();
-            playSound('dice');
+            PremiumAudio.playEvent('roll_started', { actorId: data.rollerId, state: latestGameState });
             triggerHaptic(50);
             
             window.diceRollInterval = setInterval(() => {
@@ -4581,7 +4824,7 @@ socket.on('challenge_individual_roll', (data) => {
 
 
 socket.on('modifier_played', (data) => {
-    playSound('modifier');
+    PremiumAudio.playEvent('modifier_played', { actorId: data.playerId || data.actorId, state: latestGameState });
     triggerHaptic(20);
     const stagingArea = document.getElementById('modifier-staging-area');
 
@@ -4675,7 +4918,7 @@ function renderChallengePrompt(data, announce = false) {
     if (!challengeModalElement) return;
 
     if (announce) {
-        playSound('challenge');
+        PremiumAudio.playEvent('challenge_started', { actorId: pending.rollerId, state: data });
         triggerHaptic([20, 40, 20]);
     }
 
@@ -5037,6 +5280,8 @@ skillPromptNo.addEventListener('click', () => {
 
 socket.on('message', (msg) => {
 
+    PremiumAudio.handleMessage(msg, latestGameState);
+
     showNotification(msg);
 
 });
@@ -5270,8 +5515,10 @@ socket.on('monster_effect_triggered', ({
     monsterName,
     message,
     effectLabel = 'MONSTER EFFECT',
-    durationMs = 2400
+    durationMs = 2400,
+    ownerId
 }) => {
+    PremiumAudio.maybePlayVoice('monster_slayed', { actorId: ownerId, state: latestGameState, chance: 0.32 });
     showPublicCardEffect({
         card,
         cardId: monsterId,
@@ -5290,8 +5537,10 @@ socket.on('party_leader_effect_triggered', ({
     playerName,
     message,
     effectLabel = 'PARTY LEADER',
-    durationMs = 3600
+    durationMs = 3600,
+    ownerId
 }) => {
+    PremiumAudio.maybePlayVoice('card_played', { actorId: ownerId, leader: card, state: latestGameState, voiceEvent: 'success', chance: 0.28 });
     showPublicCardEffect({
         card,
         cardId,
@@ -5637,8 +5886,9 @@ function showNotification(msg) {
 // Silence / unsilence all sound + haptics. Persists via Sound (localStorage).
 window.toggleMute = function() {
     const muted = Sound.toggleMute();
+    PremiumAudio.syncMute();
     syncMuteBtn();
-    if (!muted) { Sound.unlock(); playSound('tap'); } // confirm we're back on
+    if (!muted) { Sound.unlock(); PremiumAudio.unlock(); playSound('tap'); } // confirm we're back on
 };
 function syncMuteBtn() {
     const btn = document.getElementById('mute-btn');
@@ -5731,6 +5981,13 @@ function playCard(id) {
     }
 
     const context = findCardContext(id);
+
+    if (context?.card) {
+        const audioEvent = context.card.type === 'Magic Card'
+            ? 'magic_played'
+            : (context.card.type === 'Item Card' || context.card.type === 'Cursed Item Card' ? 'item_equipped' : 'card_played');
+        PremiumAudio.maybePlayVoice(audioEvent, { actorId: myId, state: latestGameState });
+    }
 
     if (context?.card?.type === 'Magic Card') {
         window.pendingMagicResolution = { ...context.card };
@@ -6411,6 +6668,7 @@ window.useThiefLeaderSkill = function() {
 
 function attackMonster(id) {
     playSound('slash');
+    PremiumAudio.maybePlayVoice('roll_started', { actorId: myId, state: latestGameState, voiceEvent: 'attack', chance: 0.18 });
     triggerHaptic([30, 50, 40]);
     socket.emit('attackMonster', id);
 
