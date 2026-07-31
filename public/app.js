@@ -780,10 +780,14 @@ function updatePremiumBoardBackground(actionPoints, classProgress = 0) {
     const orientation = document.body.classList.contains('portrait') ? 'portrait' : 'landscape';
     const ap = Math.min(4, Math.max(0, Math.floor(Number(actionPoints) || 0)));
     const classes = Math.min(9, Math.max(0, Math.floor(Number(classProgress) || 0)));
-    const asset = orientation === 'portrait'
-        ? PREMIUM_BOARD_BACKGROUNDS.portrait[0]
-        : PREMIUM_BOARD_BACKGROUNDS.landscape[ap];
-    board.style.setProperty('background-image', `url('${asset}')`, 'important');
+    if (orientation === 'portrait') {
+        board.style.setProperty('background-image', `url('${PREMIUM_BOARD_BACKGROUNDS.portrait[0]}')`, 'important');
+    } else {
+        /* Landscape board art + AP state come from the stylesheet
+           (landscape-v185 empty board + --landscape-ap-module); an inline
+           image here would override both. */
+        board.style.removeProperty('background-image');
+    }
     board.dataset.apBackground = `${orientation}-${ap}`;
     board.dataset.classBackground = `${orientation}-${classes}`;
     board.style.setProperty('--portrait-ap-module', `url('${PORTRAIT_BOARD_MODULES.ap[ap]}')`);
