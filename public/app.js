@@ -788,6 +788,42 @@ function updatePremiumBoardBackground(actionPoints, classProgress = 0) {
     board.style.setProperty('--landscape-class-module', `url('${LANDSCAPE_BOARD_MODULES.classes[classes]}')`);
 }
 
+function renderActionPointGems(player) {
+    const gems = getOrCreateApGems();
+    if (!gems) return;
+    const currentAp = Math.max(0, Math.floor(Number(player?.ap) || 0));
+    const hasFourApCap = currentAp > 3 || (player?.slainMonsters || [])
+        .some(monster => monster?.effect_id === 'MONSTER_MEGA_SLIME');
+    const maxAp = hasFourApCap ? 4 : 3;
+    const visibleAp = Math.min(currentAp, maxAp);
+    gems.dataset.ap = String(visibleAp);
+    gems.dataset.maxAp = String(maxAp);
+    gems.setAttribute('aria-label', `Action points: ${visibleAp} of ${maxAp}`);
+    gems.innerHTML = Array.from({ length: maxAp }, (_, index) =>
+        `<span class="ap-gem${index < visibleAp ? ' is-active' : ''}" aria-hidden="true"></span>`
+    ).join('');
+}
+
+function getOrCreateApGems() {
+    if (apGems) return apGems;
+
+    const controls = document.getElementById('player-controls');
+    if (!controls) return null;
+
+    const created = document.createElement('div');
+    created.id = 'ap-gems';
+    created.setAttribute('aria-label', 'Action points');
+    const btnGroup = controls.querySelector('.btn-group');
+    if (btnGroup) {
+        controls.insertBefore(created, btnGroup);
+    } else {
+        controls.appendChild(created);
+    }
+
+    apGems = created;
+    return created;
+}
+
 
 
 function setupEventConsoleObserver() {
@@ -1031,6 +1067,7 @@ const playerParty = document.getElementById('player-party');
 const playerHand = document.getElementById('player-hand');
 
 const playerAp = document.getElementById('player-ap');
+let apGems = document.getElementById('ap-gems');
 
 const endTurnBtn = document.getElementById('end-turn-btn');
 
@@ -3353,6 +3390,7 @@ function renderBoard(data) {
     // Toggle Draw/Discard buttons & AP display
     if (me) {
         playerAp.innerText = me.ap;
+        renderActionPointGems(me);
         if (data.state === 'PLAYING' && isMyTurn && !isTargetMode) {
             drawCardBtn.disabled = me.ap < 1;
             discardDrawBtn.disabled = me.ap < 3;
@@ -3362,6 +3400,7 @@ function renderBoard(data) {
         }
     } else {
         playerAp.innerText = "0";
+        renderActionPointGems(null);
         drawCardBtn.disabled = true;
         discardDrawBtn.disabled = true;
     }
