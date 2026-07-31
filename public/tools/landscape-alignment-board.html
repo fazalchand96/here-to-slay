@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Landscape alignment board</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0705;
+      --panel: #16100b;
+      --panel-2: #24190d;
+      --gold: #f3c45b;
+      --blue: #35a9ff;
+      --red: #ff3b30;
+      --green: #8ee000;
+      --text: #fff2c8;
+      --muted: #c5a86b;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top, #24160a 0, var(--bg) 58%);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 16px;
+      padding: 14px;
+      align-items: start;
+    }
+
+    .stage-wrap {
+      overflow: auto;
+      padding: 10px;
+      border: 1px solid rgba(243, 196, 91, .35);
+      background: rgba(0, 0, 0, .32);
+      border-radius: 10px;
+    }
+
+    #stage {
+      position: relative;
+      width: 1280px;
+      height: 588px;
+      background: #070504;
+      overflow: hidden;
+      user-select: none;
+      touch-action: none;
+    }
+
+    #board {
+      position: absolute;
+      left: 118px;
+      top: 0;
+      width: 1044px;
+      height: 588px;
+      background: url("/assets/skin/landscape-v185/landscape-board-empty-v185.png") center / 100% 100% no-repeat;
+    }
+
+    .asset {
+      position: absolute;
+      border: 2px solid rgba(255, 255, 255, .7);
+      outline: 1px solid rgba(0, 0, 0, .65);
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: 100% 100%;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    .asset:active { cursor: grabbing; }
+    .asset.selected { box-shadow: 0 0 0 2px #fff, 0 0 18px currentColor; }
+    .asset[data-key="monster"] { color: var(--green); border-color: var(--green); }
+    .asset[data-key="ap"] { color: var(--blue); border-color: var(--blue); }
+    .asset[data-key="timer"] { color: var(--red); border-color: var(--red); border-radius: 999px; }
+
+    .asset-label {
+      position: absolute;
+      left: 0;
+      top: -24px;
+      padding: 2px 6px;
+      background: rgba(0, 0, 0, .72);
+      border: 1px solid currentColor;
+      border-radius: 5px;
+      color: currentColor;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    .center-dot {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: currentColor;
+      border: 2px solid #fff;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    .resize {
+      position: absolute;
+      right: -8px;
+      bottom: -8px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      background: currentColor;
+      cursor: nwse-resize;
+      touch-action: none;
+    }
+
+    .panel {
+      display: grid;
+      gap: 12px;
+      padding: 14px;
+      border: 1px solid rgba(243, 196, 91, .35);
+      border-radius: 10px;
+      background: linear-gradient(180deg, rgba(38, 27, 15, .95), rgba(13, 9, 6, .96));
+      position: sticky;
+      top: 10px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.2;
+    }
+
+    .hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    label {
+      display: grid;
+      gap: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    input, textarea, button {
+      width: 100%;
+      border: 1px solid rgba(243, 196, 91, .36);
+      border-radius: 7px;
+      background: rgba(0, 0, 0, .45);
+      color: var(--text);
+      font: inherit;
+    }
+
+    input { padding: 8px; }
+
+    textarea {
+      min-height: 230px;
+      padding: 10px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    button {
+      padding: 10px 12px;
+      background: linear-gradient(180deg, #1f6bb3, #0d3770);
+      border-color: rgba(88, 181, 255, .75);
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    button.secondary {
+      background: linear-gradient(180deg, #4a3416, #201206);
+      border-color: rgba(243, 196, 91, .55);
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .nudges {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .nudges button:nth-child(1),
+    .nudges button:nth-child(3) { grid-column: 2; }
+
+    .status {
+      min-height: 22px;
+      color: #96d6ff;
+      font-size: 13px;
+    }
+
+    @media (max-width: 980px) {
+      .shell { grid-template-columns: 1fr; }
+      .panel { position: static; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="stage-wrap" aria-label="Alignment board">
+      <div id="stage">
+        <div id="board"></div>
+        <div class="asset" data-key="monster">
+          <span class="asset-label">monster</span>
+          <span class="center-dot"></span>
+          <span class="resize"></span>
+        </div>
+        <div class="asset" data-key="ap">
+          <span class="asset-label">AP</span>
+          <span class="center-dot"></span>
+          <span class="resize"></span>
+        </div>
+        <div class="asset" data-key="timer">
+          <span class="asset-label">timer</span>
+          <span class="center-dot"></span>
+          <span class="resize"></span>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <h1>Landscape aligner</h1>
+      <p class="hint">Sleep de overlays. Trek aan het bolletje rechtsonder om te schalen. Alle waarden zijn screenshot-pixels op 1280x588.</p>
+
+      <div class="row">
+        <label>X <input id="x" type="number" step="1"></label>
+        <label>Y <input id="y" type="number" step="1"></label>
+        <label>Width <input id="w" type="number" step="1"></label>
+        <label>Height <input id="h" type="number" step="1"></label>
+      </div>
+
+      <div class="nudges">
+        <span></span><button type="button" data-nudge="0,-1">↑ 1px</button><span></span>
+        <button type="button" data-nudge="-1,0">← 1px</button>
+        <button type="button" data-nudge="0,1">↓ 1px</button>
+        <button type="button" data-nudge="1,0">→ 1px</button>
+      </div>
+
+      <div class="buttons">
+        <button type="button" id="copy">Copy JSON</button>
+        <button type="button" id="send">Stuur naar Codex</button>
+        <button type="button" class="secondary" id="reset">Reset</button>
+        <button type="button" class="secondary" id="select-next">Volgende</button>
+      </div>
+
+      <textarea id="output" readonly spellcheck="false"></textarea>
+      <div class="status" id="status"></div>
+    </aside>
+  </main>
+
+  <script>
+    const stage = document.getElementById('stage');
+    const output = document.getElementById('output');
+    const status = document.getElementById('status');
+    const inputs = {
+      x: document.getElementById('x'),
+      y: document.getElementById('y'),
+      w: document.getElementById('w'),
+      h: document.getElementById('h')
+    };
+
+    const board = { x: 118, y: 0, w: 1044, h: 588 };
+    const defaults = {
+      monster: {
+        x: 440, y: 129, w: 522, h: 160,
+        image: '/assets/skin/landscape-v186/previews/monster-board-generated-preview-v186.png'
+      },
+      ap: {
+        x: 916, y: 319, w: 42, h: 138,
+        image: '/assets/skin/landscape-v186/ap/ap-3of4-v186.webp'
+      },
+      timer: {
+        x: 1030, y: 388, w: 111, h: 111,
+        image: '/assets/skin/landscape-v186/timer-ring-v186.webp'
+      }
+    };
+
+    const assets = Array.from(document.querySelectorAll('.asset'));
+    let selected = assets[0];
+    let interaction = null;
+
+    function px(value) {
+      return `${Math.round(value)}px`;
+    }
+
+    function read(el) {
+      return {
+        x: Math.round(parseFloat(el.style.left) || 0),
+        y: Math.round(parseFloat(el.style.top) || 0),
+        w: Math.round(parseFloat(el.style.width) || 0),
+        h: Math.round(parseFloat(el.style.height) || 0)
+      };
+    }
+
+    function write(el, box) {
+      el.style.left = px(box.x);
+      el.style.top = px(box.y);
+      el.style.width = px(Math.max(10, box.w));
+      el.style.height = px(Math.max(10, box.h));
+      update();
+    }
+
+    function boardCss(box) {
+      return {
+        leftPct: +(((box.x - board.x) / board.w) * 100).toFixed(3),
+        topPct: +(((box.y - board.y) / board.h) * 100).toFixed(3),
+        widthPct: +((box.w / board.w) * 100).toFixed(3),
+        heightPct: +((box.h / board.h) * 100).toFixed(3)
+      };
+    }
+
+    function allValues() {
+      const values = {};
+      for (const el of assets) {
+        const key = el.dataset.key;
+        const box = read(el);
+        values[key] = {
+          ...box,
+          centerX: Math.round(box.x + box.w / 2),
+          centerY: Math.round(box.y + box.h / 2),
+          boardPercent: boardCss(box)
+        };
+      }
+      return {
+        screenshot: { width: 1280, height: 588 },
+        board,
+        selected: selected.dataset.key,
+        assets: values
+      };
+    }
+
+    function update() {
+      for (const el of assets) el.classList.toggle('selected', el === selected);
+      const box = read(selected);
+      inputs.x.value = box.x;
+      inputs.y.value = box.y;
+      inputs.w.value = box.w;
+      inputs.h.value = box.h;
+      output.value = JSON.stringify(allValues(), null, 2);
+    }
+
+    function select(el) {
+      selected = el;
+      update();
+    }
+
+    for (const el of assets) {
+      const cfg = defaults[el.dataset.key];
+      el.style.backgroundImage = `url("${cfg.image}")`;
+      write(el, cfg);
+
+      el.addEventListener('pointerdown', (event) => {
+        event.preventDefault();
+        select(el);
+        const box = read(el);
+        const isResize = event.target.classList.contains('resize');
+        interaction = {
+          el,
+          isResize,
+          startX: event.clientX,
+          startY: event.clientY,
+          box
+        };
+        el.setPointerCapture(event.pointerId);
+      });
+    }
+
+    stage.addEventListener('pointermove', (event) => {
+      if (!interaction) return;
+      const scale = stage.getBoundingClientRect().width / 1280;
+      const dx = (event.clientX - interaction.startX) / scale;
+      const dy = (event.clientY - interaction.startY) / scale;
+      const next = { ...interaction.box };
+      if (interaction.isResize) {
+        next.w += dx;
+        next.h += dy;
+      } else {
+        next.x += dx;
+        next.y += dy;
+      }
+      write(interaction.el, next);
+    });
+
+    stage.addEventListener('pointerup', () => {
+      interaction = null;
+    });
+
+    for (const [key, input] of Object.entries(inputs)) {
+      input.addEventListener('change', () => {
+        const box = read(selected);
+        box[key] = Number(input.value);
+        write(selected, box);
+      });
+    }
+
+    document.querySelectorAll('[data-nudge]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const [dx, dy] = button.dataset.nudge.split(',').map(Number);
+        const box = read(selected);
+        box.x += dx;
+        box.y += dy;
+        write(selected, box);
+      });
+    });
+
+    document.getElementById('select-next').addEventListener('click', () => {
+      const index = assets.indexOf(selected);
+      select(assets[(index + 1) % assets.length]);
+    });
+
+    document.getElementById('reset').addEventListener('click', () => {
+      for (const el of assets) write(el, defaults[el.dataset.key]);
+      select(assets[0]);
+      status.textContent = 'Reset naar huidige defaults.';
+    });
+
+    document.getElementById('copy').addEventListener('click', async () => {
+      await navigator.clipboard.writeText(output.value);
+      status.textContent = 'Gekopieerd.';
+    });
+
+    document.getElementById('send').addEventListener('click', async () => {
+      const prompt = `Gebruik deze landscape alignment coordinaten:\n\n${output.value}`;
+      if (window.openai && window.openai.sendFollowUpMessage) {
+        await window.openai.sendFollowUpMessage({ title: 'Landscape alignment coordinates', prompt });
+        status.textContent = 'Verstuurd naar Codex.';
+      } else {
+        await navigator.clipboard.writeText(output.value);
+        status.textContent = 'Codex-send is hier niet beschikbaar; JSON is gekopieerd.';
+      }
+    });
+
+    window.addEventListener('keydown', (event) => {
+      if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+      if (event.target && ['INPUT', 'TEXTAREA'].includes(event.target.tagName)) return;
+      event.preventDefault();
+      const step = event.shiftKey ? 10 : 1;
+      const box = read(selected);
+      if (event.key === 'ArrowLeft') box.x -= step;
+      if (event.key === 'ArrowRight') box.x += step;
+      if (event.key === 'ArrowUp') box.y -= step;
+      if (event.key === 'ArrowDown') box.y += step;
+      write(selected, box);
+    });
+
+    select(assets[0]);
+  </script>
+</body>
+</html>

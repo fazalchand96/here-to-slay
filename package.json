@@ -12,6 +12,8 @@
     "test:e2e:mobile": "playwright test test/e2e/mobile/",
     "optimize:images": "node scripts/optimize-runtime-images.js",
     "optimize:inspector-art": "node scripts/optimize-inspector-art.js",
+    "audio:plan": "node scripts/generate-elevenlabs-audio.js --dry-run --all",
+    "audio:generate": "node scripts/generate-elevenlabs-audio.js",
     "test:simulation": "concurrently --kill-others \"npm run start\" \"node -e setTimeout(Object,2000) && npm run bot\" \"node -e setTimeout(Object,4000) && npm run bot\""
   },
   "keywords": [],

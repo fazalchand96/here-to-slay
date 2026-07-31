@@ -11,7 +11,7 @@ test('action point countdown is visible and warns during the final seconds', () 
     assert.match(htmlSource, /id="action-point-timer"[\s\S]*?id="action-point-timer-seconds"/);
     assert.match(appSource, /function syncActionPointCountdown\(data\)/);
     assert.match(appSource, /seconds === 10 \|\| \(seconds >= 1 && seconds <= 5\)/);
-    assert.match(appSource, /playSound\(seconds <= 5 \? 'timerUrgent' : 'timerWarning'\)/);
+    assert.match(appSource, /PremiumAudio\.timerCue\(seconds\)/);
     assert.match(styleSource, /#action-point-timer\.timer-danger/);
     assert.match(styleSource, /timer-plaque-v150\.webp/);
     assert.match(styleSource, /body\.landscape #action-point-timer \{[\s\S]*?left: 91\.54%[\s\S]*?top: 73\.2%/);

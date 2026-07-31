@@ -12661,6 +12661,7 @@ html body.landscape #game-board #action-point-timer {
     width: 8.85% !important;
     height: 13.1% !important;
     max-height: none !important;
+    background: url('assets/skin/landscape-v186/timer-empty-v186.webp') center / 100% 100% no-repeat !important;
 }
 
 html body.landscape #game-board #action-point-timer::before {
@@ -12675,6 +12676,57 @@ html body.landscape #game-board #action-point-timer::after {
     bottom: 1% !important;
 }
 
+html body.landscape #game-board #action-point-timer::before,
+html body.landscape #game-board #action-point-timer.timer-warning::before,
+html body.landscape #game-board #action-point-timer.timer-danger::before {
+    content: "" !important;
+    display: block !important;
+    position: absolute !important;
+    z-index: 0 !important;
+    left: 75.0% !important;
+    top: 71.0% !important;
+    width: min(5.0vw, 39px) !important;
+    height: min(5.0vw, 39px) !important;
+    border-radius: 999px !important;
+    transform: translate(-50%, -50%) !important;
+    background:
+        conic-gradient(
+            from -90deg,
+            rgba(98, 199, 255, .92) calc(var(--timer-progress, 1) * 1turn),
+            rgba(2, 7, 17, .08) 0
+        ) !important;
+    -webkit-mask: radial-gradient(circle, transparent 0 45%, #000 47% 68%, transparent 70%) !important;
+    mask: radial-gradient(circle, transparent 0 45%, #000 47% 68%, transparent 70%) !important;
+    filter: drop-shadow(0 0 5px rgba(68, 173, 255, .72)) !important;
+    opacity: .98 !important;
+    pointer-events: none !important;
+}
+
+html body.landscape #game-board #action-point-timer::after {
+    content: none !important;
+    display: none !important;
+}
+
+html body.landscape #game-board #action-point-timer.timer-warning::before {
+    background:
+        conic-gradient(
+            from -90deg,
+            rgba(255, 215, 94, .96) calc(var(--timer-progress, 1) * 1turn),
+            rgba(38, 20, 3, .08) 0
+        ) !important;
+    filter: drop-shadow(0 0 7px rgba(255, 211, 91, .82)) !important;
+}
+
+html body.landscape #game-board #action-point-timer.timer-danger::before {
+    background:
+        conic-gradient(
+            from -90deg,
+            rgba(255, 75, 58, .96) calc(var(--timer-progress, 1) * 1turn),
+            rgba(45, 3, 4, .08) 0
+        ) !important;
+    filter: drop-shadow(0 0 8px rgba(255, 70, 55, .9)) !important;
+}
+
 html body.landscape #game-board #action-point-timer .action-point-timer-clock {
     position: absolute !important;
     left: 75.0% !important;
@@ -12684,9 +12736,10 @@ html body.landscape #game-board #action-point-timer .action-point-timer-clock {
 
 html body.landscape #game-board #board-center .monsters-area {
     left: 35.7% !important;
-    top: 25.8% !important;
+    top: 23.4% !important;
     width: 38.0% !important;
-    height: 22.2% !important;
+    height: 25.2% !important;
+    background: url('assets/skin/landscape-v186/monster-board-v186.webp') center / 100% 100% no-repeat !important;
 }
 
 html body.landscape #game-board #active-monsters {
@@ -12697,26 +12750,30 @@ html body.landscape #game-board #active-monsters {
 html body.landscape #game-board #active-monsters > .card,
 html body.landscape #game-board #active-monsters > .card:not(:first-child) {
     position: absolute !important;
-    top: 6.0% !important;
-    height: min(18.9dvh, 112px) !important;
-    max-height: min(18.9dvh, 112px) !important;
+    top: 27.5% !important;
+    width: auto !important;
+    height: min(15.8dvh, 93px) !important;
+    max-height: min(15.8dvh, 93px) !important;
+    aspect-ratio: 2.5 / 3.5 !important;
     transform: none !important;
     translate: 0 0 !important;
 }
 
+html body.landscape #game-board #active-monsters > .card:first-child {
+    height: min(15.8dvh, 93px) !important;
+    max-height: min(15.8dvh, 93px) !important;
+}
+
 html body.landscape #game-board #active-monsters > .card:nth-child(1) {
-    left: 3.6% !important;
-    height: min(18.9dvh, 112px) !important;
-    max-height: min(18.9dvh, 112px) !important;
+    left: 6.0% !important;
 }
 
 html body.landscape #game-board #active-monsters > .card:nth-child(2) {
-    left: 37.6% !important;
+    left: 37.0% !important;
 }
 
 html body.landscape #game-board #active-monsters > .card:nth-child(3) {
-    left: 71.9% !important;
-    top: 6.0% !important;
+    left: 68.0% !important;
 }
 
 html body.landscape #game-board #party-zone {
@@ -12731,4 +12788,165 @@ html body.landscape #game-board #hand-zone {
     top: 75.97% !important;
     width: 46.48% !important;
     height: 22.22% !important;
+}
+
+/* AP gems are baked into the new landscape board backgrounds. Keep the helper
+   element available for other orientations, but hide it in landscape. */
+#ap-gems {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    pointer-events: none;
+}
+
+#ap-gems::before {
+    content: "AP";
+    color: #ffe5a0;
+    font: 800 clamp(.48rem, 1vw, .72rem)/1 var(--font-display);
+    letter-spacing: .12em;
+    text-shadow: 0 2px 3px #000, 0 0 7px rgba(73, 162, 255, .62);
+}
+
+#ap-gems .ap-gem {
+    display: block;
+    width: clamp(12px, 1.95vw, 25px);
+    aspect-ratio: 1;
+    transform: rotate(45deg);
+    border: 2px solid rgba(218, 171, 82, .9);
+    border-radius: 18%;
+    background:
+        radial-gradient(circle at 32% 30%, rgba(255, 244, 190, .5), transparent 23%),
+        linear-gradient(135deg, rgba(16, 18, 27, .92), rgba(3, 8, 20, .98));
+    box-shadow:
+        inset 0 0 8px rgba(0, 0, 0, .8),
+        0 2px 4px rgba(0, 0, 0, .75);
+}
+
+#ap-gems .ap-gem.is-active {
+    background:
+        radial-gradient(circle at 31% 27%, #e5fbff 0 13%, transparent 28%),
+        radial-gradient(circle at 55% 60%, #51c9ff 0 28%, #1075de 55%, #063f95 82%);
+    border-color: #ffe18b;
+    box-shadow:
+        inset 0 0 7px rgba(245, 255, 255, .52),
+        0 0 9px rgba(65, 171, 255, .95),
+        0 0 15px rgba(39, 103, 255, .52),
+        0 2px 4px rgba(0, 0, 0, .75);
+}
+
+html body.landscape #game-board #ap-gems {
+    display: flex !important;
+    position: absolute !important;
+    left: 80.85% !important;
+    top: 53.6% !important;
+    width: 4.15% !important;
+    height: 22.4% !important;
+    z-index: 18 !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 9% !important;
+    padding: 0 !important;
+    background: var(--landscape-ap-module, url('assets/skin/landscape-v186/ap/ap-0of4-v186.webp')) center / 100% 100% no-repeat !important;
+    border: 0 !important;
+    transform: rotate(-3deg) !important;
+}
+
+html body.landscape #game-board #ap-gems::before {
+    content: none !important;
+    display: none !important;
+}
+
+html body.landscape #game-board #ap-gems .ap-gem {
+    display: none !important;
+}
+
+html body #game-board.portrait #ap-gems {
+    z-index: 16 !important;
+    display: flex !important;
+}
+
+html body #game-board #board-center .monsters-area {
+    background: url('assets/skin/landscape-v186/monster-board-v186.webp') center / 100% 100% no-repeat !important;
+}
+
+html body #game-board.portrait #board-center .monsters-area {
+    background: url('assets/skin/landscape-v186/monster-board-v186.webp') center / 100% 100% no-repeat !important;
+}
+
+/* LANDSCAPE_V186_USER_MARKUP_ALIGNMENT
+   Tuned from the user's annotated 1280x588 screenshot:
+   - green rectangle: monster board bounds
+   - blue rectangle: AP rail bounds
+   - red dot: timer center */
+html body.landscape #game-board #board-center .monsters-area {
+    left: 30.843% !important;
+    top: 21.939% !important;
+    width: 50.000% !important;
+    height: 27.211% !important;
+    background: url('assets/skin/landscape-v186/previews/monster-board-generated-preview-v186.png') center / 100% 100% no-repeat !important;
+}
+
+html body.landscape #game-board #active-monsters > .card,
+html body.landscape #game-board #active-monsters > .card:not(:first-child),
+html body.landscape #game-board #active-monsters > .card:first-child {
+    top: 21.25% !important;
+    height: min(17dvh, 100px) !important;
+    max-height: min(17dvh, 100px) !important;
+}
+
+html body.landscape #game-board #active-monsters > .card:nth-child(1) {
+    left: 14.71% !important;
+}
+
+html body.landscape #game-board #active-monsters > .card:nth-child(2) {
+    left: 44.31% !important;
+}
+
+html body.landscape #game-board #active-monsters > .card:nth-child(3) {
+    left: 74.00% !important;
+}
+
+html body.landscape #game-board #ap-gems {
+    left: 76.437% !important;
+    top: 54.252% !important;
+    width: 4.023% !important;
+    height: 23.469% !important;
+    transform: none !important;
+    z-index: 24 !important;
+}
+
+html body.landscape #game-board #action-point-timer {
+    left: 87.356% !important;
+    top: 65.986% !important;
+    width: 10.632% !important;
+    height: 18.878% !important;
+    background: url('assets/skin/landscape-v186/timer-ring-v186.webp') center / 100% 100% no-repeat !important;
+    z-index: 23 !important;
+}
+
+html body.landscape #game-board #action-point-timer::before,
+html body.landscape #game-board #action-point-timer.timer-warning::before,
+html body.landscape #game-board #action-point-timer.timer-danger::before {
+    left: calc(50.0% + 1.5px) !important;
+    top: calc(50.0% - 6px) !important;
+    width: min(5.8vw, 46px) !important;
+    height: min(5.8vw, 46px) !important;
+}
+
+html body.landscape #game-board #action-point-timer .action-point-timer-clock {
+    left: calc(50.0% + 0.5px) !important;
+    top: calc(50.0% - 6px) !important;
+    min-width: 2.25em !important;
+    text-align: center !important;
+}
+
+html body.landscape #game-board #action-point-timer .action-point-timer-clock small {
+    position: absolute !important;
+    left: calc(100% - 2px) !important;
+    top: 56% !important;
+    transform: translateY(-50%) !important;
+    font-size: .42em !important;
+    line-height: 1 !important;
 }

@@ -26,7 +26,7 @@ const ioServer = new Server(server, {
 });
 
 const STATIC_MEDIA_EXTENSIONS = new Set([
-    '.avif', '.gif', '.ico', '.jpeg', '.jpg', '.ogg', '.png', '.svg', '.webp', '.woff', '.woff2'
+    '.avif', '.gif', '.ico', '.jpeg', '.jpg', '.mp3', '.ogg', '.png', '.svg', '.webp', '.woff', '.woff2'
 ]);
 
 app.use(express.static(path.join(__dirname, 'public'), {

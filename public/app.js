@@ -744,11 +744,11 @@ checkOrientationAndLayout(); // Call initially
 
 const PREMIUM_BOARD_BACKGROUNDS = Object.freeze({
     landscape: Object.freeze([
-        'assets/skin/landscape-v185/landscape-board-empty-v185.png',
-        'assets/skin/landscape-v185/landscape-board-empty-v185.png',
-        'assets/skin/landscape-v185/landscape-board-empty-v185.png',
-        'assets/skin/landscape-v185/landscape-board-empty-v185.png',
-        'assets/skin/landscape-v185/landscape-board-empty-v185.png'
+        'assets/skin/premium-tabletop-landscape-integrated-ap0-v171.webp',
+        'assets/skin/premium-tabletop-landscape-integrated-ap1-v171.webp',
+        'assets/skin/premium-tabletop-landscape-integrated-ap2-v171.webp',
+        'assets/skin/premium-tabletop-landscape-integrated-ap3-v171.webp',
+        'assets/skin/premium-tabletop-landscape-integrated-ap4-v171.webp'
     ]),
     portrait: Object.freeze([
         'assets/skin/portrait-v184/portrait-board-neutral-v184.webp'
@@ -765,6 +765,9 @@ const PORTRAIT_BOARD_MODULES = Object.freeze({
 });
 
 const LANDSCAPE_BOARD_MODULES = Object.freeze({
+    ap: Object.freeze(Array.from({ length: 5 }, (_, index) =>
+        `assets/skin/landscape-v186/ap/ap-${index}of4-v186.webp`
+    )),
     classes: Object.freeze(Array.from({ length: 10 }, (_, index) =>
         `assets/skin/landscape-v185/classes/classes-${index}of9-v185.png`
     ))
@@ -785,6 +788,7 @@ function updatePremiumBoardBackground(actionPoints, classProgress = 0) {
     board.dataset.classBackground = `${orientation}-${classes}`;
     board.style.setProperty('--portrait-ap-module', `url('${PORTRAIT_BOARD_MODULES.ap[ap]}')`);
     board.style.setProperty('--portrait-class-module', `url('${PORTRAIT_BOARD_MODULES.classes[classes]}')`);
+    board.style.setProperty('--landscape-ap-module', `url('${LANDSCAPE_BOARD_MODULES.ap[ap]}')`);
     board.style.setProperty('--landscape-class-module', `url('${LANDSCAPE_BOARD_MODULES.classes[classes]}')`);
 }
 

@@ -473,9 +473,17 @@ hero-fighter.png and hero-guardian.png directly — genuinely reads as
 carved metal now, matches the frame's own embossed style, no sticker look.
 131/131 tests reverified.
 
-**IN PROGRESS — button sizing/aspect-ratio fix (3rd round on these
-buttons, user 2026-07-13), this time with exact pixel data instead of
-guessing:** Director ran sharp metadata on the actual assets before
+**DONE — button aspect-ratio fix: GATED PASS + SHIPPED 2026-07-13.**
+task-mrjrirp7-i3hdkp, committed `e970c1e`, pushed, deploy verifying
+(hts-v82). Bonus find: END was rendering the WRONG asset entirely
+(danger-red.png, a wide plaque) instead of end-seal.png (its correct
+portrait wax-seal art) — fixed. All 5 elements (sound/menu icons,
+draw/reload/end) now sized to their verified real aspect ratios. 131/131
+tests + live Playwright screenshot independently confirmed by Director
+(END now visually distinct compact seal shape, menu icon visibly larger).
+
+**Prior context (3rd round on these buttons, user 2026-07-13), this time
+with exact pixel data instead of guessing:** Director ran sharp metadata on the actual assets before
 dispatch:
 - `buttons/icon-round.png` (sound/menu plaque): 250x250, square — correct
   already.
