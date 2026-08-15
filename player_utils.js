@@ -1,5 +1,15 @@
 'use strict';
 
+const PLAYER_NAME_MAX_LENGTH = 16;
+
+function normalizePlayerName(name) {
+    const normalized = String(name ?? '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, PLAYER_NAME_MAX_LENGTH);
+    return normalized || 'Player';
+}
+
 function getPlayerName(gameState, id) {
     const fallback = 'Player ' + String(id || '').substring(0, 4);
     if (!gameState || !gameState.players || !gameState.players[id]) {
@@ -9,4 +19,4 @@ function getPlayerName(gameState, id) {
     return player.name && player.name !== 'Player' ? player.name : fallback;
 }
 
-module.exports = { getPlayerName };
+module.exports = { getPlayerName, normalizePlayerName, PLAYER_NAME_MAX_LENGTH };

@@ -41,9 +41,18 @@ const {
     expireActionPoint,
     spendReloadActionPoints,
     canPlayerSubmitModifierPlay,
+    normalizePlayerName,
+    PLAYER_NAME_MAX_LENGTH,
     loadCards,
     gameState
 } = require('../server');
+
+test('player names are normalized to the plaque contract', () => {
+    assert.equal(PLAYER_NAME_MAX_LENGTH, 16);
+    assert.equal(normalizePlayerName('  Alexandria   Stone  '), 'Alexandria Stone');
+    assert.equal(normalizePlayerName('12345678901234567890'), '1234567890123456');
+    assert.equal(normalizePlayerName('   '), 'Player');
+});
 
 test('Thief Party Leader automatically finds the sole eligible duel opponent', () => {
     const state = {

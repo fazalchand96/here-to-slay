@@ -82,13 +82,24 @@ test('portrait uses one generated board with lightweight AP, class, and turn mod
     assert.equal(apBuffers[0].equals(apBuffers[4]), false);
 });
 
-test('landscape photo QA keeps Monsters visible and opponent plaque text compact', () => {
+test('landscape phone QA keeps full names, Monsters and the hand inside their wells', () => {
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
     const styleSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
 
-    assert.match(styleSource, /html body\.landscape #game-board #board-center \.monsters-area \{[\s\S]*?top: 17\.2%/);
-    assert.match(styleSource, /html body\.landscape #game-board #board-center \.monsters-area \.card \{[\s\S]*?96px/);
-    assert.match(styleSource, /html body\.landscape #game-board #opponents-bar \.opponent-stat:nth-child\(1\)[\s\S]*?content: "H"/);
-    assert.match(styleSource, /html body\.landscape #game-board #opponents-bar \.opponent-name-text \{[\s\S]*?text-overflow: ellipsis/);
+    assert.match(htmlSource, /id="player-name-input"[^>]*maxlength="16"/);
+    assert.match(appSource, /class="opponent-name-text">\$\{safeName\}<\/span>/);
+    assert.doesNotMatch(appSource, /class="opponent-name-text">\$\{initials\}<\/span>/);
+    assert.match(styleSource, /LANDSCAPE_MOBILE_FIT_V194/);
+    assert.match(styleSource, /html body\.landscape #game-board #board-center \.monsters-area \{[\s\S]*?top: 19\.6%/);
+    assert.match(styleSource, /html body\.landscape #game-board #hand-carousel #player-hand \{[\s\S]*?padding: 2px 34px 14px/);
+    assert.match(styleSource, /height: min\(100%, 17\.2dvh, 106px\)/);
+    assert.match(appSource, /class="opponent-active-gem" aria-hidden="true"/);
+    assert.doesNotMatch(styleSource, /name-long \.opponent-name-text \{[\s\S]*?scaleX/);
+    assert.match(styleSource, /html body\.landscape #game-board #opponents-bar \.opponent-name-text \{[\s\S]*?text-overflow: clip/);
+    assert.match(styleSource, /opponent-active-gem[\s\S]*?top: 25%[\s\S]*?opponent-crystal-breathe-v194/);
+    assert.match(appSource, /const visibleActionPoints = isMyTurn \? me\.ap : 0;/);
+    assert.match(appSource, /updatePremiumBoardBackground\(isMyTurn \? me\.ap : 0, boardParts\.classProgress\)/);
 });
 
 test('the player hand uses an always-visible horizontal carousel with a large-hand indicator', () => {

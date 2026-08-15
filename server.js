@@ -7,7 +7,7 @@ const { createReconnectManager, RECONNECT_GRACE_MS } = require('./reconnect');
 const fs = require('fs');
 const path = require('path');
 const { resolveSkill } = require('./card_effects');
-const { getPlayerName } = require('./player_utils');
+const { getPlayerName, normalizePlayerName, PLAYER_NAME_MAX_LENGTH } = require('./player_utils');
 const {
     executeSkill, executeMagic, hasOpponentHeroTarget, getTargetingSkillPlan, drawCardsWithPassives,
     drawCardsWithoutPassives, applyDrawnCardPassives, queueLumberingDrawSequence,
@@ -2684,7 +2684,7 @@ ioServer.on('connection', (socket) => {
     });
     socket.on('set_player_name', (name) => {
         if (gameState.players[socket.id]) {
-            gameState.players[socket.id].name = name || 'Player'; // Save as .name, do NOT overwrite .id
+            gameState.players[socket.id].name = normalizePlayerName(name); // Save as .name, do NOT overwrite .id
             broadcastState();
         }
     });
@@ -5554,6 +5554,8 @@ if (require.main === module) {
 // Exposed for unit tests (test/server_rules.test.js). These are the passive-rule
 // functions not covered by the skill_engine matrix.
 module.exports = {
+    normalizePlayerName,
+    PLAYER_NAME_MAX_LENGTH,
     calculateRollDetails,
     isHeroSkillRollSuccessful,
     meetsMonsterRequirements,

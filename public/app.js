@@ -18,6 +18,11 @@ function getPlayerName(id) {
 
 }
 
+function escapeHtml(value) {
+    const entities = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+    return String(value ?? '').replace(/[&<>"']/g, character => entities[character]);
+}
+
 
 
 const SESSION_TOKEN_PREFIX = 'hts-player-session-token:';
@@ -1132,9 +1137,9 @@ function syncActionPointCountdown(data) {
     actionPointTimer?.classList.remove('hidden');
     actionPointTimer?.classList.toggle('is-mine', isMine);
     if (actionPointTimerPlayer) {
-        actionPointTimerPlayer.textContent = isMine
-            ? 'YOUR ACTION'
-            : `${activePlayer.name || 'OPPONENT'} • ACTION`;
+        const actionName = isMine ? 'YOUR' : (activePlayer.name || 'OPPONENT');
+        actionPointTimerPlayer.textContent = actionName;
+        actionPointTimerPlayer.title = `${actionName} ACTION`;
     }
 
     const update = () => {
@@ -3048,14 +3053,10 @@ function buildBoardParts(data, ctx) {
         const isAway = opp.connected === false;
         const isActiveOpponent = data.activePlayerSocketId === id;
         const fullName = getPlayerName(id);
-        const nameParts = fullName.trim().split(/\s+/).filter(Boolean);
-        const singleName = nameParts[0] || '';
-        const trailingNumber = singleName.match(/\d+$/)?.[0] || '';
-        const initials = (nameParts.length > 1
-            ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`
-            : `${singleName[0] || ''}${trailingNumber || singleName[1] || ''}`)
-            .slice(0, 2)
-            .toUpperCase() || '?';
+        const safeName = escapeHtml(fullName);
+        const nameLengthClass = fullName.length <= 9
+            ? 'name-short'
+            : (fullName.length <= 13 ? 'name-medium' : 'name-long');
         const stats = calculateWinStats(opp);
         opponentSlot += 1;
 
@@ -3080,14 +3081,15 @@ function buildBoardParts(data, ctx) {
 
         oppHtml += `
                 <div class="${chipClass}" data-opponent-slot="${opponentSlot}" ${chipClick} ${chipTitle}${isActiveOpponent ? ' aria-current="true"' : ''}>
-                    <span class="opponent-chip-name">
-                        <span class="opponent-name-text">${initials}</span>
+                    <span class="opponent-chip-name ${nameLengthClass}">
+                        <span class="opponent-name-text">${safeName}</span>
                     </span>
                     <span class="opponent-chip-stats">
                         <span class="opponent-stat" title="Cards in hand"><span class="opponent-stat-label">HAND</span><span class="opponent-stat-value">${opp.hand.length}</span></span>
                         <span class="opponent-stat" title="Slain monsters"><span class="opponent-stat-label">SLAY</span><span class="opponent-stat-value win-stat-highlight">${stats.monsters}</span></span>
                         <span class="opponent-stat" title="Unique classes"><span class="opponent-stat-label">CLASS</span><span class="opponent-stat-value win-stat-highlight">${stats.uniqueClasses}</span></span>
                     </span>
+                    ${isActiveOpponent ? '<span class="opponent-active-gem" aria-hidden="true"></span>' : ''}
                 </div>
             `;
     });
@@ -3145,7 +3147,7 @@ function buildBoardParts(data, ctx) {
             onclick="${partyClick}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${partyClick}}"
             aria-label="Open ${partyTitle} classes">
             <span class="party-dock-copy">
-                <strong>${partyTitle} <b>${(me.party || []).length}</b></strong>
+                <strong><b>${(me.party || []).length}</b> ${(me.party || []).length === 1 ? 'Hero' : 'Heroes'}</strong>
                 <small>${partyInstruction}</small>
                 <span class="party-dock-classes">${classChips || '<i>No classes yet</i>'}</span>
             </span>
@@ -3401,8 +3403,9 @@ function renderBoard(data) {
 
     // Toggle Draw/Discard buttons & AP display
     if (me) {
-        playerAp.innerText = me.ap;
-        renderActionPointGems(me);
+        const visibleActionPoints = isMyTurn ? me.ap : 0;
+        playerAp.innerText = visibleActionPoints;
+        renderActionPointGems({ ...me, ap: visibleActionPoints });
         if (data.state === 'PLAYING' && isMyTurn && !isTargetMode) {
             drawCardBtn.disabled = me.ap < 1;
             discardDrawBtn.disabled = me.ap < 3;
@@ -4510,7 +4513,7 @@ function renderBoard(data) {
     // class modules. Landscape v185 uses one high-quality neutral board with live
     // CSS overlays for AP, class progress and text.
     // Mega Slime can grant 4 AP, and any future higher value is capped visually.
-    updatePremiumBoardBackground(me.ap, boardParts.classProgress);
+    updatePremiumBoardBackground(isMyTurn ? me.ap : 0, boardParts.classProgress);
 
     // Reward toast (Phase 7): celebrate when MY slain count grows. Client-side
     // only — reads slainMonsters, fires no socket events. Guarded by a remembered
