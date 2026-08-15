@@ -1825,7 +1825,9 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
 
             glowClass += ' valid-target valid-target-steal';
 
-        } else if (isMultiTargeting && inHand && isMine && card.id !== currentPendingAction?.excludeCardId && window.latestGameState && ['WAITING_FOR_DISCARD_PENALTY', 'WAITING_FOR_MULTIPLE_DISCARDS', 'WAITING_FOR_VARIABLE_DISCARD'].includes(window.latestGameState.state)) {
+        } else if (isMultiTargeting && inHand && isMine && card.id !== currentPendingAction?.excludeCardId
+            && (!currentPendingAction?.allowedCardIds || currentPendingAction.allowedCardIds.includes(card.id))
+            && window.latestGameState && ['WAITING_FOR_DISCARD_PENALTY', 'WAITING_FOR_MULTIPLE_DISCARDS', 'WAITING_FOR_VARIABLE_DISCARD'].includes(window.latestGameState.state)) {
 
             const isSelected = multiTargetSelected && multiTargetSelected.includes(card.id);
 
@@ -1892,7 +1894,7 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
     const monsterAttackBonus = (isMonster || card.type === 'Monster Card')
         && attackBonusPerExtraHero > 0
         ? `<div class="monster-attack-bonus-badge" aria-label="Attack plus ${attackBonusPerExtraHero} for every Hero after the first">
-                <strong>ATTACK +${attackBonusPerExtraHero}</strong>
+                <strong>+${attackBonusPerExtraHero}</strong>
                 <small>PER EXTRA HERO</small>
             </div>`
         : '';
@@ -3331,9 +3333,16 @@ function renderBoard(data) {
 
 
 
-    // IMPORTANT: Explicitly hide the skill prompt modal if we are no longer in skill prompt phase!
+    // Rebuild the free Hero-skill question from authoritative state as well as
+    // from the one-shot socket event. This is especially important for Saffyre
+    // Phoenix, which can prompt a non-active player while their phone is briefly
+    // suspended or reconnecting.
+    if (data.state === 'PROMPT_SKILL_ROLL'
+        && data.pendingHeroSkillPrompt?.playerId === myId) {
+        showHeroSkillPrompt(data.pendingHeroSkillPrompt);
+    } else {
 
-    if (data.state !== 'PROMPT_SKILL_ROLL') {
+        document.body.classList.remove('hero-skill-prompt-active');
 
         const skillModal = document.getElementById('skill-prompt-modal');
 
@@ -4247,7 +4256,10 @@ function renderBoard(data) {
 
                 let amt = data.pendingAction.amount;
 
-                targetBannerText.innerHTML = data.pendingAction.type === 'FEARLESS_FLAME_DISCARD'
+                targetBannerText.innerHTML = data.pendingAction.type === 'LUMBERING_DEMON_DISCARD'
+                    ? `LUMBERING DEMON: CHOOSE 1 OF THE 2 CARDS JUST DRAWN
+                        <button class="action-btn inline attack" onclick="submitPenaltyDiscard()">CONFIRM DISCARD</button>`
+                    : data.pendingAction.type === 'FEARLESS_FLAME_DISCARD'
                     ? `THE FEARLESS FLAME: DISCARD 1 CARD FOR +1 TO YOUR ROLL
                         <button class="action-btn inline attack" onclick="submitPenaltyDiscard()">DISCARD FOR +1</button>`
                     : data.pendingAction.type === 'ENTANGLING_TRAP_DISCARD'
@@ -5117,9 +5129,11 @@ socket.on('challenge_resolved', (data) => {
 
 
 
-socket.on('heroPlayedPrompt', ({ cardId, cardName }) => {
+function showHeroSkillPrompt({ cardId, cardName }) {
 
     pendingSkillCardId = cardId;
+
+    document.body.classList.add('hero-skill-prompt-active');
 
     skillPromptText.innerText = `Would you like to use ${cardName}'s skill now for 0 AP?`;
 
@@ -5133,7 +5147,9 @@ socket.on('heroPlayedPrompt', ({ cardId, cardName }) => {
 
     }
 
-});
+}
+
+socket.on('heroPlayedPrompt', showHeroSkillPrompt);
 
 
 
@@ -5476,7 +5492,7 @@ socket.on('rex_major_choice', ({ choiceId, card, durationMs = 3000 }) => {
     activeRexMajorChoiceId = choiceId;
     const prompt = document.createElement('aside');
     prompt.id = 'rex-major-choice-prompt';
-    prompt.className = 'rex-major-choice-prompt';
+    prompt.className = 'rex-major-choice-prompt tabletop-modal-b';
     prompt.style.setProperty('--rex-choice-duration', `${durationMs}ms`);
     prompt.innerHTML = `
         <div class="rex-major-choice-card">${renderCard(card, true, false)}</div>
@@ -5549,7 +5565,7 @@ function showNextPublicCardEffect() {
     overlay.setAttribute('aria-live', 'polite');
     overlay.style.setProperty('--monster-trigger-duration', `${visibleMs}ms`);
     overlay.innerHTML = `
-        <div class="glass-panel rex-major-reveal-panel monster-trigger-panel">
+        <div class="glass-panel rex-major-reveal-panel monster-trigger-panel tabletop-modal-b">
             <span class="monster-trigger-kicker">${effectLabel}</span>
             <h2>${visibleName} activated!</h2>
             <p>${message}</p>
@@ -8029,7 +8045,9 @@ function handleTargetingClick(cardEl, cardId) {
 
         const context = findCardContext(cardId);
 
-        if (latestGameState && card.id !== currentPendingAction?.excludeCardId && ['WAITING_FOR_DISCARD_PENALTY', 'WAITING_FOR_MULTIPLE_DISCARDS', 'WAITING_FOR_VARIABLE_DISCARD'].includes(latestGameState.state)) {
+        if (latestGameState && cardId !== currentPendingAction?.excludeCardId
+            && (!currentPendingAction?.allowedCardIds || currentPendingAction.allowedCardIds.includes(cardId))
+            && ['WAITING_FOR_DISCARD_PENALTY', 'WAITING_FOR_MULTIPLE_DISCARDS', 'WAITING_FOR_VARIABLE_DISCARD'].includes(latestGameState.state)) {
 
             if (context && context.location === 'hand' && context.owner === myId) {
 
@@ -8192,6 +8210,11 @@ document.body.addEventListener('click', (e) => {
         
 
         const cardId = cardEl.dataset.id;
+
+        if (myTargetMode || isLocalTargeting || isSelfItemTargeting || isMultiTargeting || isSkillTargeting) {
+            handleTargetingClick(cardEl, cardId);
+            return;
+        }
 
         const context = findCardContext(cardId);
 

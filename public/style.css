@@ -6088,14 +6088,19 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
 .monster-attack-bonus-badge {
     position: absolute;
     z-index: 9;
-    left: 50%;
-    bottom: 13%;
-    display: grid;
-    min-width: 72%;
-    padding: 3px 7px;
-    transform: translateX(-50%);
+    left: auto;
+    right: 6%;
+    bottom: 16.5%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    max-width: 66%;
+    min-width: 0;
+    padding: 2px 5px;
+    gap: 3px;
+    transform: none;
     border: 1px solid rgba(105, 205, 255, .9);
-    border-radius: 8px;
+    border-radius: 4px;
     background: linear-gradient(180deg, rgba(11, 43, 79, .96), rgba(4, 18, 42, .97));
     box-shadow: 0 2px 8px rgba(0, 0, 0, .78), inset 0 0 7px rgba(71, 185, 255, .28);
     color: #fff4c7;
@@ -6106,14 +6111,17 @@ body.landscape #board-center .deck-area #discard-pile:has(.card:not(.empty-slot)
 }
 
 .monster-attack-bonus-badge strong {
-    font-size: clamp(6px, .68vw, 10px);
+    flex: 0 0 auto;
+    font-size: clamp(6px, .65vw, 9px);
     letter-spacing: .04em;
 }
 
 .monster-attack-bonus-badge small {
+    flex: 0 1 auto;
     color: #8fddff;
-    font-size: clamp(5px, .54vw, 8px);
-    letter-spacing: .05em;
+    font-size: clamp(4px, .45vw, 7px);
+    letter-spacing: .025em;
+    white-space: nowrap;
 }
 
 #inspector-modal.full-card-art-inspector #inspector-modal-image {
@@ -11935,13 +11943,20 @@ html body.landscape #game-board #opponents-bar .opponent-chip-name {
     z-index: 1 !important;
     display: flex !important;
     align-items: center !important;
-    left: 9.5% !important;
-    right: 15.5% !important;
-    top: 16% !important;
+    justify-content: center !important;
+    left: 13% !important;
+    right: 19% !important;
+    top: 19% !important;
     width: auto !important;
-    height: 40% !important;
+    height: 32% !important;
     min-width: 0 !important;
-    padding: 0 !important;
+    box-sizing: border-box !important;
+    padding: 0 4% !important;
+    overflow: hidden !important;
+    border: 1px solid rgba(150, 105, 54, .72) !important;
+    border-radius: 2px !important;
+    background: linear-gradient(180deg, rgba(18, 13, 10, .88), rgba(8, 6, 5, .72)) !important;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, .88), 0 1px 0 rgba(222, 174, 93, .12) !important;
     color: #dfc9a0 !important;
     font-family: var(--font-body) !important;
     font-weight: 800 !important;
@@ -11973,8 +11988,9 @@ html body.landscape #game-board #opponents-bar .opponent-name-text {
     display: block !important;
     width: 100% !important;
     min-width: 0 !important;
-    overflow: visible !important;
-    text-overflow: clip !important;
+    overflow: hidden !important;
+    text-align: center !important;
+    text-overflow: ellipsis !important;
     white-space: nowrap !important;
 }
 
@@ -12284,7 +12300,7 @@ html body.landscape #game-board #action-point-timer {
     height: 7.5% !important;
     box-sizing: border-box !important;
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr) clamp(20px, 2.6vw, 30px) !important;
+    grid-template-columns: minmax(0, 1fr) clamp(25px, 3.1vw, 32px) !important;
     align-items: center !important;
     gap: 2% !important;
     margin: 0 !important;
@@ -12301,8 +12317,10 @@ html body.landscape #game-board #action-point-timer-player {
     max-width: 100% !important;
     overflow: hidden !important;
     color: #d7bf91 !important;
-    font: 800 clamp(.28rem, .52vw, .43rem)/1 var(--font-body) !important;
+    justify-self: stretch !important;
+    font: 800 clamp(.42rem, .82vw, .62rem)/1 var(--font-body) !important;
     letter-spacing: 0 !important;
+    text-align: center !important;
     text-overflow: clip !important;
     white-space: nowrap !important;
 }
@@ -12315,10 +12333,11 @@ html body.landscape #game-board .action-point-timer-clock {
     min-width: 0 !important;
     display: inline-flex !important;
     align-items: baseline !important;
-    justify-content: flex-end !important;
+    justify-content: center !important;
     color: #f7dfae !important;
     font: 900 clamp(.58rem, 1vw, .82rem)/1 var(--font-display) !important;
     text-shadow: 0 1px 2px #050202, 0 0 5px rgba(76, 148, 255, .45) !important;
+    transform: translateX(-12%) !important;
 }
 
 html body.landscape #game-board .action-point-timer-clock small {
@@ -12339,4 +12358,925 @@ html body.landscape #game-board #action-point-timer::after {
 html body.landscape #game-board #action-point-timer.timer-warning,
 html body.landscape #game-board #action-point-timer.timer-danger {
     background: url('assets/skin/landscape-old-polish/timer-frame.webp') center / 100% 100% no-repeat !important;
+}
+
+/* ==========================================================================
+   UNIFIED_GAME_MODAL_V196
+   One restrained, flat tabletop language for every in-game interruption.
+   Lobby and room-gate surfaces intentionally remain on their own tavern skin.
+   ========================================================================== */
+:root {
+    --modal-b-surface: #24170f;
+    --modal-b-surface-deep: #160d08;
+    --modal-b-ink: #f3e4c4;
+    --modal-b-muted: #c9b48d;
+    --modal-b-brass: #bf914d;
+    --modal-b-brass-bright: #e3bb72;
+    --modal-b-brass-dark: #654321;
+    --modal-b-line: rgba(223, 176, 96, .48);
+    --modal-b-ease-out: cubic-bezier(.22, 1, .36, 1);
+}
+
+.tabletop-modal-b {
+    box-sizing: border-box !important;
+    color: var(--modal-b-ink) !important;
+    border: 2px solid var(--modal-b-brass-dark) !important;
+    border-radius: 5px !important;
+    background:
+        radial-gradient(circle at 50% -25%, rgba(180, 123, 54, .16), transparent 44%),
+        linear-gradient(180deg, rgba(54, 34, 20, .98), rgba(25, 15, 9, .99)) !important;
+    background-image:
+        radial-gradient(circle at 50% -25%, rgba(180, 123, 54, .16), transparent 44%),
+        linear-gradient(180deg, rgba(54, 34, 20, .98), rgba(25, 15, 9, .99)) !important;
+    box-shadow:
+        0 18px 44px rgba(0, 0, 0, .68),
+        inset 0 0 0 1px rgba(237, 195, 119, .22),
+        inset 0 0 0 6px rgba(10, 6, 3, .68),
+        inset 0 0 0 7px var(--modal-b-line) !important;
+    clip-path: polygon(11px 0, calc(100% - 11px) 0, 100% 11px, 100% calc(100% - 11px), calc(100% - 11px) 100%, 11px 100%, 0 calc(100% - 11px), 0 11px);
+    backdrop-filter: none !important;
+    filter: none !important;
+    transition: transform 180ms var(--modal-b-ease-out), opacity 160ms ease-out !important;
+}
+
+.tabletop-modal-b > :is(h1, h2, h3):first-of-type {
+    color: var(--modal-b-ink) !important;
+    font-family: var(--font-display) !important;
+    font-weight: 700 !important;
+    letter-spacing: .055em !important;
+    line-height: 1.08 !important;
+    text-align: center !important;
+    text-transform: uppercase !important;
+    text-shadow: 0 2px 2px rgba(0, 0, 0, .9) !important;
+}
+
+.tabletop-modal-b > :is(h1, h2, h3):first-of-type::before {
+    content: '';
+    width: .52em;
+    aspect-ratio: 1;
+    display: inline-block;
+    margin: 0 .72em .08em 0;
+    border: 1px solid #f0cb80;
+    background: radial-gradient(circle at 34% 30%, #ffe3a0 0 10%, #d28c24 34%, #5e3516 76%);
+    box-shadow: 0 0 8px rgba(221, 151, 49, .5);
+    transform: rotate(45deg);
+}
+
+#inspector-modal .tabletop-modal-b #inspector-modal-type::before {
+    content: '';
+    width: .55em;
+    aspect-ratio: 1;
+    display: inline-block;
+    margin: 0 .65em .08em 0;
+    border: 1px solid #f0cb80;
+    background: radial-gradient(circle at 34% 30%, #ffe3a0 0 10%, #d28c24 34%, #5e3516 76%);
+    box-shadow: 0 0 8px rgba(221, 151, 49, .5);
+    transform: rotate(45deg);
+}
+
+.tabletop-modal-b :is(p, small) {
+    color: var(--modal-b-muted) !important;
+}
+
+.overlay:not(#room-modal):not(#lobby-modal) {
+    background: rgba(8, 5, 3, .74) !important;
+    backdrop-filter: blur(2px) saturate(.75) !important;
+}
+
+html body .tabletop-modal-b :is(.action-btn, .close-btn, button:not(.card):not(.party-view-tabs button)),
+html body :is(#target-banner, #reward-toast-inner).tabletop-modal-b button {
+    box-sizing: border-box !important;
+    min-height: 40px !important;
+    padding: 8px 16px !important;
+    border: 1px solid var(--modal-b-brass) !important;
+    border-radius: 4px !important;
+    background: linear-gradient(180deg, #3c291a, #1d120b) !important;
+    background-image: linear-gradient(180deg, #3c291a, #1d120b) !important;
+    box-shadow: inset 0 0 0 1px rgba(250, 215, 151, .1), 0 2px 0 #0b0603 !important;
+    color: #f5e5c4 !important;
+    filter: none !important;
+    font-family: var(--font-display) !important;
+    font-size: clamp(.68rem, 1.75vw, .86rem) !important;
+    font-weight: 700 !important;
+    letter-spacing: .035em !important;
+    line-height: 1.1 !important;
+    text-shadow: 0 1px 2px #050302 !important;
+    transition: transform 140ms var(--modal-b-ease-out), border-color 140ms ease-out, background-color 140ms ease-out !important;
+}
+
+html body .tabletop-modal-b :is(.action-btn, button):active:not(:disabled) {
+    transform: translateY(1px) scale(.97) !important;
+}
+
+html body .tabletop-modal-b :is(.action-btn, button):disabled,
+html body .tabletop-modal-b .is-locked {
+    opacity: .45 !important;
+    filter: grayscale(.7) !important;
+}
+
+html body .tabletop-modal-b :is(.action-btn.attack, .challenge-play) {
+    border-color: #9f6245 !important;
+    background: linear-gradient(180deg, #4a251d, #23100d) !important;
+    background-image: linear-gradient(180deg, #4a251d, #23100d) !important;
+}
+
+html body .tabletop-modal-b :is(.modal-secondary-action, .picker-close-action, .close-btn) {
+    border-color: #836542 !important;
+    background: linear-gradient(180deg, #2d2118, #17100b) !important;
+    background-image: linear-gradient(180deg, #2d2118, #17100b) !important;
+    color: #d9c7a5 !important;
+}
+
+.tabletop-modal-b .close-btn {
+    top: 12px !important;
+    right: 12px !important;
+    width: 34px !important;
+    min-width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    padding: 0 !important;
+    line-height: 30px !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    html body .tabletop-modal-b :is(.action-btn, button):hover:not(:disabled) {
+        border-color: var(--modal-b-brass-bright) !important;
+        background: linear-gradient(180deg, #49331f, #24160d) !important;
+        background-image: linear-gradient(180deg, #49331f, #24160d) !important;
+        transform: translateY(-1px) !important;
+    }
+}
+
+/* Dedicated modal frames: retain their interaction layouts, remove the old
+   blue/green/purple illustrated skins, and constrain them to mobile landscape. */
+html body #majestelk-choice-modal > .tabletop-modal-b,
+html body #gameover-screen > .tabletop-modal-b,
+html body #immediate-play-modal > .tabletop-modal-b,
+html body #victory-modal > .tabletop-modal-b {
+    width: min(88vw, 620px) !important;
+    max-width: 620px !important;
+    max-height: 90dvh !important;
+    padding: clamp(24px, 5dvh, 42px) clamp(28px, 5vw, 52px) !important;
+    overflow: hidden !important;
+}
+
+html body #opponent-modal > .tabletop-modal-b,
+html body #discard-search-modal > .tabletop-modal-b,
+html body #discard-viewer-modal > .tabletop-modal-b,
+html body #deck-peek-modal > .tabletop-modal-b,
+html body #mandatory-discard-modal > .tabletop-modal-b,
+html body #global-discard-pool > .tabletop-modal-b {
+    width: min(94vw, 850px) !important;
+    max-width: 850px !important;
+    height: min(90dvh, 560px) !important;
+    max-height: 90dvh !important;
+    padding: clamp(24px, 5dvh, 38px) clamp(28px, 4vw, 48px) clamp(22px, 4dvh, 34px) !important;
+    overflow: hidden !important;
+}
+
+html body #inspector-modal > .tabletop-modal-b {
+    width: min(90vw, 680px) !important;
+    max-width: 680px !important;
+    max-height: 92dvh !important;
+    padding: clamp(22px, 4dvh, 34px) clamp(28px, 4vw, 44px) !important;
+    overflow: hidden !important;
+}
+
+html body #event-console #skill-prompt-modal.tabletop-modal-b,
+html body #event-console #challenge-modal.tabletop-modal-b,
+html body #event-console #dice-overlay.tabletop-modal-b,
+html body #event-console #dice-overlay.tabletop-modal-b.mod-compact {
+    border: 2px solid var(--modal-b-brass-dark) !important;
+    border-radius: 5px !important;
+    background:
+        radial-gradient(circle at 50% -25%, rgba(180, 123, 54, .16), transparent 44%),
+        linear-gradient(180deg, rgba(54, 34, 20, .99), rgba(25, 15, 9, .99)) !important;
+    background-image:
+        radial-gradient(circle at 50% -25%, rgba(180, 123, 54, .16), transparent 44%),
+        linear-gradient(180deg, rgba(54, 34, 20, .99), rgba(25, 15, 9, .99)) !important;
+    box-shadow:
+        0 0 0 100vmax rgba(8, 5, 3, .72),
+        0 18px 44px rgba(0, 0, 0, .68),
+        inset 0 0 0 1px rgba(237, 195, 119, .22),
+        inset 0 0 0 6px rgba(10, 6, 3, .68),
+        inset 0 0 0 7px var(--modal-b-line) !important;
+    filter: none !important;
+}
+
+html body #event-console #skill-prompt-modal.tabletop-modal-b {
+    width: min(82vw, 560px) !important;
+    max-width: 560px !important;
+    max-height: 84dvh !important;
+    padding: clamp(24px, 6dvh, 42px) clamp(30px, 5vw, 50px) !important;
+}
+
+html body #event-console #challenge-modal.tabletop-modal-b:not(.hidden) {
+    grid-template-columns: minmax(155px, .76fr) minmax(250px, 1.24fr) !important;
+    width: min(90vw, 720px) !important;
+    max-width: 720px !important;
+    height: min(86dvh, 370px) !important;
+    max-height: min(86dvh, 370px) !important;
+    padding: clamp(22px, 5dvh, 34px) clamp(28px, 4.5vw, 46px) !important;
+    column-gap: clamp(16px, 3vw, 30px) !important;
+}
+
+html body #event-console #dice-overlay.tabletop-modal-b,
+html body #event-console #dice-overlay.tabletop-modal-b.mod-compact {
+    top: 50% !important;
+    width: min(90vw, 720px) !important;
+    max-width: 720px !important;
+    height: min(86dvh, 370px) !important;
+    max-height: min(86dvh, 370px) !important;
+    padding: clamp(22px, 5dvh, 34px) clamp(28px, 4.5vw, 46px) !important;
+    transform: translateY(-50%) !important;
+}
+
+/* Challenge card choices share the same brass controls, including dynamically
+   generated class variants that previously carried six unrelated colors. */
+html body #event-console #challenge-modal.tabletop-modal-b .challenge-choice.action-btn,
+html body #event-console #challenge-modal.tabletop-modal-b .challenge-choice.is-locked {
+    min-height: 42px !important;
+    aspect-ratio: auto !important;
+    padding: 7px 12px !important;
+    border: 1px solid var(--modal-b-brass) !important;
+    border-radius: 4px !important;
+    background: linear-gradient(180deg, #3c291a, #1d120b) !important;
+    background-image: linear-gradient(180deg, #3c291a, #1d120b) !important;
+    box-shadow: inset 0 0 0 1px rgba(250, 215, 151, .1), 0 2px 0 #0b0603 !important;
+    color: var(--modal-b-ink) !important;
+    filter: none !important;
+    text-align: left !important;
+}
+
+html body #event-console #challenge-modal.tabletop-modal-b .challenge-choice > small {
+    color: var(--modal-b-muted) !important;
+}
+
+/* Content wells are quiet leather recesses instead of colored glass panes. */
+html body #opponent-modal-content,
+html body :is(#discard-search-cards, #discard-viewer-content, #deck-peek-cards, #mandatory-discard-cards, #pool-cards) {
+    border: 1px solid rgba(191, 145, 77, .22) !important;
+    border-radius: 4px !important;
+    background: rgba(9, 5, 3, .34) !important;
+    box-shadow: inset 0 0 12px rgba(0, 0, 0, .42) !important;
+    scrollbar-color: #9e7138 rgba(14, 8, 4, .7) !important;
+}
+
+html body #opponent-modal .opponent-party-section {
+    border: 1px solid rgba(191, 145, 77, .22) !important;
+    border-radius: 4px !important;
+    background: rgba(45, 28, 16, .42) !important;
+}
+
+html body #opponent-modal .opponent-party-section h3,
+html body #opponent-modal .party-view-tabs button {
+    color: #d9c096 !important;
+}
+
+html body #opponent-modal .party-view-tabs button {
+    border-color: #74522c !important;
+    background: #1c120b !important;
+}
+
+html body #opponent-modal .party-view-tabs button.active {
+    border-color: var(--modal-b-brass) !important;
+    background: #3c291a !important;
+    color: var(--modal-b-ink) !important;
+}
+
+/* Inspector remains a useful image/details split, but all chrome now belongs to
+   the same flat tabletop family. */
+html body #inspector-modal.full-card-art-inspector > .tabletop-modal-b,
+html body #inspector-modal > .tabletop-modal-b {
+    border: 2px solid var(--modal-b-brass-dark) !important;
+    background:
+        radial-gradient(circle at 50% -25%, rgba(180, 123, 54, .16), transparent 44%),
+        linear-gradient(180deg, rgba(54, 34, 20, .99), rgba(25, 15, 9, .99)) !important;
+    background-image:
+        radial-gradient(circle at 50% -25%, rgba(180, 123, 54, .16), transparent 44%),
+        linear-gradient(180deg, rgba(54, 34, 20, .99), rgba(25, 15, 9, .99)) !important;
+    box-shadow: 0 18px 44px rgba(0, 0, 0, .68), inset 0 0 0 1px rgba(237, 195, 119, .22), inset 0 0 0 6px rgba(10, 6, 3, .68), inset 0 0 0 7px var(--modal-b-line) !important;
+}
+
+html body #inspector-modal-description {
+    border: 1px solid rgba(191, 145, 77, .25) !important;
+    border-radius: 4px !important;
+    background: rgba(8, 5, 3, .38) !important;
+    color: var(--modal-b-muted) !important;
+}
+
+html body #inspector-modal .tabletop-modal-b #inspector-modal-actions .action-btn,
+html body :is(#discard-search-modal, #discard-viewer-modal, #deck-peek-modal, #mandatory-discard-modal, #global-discard-pool) .tabletop-modal-b :is(.peek-select-btn, .picker-close-action, .action-btn) {
+    width: auto !important;
+    min-width: 112px !important;
+    height: auto !important;
+    aspect-ratio: auto !important;
+    min-height: 40px !important;
+    padding: 8px 16px !important;
+    border: 1px solid var(--modal-b-brass) !important;
+    border-radius: 4px !important;
+    background: linear-gradient(180deg, #3c291a, #1d120b) !important;
+    background-image: linear-gradient(180deg, #3c291a, #1d120b) !important;
+    box-shadow: inset 0 0 0 1px rgba(250, 215, 151, .1), 0 2px 0 #0b0603 !important;
+    color: var(--modal-b-ink) !important;
+    filter: none !important;
+    text-shadow: 0 1px 2px #050302 !important;
+}
+
+/* Public automatic effects, reward, waiting, and target micro-surfaces use the
+   same language at smaller scale. */
+html body .monster-trigger-panel.tabletop-modal-b {
+    width: min(88vw, 660px) !important;
+    max-width: 660px !important;
+    max-height: 88dvh !important;
+    padding: clamp(22px, 4dvh, 34px) clamp(28px, 5vw, 48px) !important;
+    border: 2px solid var(--modal-b-brass-dark) !important;
+    border-image: none !important;
+    background:
+        radial-gradient(circle at 50% -25%, rgba(180, 123, 54, .16), transparent 44%),
+        linear-gradient(180deg, rgba(54, 34, 20, .99), rgba(25, 15, 9, .99)) !important;
+    box-shadow: 0 18px 44px rgba(0, 0, 0, .68), inset 0 0 0 1px rgba(237, 195, 119, .22), inset 0 0 0 6px rgba(10, 6, 3, .68), inset 0 0 0 7px var(--modal-b-line) !important;
+    filter: none !important;
+}
+
+html body .monster-trigger-panel.tabletop-modal-b .monster-trigger-kicker {
+    color: var(--modal-b-brass-bright) !important;
+}
+
+html body .rex-major-choice-prompt.tabletop-modal-b {
+    border: 2px solid var(--modal-b-brass-dark) !important;
+    background:
+        radial-gradient(circle at 50% -25%, rgba(180, 123, 54, .16), transparent 44%),
+        linear-gradient(180deg, rgba(54, 34, 20, .99), rgba(25, 15, 9, .99)) !important;
+    box-shadow: 0 18px 44px rgba(0, 0, 0, .68), inset 0 0 0 1px rgba(237, 195, 119, .22), inset 0 0 0 6px rgba(10, 6, 3, .68), inset 0 0 0 7px var(--modal-b-line) !important;
+}
+
+html body #reward-toast-inner.tabletop-modal-b {
+    border: 2px solid var(--modal-b-brass-dark) !important;
+    background: linear-gradient(180deg, rgba(54, 34, 20, .98), rgba(25, 15, 9, .99)) !important;
+    background-image: linear-gradient(180deg, rgba(54, 34, 20, .98), rgba(25, 15, 9, .99)) !important;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .62), inset 0 0 0 1px rgba(237, 195, 119, .22), inset 0 0 0 6px rgba(10, 6, 3, .68), inset 0 0 0 7px var(--modal-b-line) !important;
+}
+
+html body #target-banner.tabletop-modal-b {
+    border: 1px solid var(--modal-b-brass) !important;
+    border-radius: 4px !important;
+    background: linear-gradient(180deg, rgba(54, 34, 20, .98), rgba(25, 15, 9, .99)) !important;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .56), inset 0 0 0 1px rgba(237, 195, 119, .16) !important;
+}
+
+html body #target-banner.tabletop-modal-b h2 {
+    color: var(--modal-b-ink) !important;
+    text-shadow: 0 1px 2px #000 !important;
+}
+
+html body #waiting-overlay.tabletop-modal-b {
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: rgba(8, 5, 3, .72) !important;
+    box-shadow: none !important;
+    clip-path: none !important;
+}
+
+html body #waiting-overlay.tabletop-modal-b::before {
+    content: '' !important;
+    position: absolute !important;
+    width: min(82vw, 580px) !important;
+    height: min(34dvh, 160px) !important;
+    aspect-ratio: auto !important;
+    border: 2px solid var(--modal-b-brass-dark) !important;
+    border-radius: 5px !important;
+    background: linear-gradient(180deg, rgba(54, 34, 20, .99), rgba(25, 15, 9, .99)) !important;
+    box-shadow: 0 18px 44px rgba(0, 0, 0, .68), inset 0 0 0 1px rgba(237, 195, 119, .22), inset 0 0 0 6px rgba(10, 6, 3, .68), inset 0 0 0 7px var(--modal-b-line) !important;
+    clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px), 0 10px) !important;
+    filter: none !important;
+}
+
+html body #waiting-overlay.tabletop-modal-b :is(h2, p) {
+    width: min(68vw, 460px) !important;
+    color: var(--modal-b-ink) !important;
+}
+
+html body #waiting-overlay.tabletop-modal-b p {
+    color: var(--modal-b-muted) !important;
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    html body #opponent-modal > .tabletop-modal-b,
+    html body #discard-search-modal > .tabletop-modal-b,
+    html body #discard-viewer-modal > .tabletop-modal-b,
+    html body #deck-peek-modal > .tabletop-modal-b,
+    html body #mandatory-discard-modal > .tabletop-modal-b,
+    html body #global-discard-pool > .tabletop-modal-b {
+        height: 92dvh !important;
+        max-height: 92dvh !important;
+        padding: 20px 30px 18px !important;
+    }
+
+    html body #event-console #challenge-modal.tabletop-modal-b:not(.hidden) {
+        grid-template-columns: minmax(145px, .72fr) minmax(235px, 1.28fr) !important;
+        width: min(92vw, 720px) !important;
+        height: min(90dvh, 350px) !important;
+        max-height: min(90dvh, 350px) !important;
+        padding: 20px 30px !important;
+    }
+
+    html body #event-console #challenge-modal.tabletop-modal-b #challenge-card-display .card,
+    html body #event-console #challenge-modal.tabletop-modal-b.has-challenge-choices #challenge-card-display .card {
+        height: min(58dvh, 210px) !important;
+        max-height: 210px !important;
+    }
+
+    html body #event-console #dice-overlay.tabletop-modal-b,
+    html body #event-console #dice-overlay.tabletop-modal-b.mod-compact {
+        width: min(92vw, 720px) !important;
+        height: min(90dvh, 350px) !important;
+        max-height: min(90dvh, 350px) !important;
+        padding: 20px 30px !important;
+    }
+
+    html body #victory-modal > .tabletop-modal-b,
+    html body #immediate-play-modal > .tabletop-modal-b,
+    html body #majestelk-choice-modal > .tabletop-modal-b {
+        max-height: 92dvh !important;
+        padding: 22px 34px !important;
+    }
+}
+
+/* ==========================================================================
+   IMAGE_GENERATED_GAME_MODAL_V197
+   The visible chrome below is baked raster artwork. CSS only places/scales it.
+   ========================================================================== */
+html body .tabletop-modal-b,
+html body #event-console :is(#skill-prompt-modal, #challenge-modal, #dice-overlay).tabletop-modal-b,
+html body #inspector-modal > .tabletop-modal-b,
+html body #opponent-modal > .glass-panel.tabletop-modal-b,
+html body :is(#majestelk-choice-modal, #gameover-screen, #victory-modal, #discard-search-modal, #discard-viewer-modal, #deck-peek-modal, #mandatory-discard-modal, #immediate-play-modal, #global-discard-pool) > .glass-panel.tabletop-modal-b,
+html body .monster-trigger-panel.tabletop-modal-b,
+html body .rex-major-choice-prompt.tabletop-modal-b {
+    border: 0 !important;
+    border-radius: 0 !important;
+    border-image: none !important;
+    background: url('assets/skin/modals/unified-v197/panel-large.webp') center / 100% 100% no-repeat !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    clip-path: none !important;
+}
+
+html body #target-banner.tabletop-modal-b,
+html body #reward-toast-inner.tabletop-modal-b {
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: url('assets/skin/modals/unified-v197/panel-compact.webp') center / 100% 100% no-repeat !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    clip-path: none !important;
+}
+
+html body #waiting-overlay.tabletop-modal-b {
+    border: 0 !important;
+    background: rgba(8, 5, 3, .72) !important;
+    box-shadow: none !important;
+}
+
+html body #event-console :is(#skill-prompt-modal, #challenge-modal, #dice-overlay).tabletop-modal-b.tabletop-modal-b :is(.action-btn.action-btn, .close-btn.close-btn, button:not(.card)),
+html body :is(#inspector-modal, #opponent-modal, #majestelk-choice-modal, #gameover-screen, #victory-modal, #discard-search-modal, #discard-viewer-modal, #deck-peek-modal, #mandatory-discard-modal, #immediate-play-modal, #global-discard-pool) .tabletop-modal-b.tabletop-modal-b :is(.action-btn.action-btn, .close-btn.close-btn, button:not(.card)),
+html body :is(#target-banner, #reward-toast-inner).tabletop-modal-b.tabletop-modal-b button {
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: url('assets/skin/modals/unified-v197/button-primary.webp') center / 100% 100% no-repeat !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+html body #event-console :is(#skill-prompt-modal, #challenge-modal, #dice-overlay).tabletop-modal-b.tabletop-modal-b :is(.action-btn.attack, .challenge-play, .modal-secondary-action, .picker-close-action, .close-btn),
+html body :is(#inspector-modal, #opponent-modal, #majestelk-choice-modal, #gameover-screen, #victory-modal, #discard-search-modal, #discard-viewer-modal, #deck-peek-modal, #mandatory-discard-modal, #immediate-play-modal, #global-discard-pool) .tabletop-modal-b.tabletop-modal-b :is(.action-btn.attack, .challenge-play, .modal-secondary-action, .picker-close-action, .close-btn) {
+    border: 0 !important;
+    background: url('assets/skin/modals/unified-v197/button-secondary.webp') center / 100% 100% no-repeat !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+html body #waiting-overlay.tabletop-modal-b::before {
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: url('assets/skin/modals/unified-v197/panel-compact.webp') center / 100% 100% no-repeat !important;
+    box-shadow: none !important;
+    clip-path: none !important;
+}
+
+html body .tabletop-modal-b > :is(h1, h2, h3):first-of-type::before,
+html body #inspector-modal .tabletop-modal-b #inspector-modal-type::before,
+html body #event-console #challenge-modal.tabletop-modal-b #challenge-text::before {
+    display: none !important;
+    content: none !important;
+}
+
+html body .tabletop-modal-b :is(.action-btn, .close-btn, button:not(.card)),
+html body :is(#target-banner, #reward-toast-inner).tabletop-modal-b button,
+html body #event-console #challenge-modal.tabletop-modal-b .challenge-choice.action-btn,
+html body #event-console #challenge-modal.tabletop-modal-b .challenge-choice.is-locked,
+html body #opponent-modal .party-view-tabs button {
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: url('assets/skin/modals/unified-v197/button-primary.webp') center / 100% 100% no-repeat !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    filter: none !important;
+}
+
+html body .tabletop-modal-b :is(.action-btn.attack, .challenge-play, .modal-secondary-action, .picker-close-action, .close-btn),
+html body #opponent-modal > .glass-panel.tabletop-modal-b > .action-btn,
+html body #event-console #challenge-modal.tabletop-modal-b .challenge-choice.is-locked,
+html body #opponent-modal .party-view-tabs button:not(.is-active):not(.active) {
+    border: 0 !important;
+    background: url('assets/skin/modals/unified-v197/button-secondary.webp') center / 100% 100% no-repeat !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+html body .tabletop-modal-b :is(.action-btn, button):disabled,
+html body .tabletop-modal-b .is-locked {
+    filter: grayscale(.75) brightness(.68) !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    html body .tabletop-modal-b :is(.action-btn, button):hover:not(:disabled) {
+        background-image: url('assets/skin/modals/unified-v197/button-primary.webp') !important;
+        filter: brightness(1.12) !important;
+    }
+
+    html body .tabletop-modal-b :is(.action-btn.attack, .challenge-play, .modal-secondary-action, .picker-close-action, .close-btn):hover:not(:disabled),
+    html body #opponent-modal > .glass-panel.tabletop-modal-b > .action-btn:hover:not(:disabled) {
+        background-image: url('assets/skin/modals/unified-v197/button-secondary.webp') !important;
+    }
+}
+
+html body :is(#opponent-modal-content, #discard-search-cards, #discard-viewer-content, #deck-peek-cards, #mandatory-discard-cards, #pool-cards, #inspector-modal-description),
+html body #opponent-modal :is(.opponent-party-section, .party-classes-zone, .own-party-monsters, .spectator-hand-view, .party-class-column),
+html body #event-console .tabletop-modal-b :is(.roll-equation-term, .roll-equation-total, .challenge-roll-side),
+html body .monster-trigger-panel.tabletop-modal-b .monster-trigger-kicker {
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: url('assets/skin/modals/unified-v197/content-well.webp') center / 100% 100% no-repeat !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+/* Touch reliability for the raised Party Leader. A generic desktop .card:hover
+   rule moves cards by 18px; on coarse pointers that movement can make mobile
+   Safari cancel the synthetic click after touchend. Keep the leader stationary
+   and give its compact slot an explicit fast-tap target. */
+#leader-slot,
+#leader-slot > .card {
+    pointer-events: auto !important;
+    touch-action: manipulation !important;
+    cursor: pointer;
+}
+
+@media (hover: none), (pointer: coarse) {
+    html body.landscape #game-board #leader-slot > .card:hover {
+        transform: none !important;
+        translate: 0 0 !important;
+    }
+
+    html body #game-board.portrait #leader-slot > .card:hover {
+        transform: scale(.55) !important;
+        translate: 0 0 !important;
+    }
+}
+
+@media (orientation: portrait) {
+    html body #event-console #challenge-modal.tabletop-modal-b:not(.hidden) {
+        grid-template-columns: 1fr !important;
+        grid-template-rows: auto auto minmax(0, 1fr) !important;
+        width: min(92vw, 480px) !important;
+        height: min(82dvh, 620px) !important;
+    }
+
+    html body #event-console #challenge-modal.tabletop-modal-b #challenge-text,
+    html body #event-console #challenge-modal.tabletop-modal-b #challenge-card-display,
+    html body #event-console #challenge-modal.tabletop-modal-b #challenge-action-area {
+        grid-column: 1 !important;
+    }
+
+    html body #event-console #challenge-modal.tabletop-modal-b #challenge-card-display {
+        grid-row: 2 !important;
+        padding: 0 0 8px !important;
+        border-right: 0 !important;
+        border-bottom: 1px solid rgba(223, 176, 96, .22) !important;
+    }
+
+    html body #event-console #challenge-modal.tabletop-modal-b #challenge-card-display .card {
+        height: min(27dvh, 180px) !important;
+    }
+
+    html body #event-console #challenge-modal.tabletop-modal-b #challenge-action-area {
+        grid-row: 3 !important;
+    }
+}
+
+/* V196 cascade seal: these selectors intentionally outrank the legacy asset
+   selectors that used IDs plus !important. Without this seal, Party and PASS
+   could still retain their former violet artwork despite carrying the new class. */
+html body #opponent-modal > .glass-panel.tabletop-modal-b,
+html body #opponent-modal.own-party-view > .glass-panel.tabletop-modal-b {
+    width: min(94vw, 920px) !important;
+    max-width: 920px !important;
+    height: min(90dvh, 580px) !important;
+    max-height: 90dvh !important;
+    padding: clamp(22px, 4dvh, 34px) clamp(28px, 4vw, 46px) clamp(20px, 3.5dvh, 30px) !important;
+    border: 2px solid var(--modal-b-brass-dark) !important;
+    border-radius: 5px !important;
+    background:
+        radial-gradient(circle at 50% -25%, rgba(180, 123, 54, .16), transparent 44%),
+        linear-gradient(180deg, rgba(54, 34, 20, .99), rgba(25, 15, 9, .99)) !important;
+    background-image:
+        radial-gradient(circle at 50% -25%, rgba(180, 123, 54, .16), transparent 44%),
+        linear-gradient(180deg, rgba(54, 34, 20, .99), rgba(25, 15, 9, .99)) !important;
+    box-shadow: 0 18px 44px rgba(0, 0, 0, .68), inset 0 0 0 1px rgba(237, 195, 119, .22), inset 0 0 0 6px rgba(10, 6, 3, .68), inset 0 0 0 7px var(--modal-b-line) !important;
+    clip-path: polygon(11px 0, calc(100% - 11px) 0, 100% 11px, 100% calc(100% - 11px), calc(100% - 11px) 100%, 11px 100%, 0 calc(100% - 11px), 0 11px) !important;
+}
+
+html body #majestelk-choice-modal > .glass-panel.tabletop-modal-b,
+html body #gameover-screen > .glass-panel.tabletop-modal-b,
+html body #victory-modal > .glass-panel.tabletop-modal-b,
+html body #discard-search-modal > .glass-panel.tabletop-modal-b,
+html body #discard-viewer-modal > .glass-panel.tabletop-modal-b,
+html body #deck-peek-modal > .glass-panel.tabletop-modal-b,
+html body #mandatory-discard-modal > .glass-panel.tabletop-modal-b,
+html body #immediate-play-modal > .glass-panel.tabletop-modal-b,
+html body #global-discard-pool > .glass-panel.tabletop-modal-b {
+    border: 2px solid var(--modal-b-brass-dark) !important;
+    border-radius: 5px !important;
+    background:
+        radial-gradient(circle at 50% -25%, rgba(180, 123, 54, .16), transparent 44%),
+        linear-gradient(180deg, rgba(54, 34, 20, .99), rgba(25, 15, 9, .99)) !important;
+    background-image:
+        radial-gradient(circle at 50% -25%, rgba(180, 123, 54, .16), transparent 44%),
+        linear-gradient(180deg, rgba(54, 34, 20, .99), rgba(25, 15, 9, .99)) !important;
+    box-shadow: 0 18px 44px rgba(0, 0, 0, .68), inset 0 0 0 1px rgba(237, 195, 119, .22), inset 0 0 0 6px rgba(10, 6, 3, .68), inset 0 0 0 7px var(--modal-b-line) !important;
+    clip-path: polygon(11px 0, calc(100% - 11px) 0, 100% 11px, 100% calc(100% - 11px), calc(100% - 11px) 100%, 11px 100%, 0 calc(100% - 11px), 0 11px) !important;
+}
+
+html body #opponent-modal.own-party-view #opponent-modal-title {
+    margin: 0 0 6px !important;
+    color: var(--modal-b-ink) !important;
+    font-size: clamp(.9rem, 3vw, 1.3rem) !important;
+    text-align: center !important;
+}
+
+html body #opponent-modal.own-party-view .own-party-title-stats {
+    color: var(--modal-b-muted) !important;
+}
+
+html body #opponent-modal.own-party-view #opponent-modal-content,
+html body #opponent-modal.own-party-view .party-classes-zone,
+html body #opponent-modal.own-party-view .own-party-monsters,
+html body #opponent-modal.spectator-party-view .spectator-hand-view {
+    border: 1px solid rgba(191, 145, 77, .25) !important;
+    border-radius: 4px !important;
+    background: rgba(10, 6, 3, .34) !important;
+    background-image: none !important;
+    box-shadow: inset 0 0 12px rgba(0, 0, 0, .38) !important;
+}
+
+html body #opponent-modal.own-party-view .party-class-column {
+    border: 1px solid rgba(191, 145, 77, .16) !important;
+    border-radius: 4px !important;
+    background: rgba(48, 31, 19, .46) !important;
+}
+
+html body #opponent-modal.own-party-view :is(.party-board-zone-heading, .party-class-column > header) {
+    color: #ddc69c !important;
+}
+
+html body #opponent-modal.own-party-view :is(.party-board-zone-heading > small, .party-class-empty) {
+    color: rgba(201, 180, 141, .52) !important;
+}
+
+html body #opponent-modal .party-view-tabs {
+    border: 1px solid rgba(191, 145, 77, .32) !important;
+    border-radius: 4px !important;
+    background: rgba(12, 7, 4, .62) !important;
+}
+
+html body #opponent-modal .party-view-tabs button {
+    border-radius: 3px !important;
+}
+
+html body #opponent-modal .party-view-tabs button.is-active {
+    border-color: var(--modal-b-brass) !important;
+    background: #3c291a !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    color: var(--modal-b-ink) !important;
+}
+
+html body #event-console #challenge-modal.tabletop-modal-b #challenge-text::before {
+    content: '';
+    width: .52em;
+    aspect-ratio: 1;
+    display: inline-block;
+    margin: 0 .68em .08em 0;
+    border: 1px solid #f0cb80;
+    background: radial-gradient(circle at 34% 30%, #ffe3a0 0 10%, #d28c24 34%, #5e3516 76%);
+    box-shadow: 0 0 8px rgba(221, 151, 49, .5);
+    transform: rotate(45deg);
+}
+
+html body .overlay .glass-panel.tabletop-modal-b .action-btn:not(.inline),
+html body #event-console .tabletop-modal-b .action-btn:not(.inline),
+html body #opponent-modal > .glass-panel.tabletop-modal-b > .action-btn,
+html body .rex-major-choice-prompt.tabletop-modal-b .action-btn {
+    min-height: 40px !important;
+    padding: 8px 16px !important;
+    border: 1px solid var(--modal-b-brass) !important;
+    border-radius: 4px !important;
+    background: linear-gradient(180deg, #3c291a, #1d120b) !important;
+    background-image: linear-gradient(180deg, #3c291a, #1d120b) !important;
+    box-shadow: inset 0 0 0 1px rgba(250, 215, 151, .1), 0 2px 0 #0b0603 !important;
+    color: #f5e5c4 !important;
+    filter: none !important;
+    text-shadow: 0 1px 2px #050302 !important;
+}
+
+html body :is(#majestelk-choice-modal, #gameover-screen, #victory-modal, #discard-search-modal, #discard-viewer-modal, #deck-peek-modal, #mandatory-discard-modal, #immediate-play-modal, #global-discard-pool) > .glass-panel.tabletop-modal-b .action-btn:not(.inline) {
+    min-height: 40px !important;
+    padding: 8px 16px !important;
+    border: 1px solid var(--modal-b-brass) !important;
+    border-radius: 4px !important;
+    background: linear-gradient(180deg, #3c291a, #1d120b) !important;
+    background-image: linear-gradient(180deg, #3c291a, #1d120b) !important;
+    box-shadow: inset 0 0 0 1px rgba(250, 215, 151, .1), 0 2px 0 #0b0603 !important;
+    color: #f5e5c4 !important;
+    filter: none !important;
+    text-shadow: 0 1px 2px #050302 !important;
+}
+
+html body #opponent-modal > .glass-panel.tabletop-modal-b :is(.close-btn, .action-btn) {
+    border: 1px solid #836542 !important;
+    border-radius: 4px !important;
+    background: linear-gradient(180deg, #2d2118, #17100b) !important;
+    background-image: linear-gradient(180deg, #2d2118, #17100b) !important;
+    box-shadow: inset 0 0 0 1px rgba(250, 215, 151, .08), 0 2px 0 #0b0603 !important;
+    color: #d9c7a5 !important;
+    filter: none !important;
+    text-shadow: 0 1px 2px #050302 !important;
+}
+
+html body .overlay .glass-panel.tabletop-modal-b :is(.action-btn.modal-secondary-action, .picker-close-action),
+html body #event-console .tabletop-modal-b .action-btn.modal-secondary-action,
+html body #opponent-modal > .glass-panel.tabletop-modal-b > .action-btn.modal-secondary-action {
+    border-color: #836542 !important;
+    background: linear-gradient(180deg, #2d2118, #17100b) !important;
+    background-image: linear-gradient(180deg, #2d2118, #17100b) !important;
+    color: #d9c7a5 !important;
+}
+
+html body #event-console .tabletop-modal-b :is(.roll-equation-term, .roll-equation-total, .challenge-roll-side) {
+    border-color: rgba(191, 145, 77, .34) !important;
+    border-radius: 4px !important;
+    background: rgba(15, 9, 5, .54) !important;
+    color: var(--modal-b-ink) !important;
+}
+
+html body #event-console .tabletop-modal-b :is(.roll-equation-term, .roll-equation-total, .challenge-roll-side) small {
+    color: var(--modal-b-muted) !important;
+}
+
+html body .monster-trigger-panel.tabletop-modal-b .monster-trigger-kicker {
+    border-color: rgba(191, 145, 77, .5) !important;
+    border-radius: 4px !important;
+    background: rgba(48, 31, 19, .72) !important;
+    box-shadow: none !important;
+}
+
+html body .monster-trigger-panel.tabletop-modal-b .monster-trigger-timer {
+    background: linear-gradient(90deg, #785020, #e0ae5d) !important;
+    box-shadow: 0 0 7px rgba(224, 174, 93, .42) !important;
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    html body #opponent-modal > .glass-panel.tabletop-modal-b,
+    html body #opponent-modal.own-party-view > .glass-panel.tabletop-modal-b {
+        width: min(94vw, 920px) !important;
+        height: 90dvh !important;
+        max-height: 90dvh !important;
+        padding: 18px 28px 16px !important;
+    }
+
+    html body #opponent-modal.own-party-view .own-party-title-stats {
+        display: none !important;
+    }
+
+    html body #opponent-modal.own-party-view #opponent-modal-title {
+        max-width: 54% !important;
+        overflow: hidden !important;
+        font-size: clamp(.8rem, 2.6vw, 1.08rem) !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+    }
+}
+
+/* V197 raster cascade seal. Keep this last: legacy modal skins also use IDs and
+   !important, so the generated artwork must be the final declaration. */
+html body .tabletop-modal-b.tabletop-modal-b,
+html body #event-console :is(#skill-prompt-modal, #challenge-modal, #dice-overlay).tabletop-modal-b.tabletop-modal-b,
+html body #inspector-modal.full-card-art-inspector > .tabletop-modal-b.tabletop-modal-b,
+html body #inspector-modal > .tabletop-modal-b.tabletop-modal-b,
+html body #opponent-modal.own-party-view > .glass-panel.tabletop-modal-b.tabletop-modal-b,
+html body #opponent-modal > .glass-panel.tabletop-modal-b.tabletop-modal-b,
+html body :is(#majestelk-choice-modal, #gameover-screen, #victory-modal, #discard-search-modal, #discard-viewer-modal, #deck-peek-modal, #mandatory-discard-modal, #immediate-play-modal, #global-discard-pool) > .glass-panel.tabletop-modal-b.tabletop-modal-b,
+html body .monster-trigger-panel.tabletop-modal-b.tabletop-modal-b,
+html body .rex-major-choice-prompt.tabletop-modal-b.tabletop-modal-b {
+    border: 0 !important;
+    border-radius: 0 !important;
+    border-image: none !important;
+    background: url('assets/skin/modals/unified-v197/panel-large.webp') center / 100% 100% no-repeat !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    clip-path: none !important;
+}
+
+html body #target-banner.tabletop-modal-b,
+html body #reward-toast-inner.tabletop-modal-b {
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: url('assets/skin/modals/unified-v197/panel-compact.webp') center / 100% 100% no-repeat !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    clip-path: none !important;
+}
+
+html body #waiting-overlay.tabletop-modal-b {
+    border: 0 !important;
+    background: rgba(8, 5, 3, .72) !important;
+    box-shadow: none !important;
+}
+
+html body #waiting-overlay.tabletop-modal-b::before {
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: url('assets/skin/modals/unified-v197/panel-compact.webp') center / 100% 100% no-repeat !important;
+    box-shadow: none !important;
+    clip-path: none !important;
+}
+
+html body .tabletop-modal-b > :is(h1, h2, h3):first-of-type::before,
+html body #inspector-modal .tabletop-modal-b #inspector-modal-type::before,
+html body #event-console #challenge-modal.tabletop-modal-b #challenge-text::before {
+    display: none !important;
+    content: none !important;
+}
+
+html body .tabletop-modal-b :is(.action-btn, .close-btn, button:not(.card)),
+html body :is(#target-banner, #reward-toast-inner).tabletop-modal-b button,
+html body #event-console #challenge-modal.tabletop-modal-b .challenge-choice.action-btn,
+html body #event-console #challenge-modal.tabletop-modal-b .challenge-choice.is-locked,
+html body #opponent-modal .party-view-tabs button {
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: url('assets/skin/modals/unified-v197/button-primary.webp') center / 100% 100% no-repeat !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    filter: none !important;
+}
+
+html body .tabletop-modal-b :is(.action-btn.attack, .challenge-play, .modal-secondary-action, .picker-close-action, .close-btn),
+html body #opponent-modal > .glass-panel.tabletop-modal-b > .action-btn,
+html body #event-console #challenge-modal.tabletop-modal-b .challenge-choice.is-locked,
+html body #opponent-modal .party-view-tabs button:not(.is-active):not(.active) {
+    border: 0 !important;
+    background: url('assets/skin/modals/unified-v197/button-secondary.webp') center / 100% 100% no-repeat !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+html body .tabletop-modal-b :is(.action-btn, button):disabled,
+html body .tabletop-modal-b .is-locked {
+    filter: grayscale(.75) brightness(.68) !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    html body .tabletop-modal-b :is(.action-btn, button):hover:not(:disabled) {
+        background-image: url('assets/skin/modals/unified-v197/button-primary.webp') !important;
+        filter: brightness(1.12) !important;
+    }
+
+    html body .tabletop-modal-b :is(.action-btn.attack, .challenge-play, .modal-secondary-action, .picker-close-action, .close-btn):hover:not(:disabled),
+    html body #opponent-modal > .glass-panel.tabletop-modal-b > .action-btn:hover:not(:disabled) {
+        background-image: url('assets/skin/modals/unified-v197/button-secondary.webp') !important;
+    }
+}
+
+html body :is(#opponent-modal-content, #discard-search-cards, #discard-viewer-content, #deck-peek-cards, #mandatory-discard-cards, #pool-cards, #inspector-modal-description),
+html body #opponent-modal :is(.opponent-party-section, .party-classes-zone, .own-party-monsters, .spectator-hand-view, .party-class-column),
+html body #event-console .tabletop-modal-b :is(.roll-equation-term, .roll-equation-total, .challenge-roll-side),
+html body .monster-trigger-panel.tabletop-modal-b .monster-trigger-kicker {
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: url('assets/skin/modals/unified-v197/content-well.webp') center / 100% 100% no-repeat !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
 }

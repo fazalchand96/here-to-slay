@@ -98,11 +98,13 @@ test('landscape phone QA keeps full names, Monsters and the hand inside their we
     assert.doesNotMatch(styleSource, /name-long \.opponent-name-text \{[\s\S]*?scaleX/);
     assert.match(styleSource, /html body\.landscape #game-board #opponents-bar \.opponent-name-text \{[\s\S]*?text-overflow: clip/);
     assert.match(styleSource, /opponent-active-gem[\s\S]*?top: 25%[\s\S]*?opponent-crystal-breathe-v194/);
+    assert.match(styleSource, /#leader-slot > \.card \{[\s\S]*?touch-action: manipulation !important/);
+    assert.match(styleSource, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*?#leader-slot > \.card:hover/);
     assert.match(appSource, /const visibleActionPoints = isMyTurn \? me\.ap : 0;/);
     assert.match(appSource, /updatePremiumBoardBackground\(isMyTurn \? me\.ap : 0, boardParts\.classProgress\)/);
     assert.match(appSource, /const actionName = activePlayer\.name \|\| \(isMine \? 'YOU' : 'OPPONENT'\)/);
     assert.match(styleSource, /#action-point-timer-player::after \{[\s\S]*?display: none/);
-    assert.match(styleSource, /grid-template-columns: minmax\(0, 1fr\) clamp\(20px, 2\.6vw, 30px\)/);
+    assert.match(styleSource, /grid-template-columns: minmax\(0, 1fr\) clamp\(25px, 3\.1vw, 32px\)/);
 });
 
 test('the player hand uses an always-visible horizontal carousel with a large-hand indicator', () => {
@@ -119,20 +121,48 @@ test('the player hand uses an always-visible horizontal carousel with a large-ha
     assert.match(styleSource, /\.hand-carousel-range::-webkit-slider-runnable-track/);
 });
 
-test('public card reveals use the generated fantasy panel artwork', () => {
-    const styleSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
-    const imagePath = path.join(
-        __dirname,
-        '..',
-        'public',
-        'assets',
-        'skin',
-        'reveal-panel-v167.webp'
-    );
+test('every in-game interruption uses the unified flat tabletop frame', () => {
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+    const assetStyleSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'modal-assets-v197.css'), 'utf8');
 
-    assert.match(styleSource, /\.monster-trigger-panel \{[\s\S]*?reveal-panel-v167\.webp/);
-    assert.equal(fs.existsSync(imagePath), true);
-    assert.ok(fs.statSync(imagePath).size > 100_000, 'Expected a real generated panel asset');
+    const staticSurfaces = [
+        'opponent-modal',
+        'victory-modal',
+        'discard-search-modal',
+        'discard-viewer-modal',
+        'deck-peek-modal',
+        'mandatory-discard-modal',
+        'immediate-play-modal',
+        'waiting-overlay',
+        'skill-prompt-modal',
+        'challenge-modal',
+        'dice-overlay',
+        'inspector-modal',
+        'reward-toast-inner',
+        'global-discard-pool'
+    ];
+
+    for (const surface of staticSurfaces) {
+        const start = htmlSource.indexOf(`id="${surface}"`);
+        assert.notEqual(start, -1, `Expected ${surface} in index.html`);
+        assert.match(htmlSource.slice(start, start + 500), /tabletop-modal-b/, `Expected unified class near ${surface}`);
+    }
+
+    assert.match(htmlSource, /class="glass-panel majestelk-choice-panel tabletop-modal-b"/);
+    assert.match(appSource, /rex-major-choice-prompt tabletop-modal-b/);
+    assert.match(appSource, /monster-trigger-panel tabletop-modal-b/);
+    assert.match(htmlSource, /href="modal-assets-v197\.css"/);
+    for (const assetName of ['content-well', 'button-primary', 'button-secondary']) {
+        assert.match(assetStyleSource, new RegExp(`unified-v197/${assetName}\\.webp`));
+        assert.equal(fs.existsSync(path.join(__dirname, '..', 'public', 'assets', 'skin', 'modals', 'unified-v197', `${assetName}.webp`)), true);
+    }
+    for (const assetName of ['panel-large', 'panel-compact']) {
+        assert.match(assetStyleSource, new RegExp(`unified-v201/${assetName}\\.webp`));
+        assert.equal(fs.existsSync(path.join(__dirname, '..', 'public', 'assets', 'skin', 'modals', 'unified-v201', `${assetName}.webp`)), true);
+    }
+    assert.match(assetStyleSource, /visible frames, wells, and buttons are raster assets/);
+    assert.doesNotMatch(htmlSource.slice(htmlSource.indexOf('id="room-modal"'), htmlSource.indexOf('id="lobby-modal"')), /tabletop-modal-b/);
 });
 
 test('room recovery offers a main-menu exit and an idempotent same-room join', () => {
@@ -481,6 +511,7 @@ test('additional-Hero Monster attack bonuses are explicit on cards and in the in
     const styleSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
 
     assert.match(appSource, /class="monster-attack-bonus-badge"/);
+    assert.match(appSource, /<strong>\+\$\{attackBonusPerExtraHero\}<\/strong>/);
     assert.match(appSource, /PER EXTRA HERO/);
     assert.match(appSource, /Attack bonus: \+\$\{attackBonusPerExtraHero\} for each Hero after the first/);
     assert.match(styleSource, /\.monster-attack-bonus-badge \{/);

@@ -20,6 +20,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="deck-stage.generated.css">
+    <link rel="stylesheet" href="modal-assets-v197.css">
 </head>
 <body>
     <!-- Room Gate -->
@@ -61,12 +62,12 @@
     </div>
 
     <!-- Target Banner -->
-    <div id="target-banner" class="hidden">
+    <div id="target-banner" class="hidden tabletop-modal-b">
         <h2 id="target-banner-text">Waiting for opponent to select a target...</h2>
     </div>
 
     <div id="majestelk-choice-modal" class="overlay hidden" aria-modal="true" role="dialog" aria-labelledby="majestelk-choice-title">
-        <div class="glass-panel majestelk-choice-panel">
+        <div class="glass-panel majestelk-choice-panel tabletop-modal-b">
             <h2 id="majestelk-choice-title">Majestelk</h2>
             <p>Choose the modifier applied to every roll until your next turn.</p>
             <div class="majestelk-choice-actions">
@@ -78,7 +79,7 @@
 
     <!-- Game Over Screen -->
     <div id="gameover-screen" class="overlay hidden">
-        <div class="glass-panel">
+        <div class="glass-panel tabletop-modal-b">
             <h1 id="victory-text">Game Over</h1>
             <p>Refresh the page to play again.</p>
         </div>
@@ -89,8 +90,7 @@
 
     <!-- Opponent Modal Overlay -->
     <div id="opponent-modal" class="overlay hidden" style="z-index: 10500;">
-        <div class="glass-panel large" style="position: relative; max-width: 800px; width: 90%; max-height: 85vh; display: flex; flex-direction: column;">
-            <button id="opponent-modal-close-btn" class="close-btn" onclick="closeOpponentModal()">&times;</button>
+        <div class="glass-panel large tabletop-modal-b" style="position: relative; max-width: 800px; width: 90%; max-height: 85vh; display: flex; flex-direction: column;">
             <h1 id="opponent-modal-title" style="margin-bottom: 20px;">Opponent Name</h1>
             <nav id="party-view-tabs" class="party-view-tabs hidden" aria-label="Party overview">
                 <button id="party-classes-tab" type="button" onclick="openCurrentPartySection('classes')">Classes</button>
@@ -105,7 +105,7 @@
 
     <!-- Victory Modal -->
     <div id="victory-modal" class="overlay hidden" style="z-index: 9999; flex-direction: column; background: rgba(0,0,0,0.9);">
-        <div class="glass-panel" style="background: rgba(255, 215, 0, 0.1); border-color: rgba(255, 215, 0, 0.5); box-shadow: 0 0 50px rgba(255, 215, 0, 0.3);">
+        <div class="glass-panel tabletop-modal-b" style="background: rgba(255, 215, 0, 0.1); border-color: rgba(255, 215, 0, 0.5); box-shadow: 0 0 50px rgba(255, 215, 0, 0.3);">
             <h1 id="victory-winner-name" style="font-size: 4rem; color: #ffd700; text-shadow: 0 0 20px #ffd700; margin-bottom: 10px; text-transform: uppercase;">WINNER NAME</h1>
             <h3 id="victory-reason" style="color: #fff; font-size: 1.5rem; margin-bottom: 30px;">Reason goes here</h3>
             <button class="action-btn" onclick="requestGameReset()" style="background: linear-gradient(45deg, #ffd700, #ff8c00); color: #000; font-weight: bold; font-size: 1.2rem; padding: 15px 30px; border: none; border-radius: 8px; cursor: pointer;">Back to Lobby</button>
@@ -114,7 +114,7 @@
 
     <!-- Discard Pile Search Modal -->
     <div id="discard-search-modal" class="overlay hidden" style="z-index: 2000;">
-        <div class="glass-panel" style="max-width: 800px; width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
+        <div class="glass-panel tabletop-modal-b" style="max-width: 800px; width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
             <h2 id="discard-search-title">Search Discard Pile</h2>
             <div id="discard-search-cards" class="card-container" style="flex-wrap: wrap; overflow-y: auto; justify-content: center; margin: 20px 0; padding: 10px;">
                 <!-- Cards injected here -->
@@ -125,7 +125,7 @@
 
     <!-- Read-only viewer for the full discard pile (tap the discard pile to open) -->
     <div id="discard-viewer-modal" class="overlay hidden" style="z-index: 10500;">
-        <div class="glass-panel large" style="position: relative; max-width: 800px; width: 90%; max-height: 85vh; display: flex; flex-direction: column;">
+        <div class="glass-panel large tabletop-modal-b" style="position: relative; max-width: 800px; width: 90%; max-height: 85vh; display: flex; flex-direction: column;">
             <h1 id="discard-viewer-title" style="margin-bottom: 20px;">Discard Pile</h1>
             <div id="discard-viewer-content" class="card-container" style="flex: 1; overflow-y: auto; display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; padding: 10px;">
                 <!-- Discard cards injected here (most recent first) -->
@@ -136,7 +136,7 @@
 
     <!-- Deck Peeking Modal -->
     <div id="deck-peek-modal" class="overlay hidden" style="z-index: 2000;">
-        <div class="glass-panel" style="max-width: 800px; width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
+        <div class="glass-panel tabletop-modal-b" style="max-width: 800px; width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
             <h2 id="deck-peek-title">Look at Top Cards</h2>
             <p style="text-align: center; margin-bottom: 15px;">Select a card to add to your hand.</p>
             <div id="deck-peek-cards" class="card-container" style="justify-content: center; margin-bottom: 20px;">
@@ -147,7 +147,7 @@
 
     <!-- Mandatory Discard Modal -->
     <div id="mandatory-discard-modal" class="overlay hidden" style="z-index: 2100;">
-        <div class="glass-panel" style="max-width: 800px; width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
+        <div class="glass-panel tabletop-modal-b" style="max-width: 800px; width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
             <h2 id="mandatory-discard-title" style="color: #ef4444;">Mandatory Discard</h2>
             <p id="mandatory-discard-message" style="text-align: center; margin-bottom: 15px;">You must discard a card from your hand.</p>
             <div id="mandatory-discard-cards" class="card-container" style="flex-wrap: wrap; overflow-y: auto; justify-content: center; margin-bottom: 20px; padding: 10px;">
@@ -158,7 +158,7 @@
 
     <!-- Immediate Play Modal -->
     <div id="immediate-play-modal" class="overlay hidden" style="z-index: 2200;">
-        <div class="glass-panel" style="max-width: 500px; text-align: center;">
+        <div class="glass-panel tabletop-modal-b" style="max-width: 500px; text-align: center;">
             <h2 style="color: #f59e0b;">Play Immediately?</h2>
             <p style="margin-bottom: 20px;">You drew this card. Because of your slain monster's effect, you may play it right now without spending Action Points.</p>
             <div id="immediate-play-card" style="display: flex; justify-content: center; margin-bottom: 20px;"></div>
@@ -209,7 +209,7 @@
 
         <!-- ROW 3: Action Bar -->
         <div class="action-bar" id="player-controls">
-            <div id="waiting-overlay" class="hidden">
+            <div id="waiting-overlay" class="hidden tabletop-modal-b">
                 <h2>Waiting for Opponent...</h2>
                 <p id="waiting-overlay-detail">The next action is being resolved.</p>
             </div>
@@ -301,7 +301,7 @@
 
                 <!-- Skill Prompt Panel -->
 
-                <div id="skill-prompt-modal" class="hidden" style="width: 100%; text-align: center; overflow-y: auto;">
+                <div id="skill-prompt-modal" class="hidden tabletop-modal-b" style="width: 100%; text-align: center; overflow-y: auto;">
 
                     <h1>Use Skill?</h1>
 
@@ -321,7 +321,7 @@
 
                 <!-- Challenge Panel -->
 
-                <div id="challenge-modal" class="hidden phase-modal challenge-phase-modal" style="width: 100%; text-align: center; max-height: 100%;">
+                <div id="challenge-modal" class="hidden phase-modal challenge-phase-modal tabletop-modal-b" style="width: 100%; text-align: center; max-height: 100%;">
 
                     <h1 id="challenge-title">Challenge Pending...</h1>
 
@@ -355,7 +355,7 @@
 
                 <!-- Dice Panel -->
 
-                <div id="dice-overlay" class="hidden" style="width: 100%; text-align: center; max-height: 100%; display: flex; flex-direction: column; align-items: center;">
+                <div id="dice-overlay" class="hidden tabletop-modal-b" style="width: 100%; text-align: center; max-height: 100%; display: flex; flex-direction: column; align-items: center;">
 
                     <h1 id="dice-reason" style="margin-bottom: 10px; font-size: 1.5rem;">Rolling...</h1>
 
@@ -437,7 +437,7 @@
 
     <!-- Inspector Modal Overlay -->
     <div id="inspector-modal" class="overlay hidden" style="z-index: 10500;">
-        <div class="glass-panel" style="max-width: 480px; width: 90%; max-height: 92vh; overflow-y: auto; position: relative;">
+        <div class="glass-panel tabletop-modal-b" style="max-width: 480px; width: 90%; max-height: 92vh; overflow-y: auto; position: relative;">
             <button id="inspector-close-btn" class="close-btn" onclick="closeInspectorModal()">&times;</button>
             <div id="inspector-modal-image-container" style="margin-bottom: 12px; display: flex; justify-content: center;">
                 <img id="inspector-modal-image" src="" alt="Card Image" style="max-height: 28vh; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.6);">
@@ -456,7 +456,7 @@
     <!-- Reward toast (Phase 7): brief celebratory banner when YOU slay a monster.
          Purely client-side — detected from slainMonsters growth, no socket wiring. -->
     <div id="reward-toast" class="hidden">
-        <div id="reward-toast-inner">
+        <div id="reward-toast-inner" class="tabletop-modal-b">
             <div class="reward-toast-burst" aria-hidden="true"></div>
             <div class="reward-toast-title">Monster Slain!</div>
             <div id="reward-toast-name"></div>
@@ -467,7 +467,7 @@
          initiator picks one submitted card. Own overlay — it used to live inside
          the old board popup, so the choose-UI remains independently reachable. -->
     <div id="global-discard-pool" class="overlay hidden" style="z-index: 10550;">
-        <div class="glass-panel large" style="position:relative; max-width:800px; width:90%; max-height:85vh; overflow-y:auto;">
+        <div class="glass-panel large tabletop-modal-b" style="position:relative; max-width:800px; width:90%; max-height:85vh; overflow-y:auto;">
             <h3 style="margin-bottom:12px;">Discard Pool — pick one card</h3>
             <div id="pool-cards" class="card-container" style="display:flex; flex-wrap:wrap; justify-content:center; gap:15px;"></div>
         </div>

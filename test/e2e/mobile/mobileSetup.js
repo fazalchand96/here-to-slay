@@ -12,9 +12,9 @@ async function rollLeader(page, name) {
 }
 
 // Start a 2-player game at mobile viewport size. Returns { host, p2, ctx1, ctx2 }.
-async function startMobileGame(browser) {
+async function startMobileGame(browser, viewport = MOBILE_VIEWPORT) {
     const mobileCtx = {
-        viewport: MOBILE_VIEWPORT,
+        viewport,
         hasTouch: true,
         serviceWorkers: 'block',
     };

@@ -1,0 +1,255 @@
+/* Generated in-game modal artwork. This file loads last on purpose.
+   CSS controls placement only; the visible frames, wells, and buttons are raster assets. */
+
+body .tabletop-modal-b.tabletop-modal-b,
+body #event-console :is(#skill-prompt-modal, #challenge-modal, #dice-overlay).tabletop-modal-b.tabletop-modal-b,
+body #inspector-modal.full-card-art-inspector > .tabletop-modal-b.tabletop-modal-b,
+body #inspector-modal > .tabletop-modal-b.tabletop-modal-b,
+body #opponent-modal.own-party-view > .glass-panel.tabletop-modal-b.tabletop-modal-b,
+body #opponent-modal > .glass-panel.tabletop-modal-b.tabletop-modal-b,
+body :is(#majestelk-choice-modal, #gameover-screen, #victory-modal, #discard-search-modal, #discard-viewer-modal, #deck-peek-modal, #mandatory-discard-modal, #immediate-play-modal, #global-discard-pool) > .glass-panel.tabletop-modal-b.tabletop-modal-b,
+body .monster-trigger-panel.tabletop-modal-b.tabletop-modal-b,
+body .rex-major-choice-prompt.tabletop-modal-b.tabletop-modal-b {
+    border: 0 !important;
+    border-radius: 0 !important;
+    border-image: none !important;
+    background: url('assets/skin/modals/unified-v201/panel-large.webp') center / 100% 100% no-repeat !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    clip-path: none !important;
+}
+
+/* An actionable Hero-effect choice must never sit behind a non-interactive
+   Monster/reward animation. Keep those animations queued/alive, but visually
+   yield while the player must answer the skill prompt. */
+body.hero-skill-prompt-active #monster-trigger-modal,
+body.hero-skill-prompt-active #reward-toast {
+    visibility: hidden !important;
+    opacity: 0 !important;
+}
+
+/* The chat itself remains a compact utility panel. Its two room-management
+   actions used to inherit the large full-modal button dimensions; keep them
+   side by side and deliberately subordinate to the game controls. */
+body.chat-open #chat-panel {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 5px !important;
+}
+
+body.chat-open #chat-panel > :is(.event-log-header, #event-log) {
+    grid-column: 1 / -1 !important;
+}
+
+body.chat-open #chat-panel > :is(#host-reset-game-btn, #game-leave-room-btn) {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 27px !important;
+    height: 27px !important;
+    margin: 0 !important;
+    padding: 3px 8px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: url('assets/skin/modals/unified-v197/button-secondary.webp') center / 100% 100% no-repeat !important;
+    box-shadow: none !important;
+    color: #ead9b7 !important;
+    font-size: clamp(.46rem, 1.3vw, .6rem) !important;
+    line-height: 1 !important;
+    letter-spacing: .025em !important;
+    white-space: nowrap !important;
+    align-self: stretch !important;
+    transform: none !important;
+    translate: none !important;
+}
+
+body.chat-open #chat-panel > :is(#host-reset-game-btn, #game-leave-room-btn):is(:hover, :focus, :active) {
+    transform: none !important;
+    translate: none !important;
+}
+
+body.chat-open #chat-panel > #host-reset-game-btn {
+    background-image: url('assets/skin/modals/unified-v197/button-primary.webp') !important;
+}
+
+body.chat-open #chat-panel:has(#host-reset-game-btn.hidden) > #game-leave-room-btn {
+    grid-column: 1 / -1 !important;
+}
+
+@media (orientation: landscape) {
+    body.landscape.chat-open #event-console-empty {
+        left: 1.2% !important;
+        right: auto !important;
+        transform-origin: left bottom !important;
+    }
+}
+
+body.landscape :is(#game-menu-btn, #mute-btn) {
+    -webkit-tap-highlight-color: transparent !important;
+}
+
+body.landscape :is(#game-menu-btn, #mute-btn):focus:not(:focus-visible) {
+    outline: none !important;
+}
+
+/* A legacy modifier rule removed the horizontal half of the centering
+   transform. On phone landscape that placed the popup's left edge in the
+   middle of the viewport and clipped its right half. */
+html body #event-console #dice-overlay.tabletop-modal-b.tabletop-modal-b,
+html body #event-console #dice-overlay.tabletop-modal-b.tabletop-modal-b.mod-compact {
+    left: 50% !important;
+    right: auto !important;
+    top: 50% !important;
+    box-sizing: border-box !important;
+    width: min(92vw, 720px) !important;
+    max-width: 92vw !important;
+    height: min(90dvh, 350px) !important;
+    max-height: min(90dvh, 350px) !important;
+    padding: 20px 30px !important;
+    transform: translate(-50%, -50%) !important;
+}
+
+/* Seal the old blue modifier-pass artwork. That selector contains four IDs,
+   so it needs an explicit generated-art override. */
+html body #event-console #dice-overlay.tabletop-modal-b #modifier-decision-row #dice-pass-btn,
+html body #event-console #dice-overlay.tabletop-modal-b #modifier-decision-row .noble-shaman-controls .action-btn {
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: url('assets/skin/modals/unified-v197/button-secondary.webp') center / 100% 100% no-repeat !important;
+    box-shadow: none !important;
+    color: #ead9b7 !important;
+    filter: none !important;
+    text-shadow: 0 1px 2px #050302 !important;
+}
+
+body :is(#target-banner, #reward-toast-inner).tabletop-modal-b.tabletop-modal-b {
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: url('assets/skin/modals/unified-v201/panel-compact.webp') center / 100% 100% no-repeat !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    clip-path: none !important;
+}
+
+body #waiting-overlay.tabletop-modal-b.tabletop-modal-b {
+    border: 0 !important;
+    background: rgba(8, 5, 3, .72) !important;
+    box-shadow: none !important;
+}
+
+body #waiting-overlay.tabletop-modal-b.tabletop-modal-b::before {
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: url('assets/skin/modals/unified-v201/panel-compact.webp') center / 100% 100% no-repeat !important;
+    box-shadow: none !important;
+    clip-path: none !important;
+}
+
+body .tabletop-modal-b > :is(h1, h2, h3):first-of-type::before,
+body #inspector-modal #inspector-modal-type::before,
+body #event-console #challenge-modal #challenge-text::before,
+body :is(#opponent-modal, #inspector-modal) .close-btn::after {
+    content: none !important;
+    display: none !important;
+}
+
+body #inspector-modal #inspector-modal-name,
+body #opponent-modal #opponent-modal-title {
+    color: #f3e4c4 !important;
+    text-shadow: 0 2px 2px rgba(0, 0, 0, .9) !important;
+}
+
+body #event-console :is(#skill-prompt-modal, #challenge-modal, #dice-overlay).tabletop-modal-b.tabletop-modal-b :is(.action-btn.action-btn, .close-btn.close-btn, button:not(.card)),
+body :is(#inspector-modal, #opponent-modal, #majestelk-choice-modal, #gameover-screen, #victory-modal, #discard-search-modal, #discard-viewer-modal, #deck-peek-modal, #mandatory-discard-modal, #immediate-play-modal, #global-discard-pool) .tabletop-modal-b.tabletop-modal-b :is(.action-btn.action-btn, .close-btn.close-btn, button:not(.card)),
+body :is(#target-banner, #reward-toast-inner).tabletop-modal-b.tabletop-modal-b button,
+body .rex-major-choice-prompt.tabletop-modal-b.tabletop-modal-b button {
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: url('assets/skin/modals/unified-v197/button-primary.webp') center / 100% 100% no-repeat !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    filter: none !important;
+}
+
+body #event-console :is(#skill-prompt-modal, #challenge-modal, #dice-overlay).tabletop-modal-b.tabletop-modal-b :is(.action-btn.attack, .challenge-play, .modal-secondary-action, .picker-close-action, .close-btn),
+body :is(#inspector-modal, #opponent-modal, #majestelk-choice-modal, #gameover-screen, #victory-modal, #discard-search-modal, #discard-viewer-modal, #deck-peek-modal, #mandatory-discard-modal, #immediate-play-modal, #global-discard-pool) .tabletop-modal-b.tabletop-modal-b :is(.action-btn.attack, .challenge-play, .modal-secondary-action, .picker-close-action, .close-btn),
+body #opponent-modal > .glass-panel.tabletop-modal-b.tabletop-modal-b > .action-btn,
+body #opponent-modal .party-view-tabs button:not(.is-active):not(.active) {
+    border: 0 !important;
+    background: url('assets/skin/modals/unified-v197/button-secondary.webp') center / 100% 100% no-repeat !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+body .tabletop-modal-b :is(.action-btn, button):disabled,
+body .tabletop-modal-b .is-locked {
+    filter: grayscale(.75) brightness(.68) !important;
+}
+
+body :is(#opponent-modal-content, #discard-search-cards, #discard-viewer-content, #deck-peek-cards, #mandatory-discard-cards, #pool-cards, #inspector-modal-description),
+body #opponent-modal :is(.opponent-party-section, .party-classes-zone, .own-party-monsters, .spectator-hand-view, .party-class-column),
+body #event-console .tabletop-modal-b :is(.roll-equation-term, .roll-equation-total, .challenge-roll-side),
+body .monster-trigger-panel.tabletop-modal-b .monster-trigger-kicker {
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: url('assets/skin/modals/unified-v197/content-well.webp') center / 100% 100% no-repeat !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+/* V201 alpha-edge seal. style.css still contains the previous opaque frames as
+   fallbacks with very specific selectors; this final rule guarantees that every
+   active in-game surface uses the matte-free generated artwork. */
+html body .tabletop-modal-b.tabletop-modal-b.tabletop-modal-b,
+html body #event-console :is(#skill-prompt-modal, #challenge-modal, #dice-overlay).tabletop-modal-b.tabletop-modal-b.tabletop-modal-b,
+html body #inspector-modal > .tabletop-modal-b.tabletop-modal-b.tabletop-modal-b,
+html body #opponent-modal > .glass-panel.tabletop-modal-b.tabletop-modal-b.tabletop-modal-b,
+html body :is(#majestelk-choice-modal, #gameover-screen, #victory-modal, #discard-search-modal, #discard-viewer-modal, #deck-peek-modal, #mandatory-discard-modal, #immediate-play-modal, #global-discard-pool) > .glass-panel.tabletop-modal-b.tabletop-modal-b.tabletop-modal-b,
+html body .monster-trigger-panel.tabletop-modal-b.tabletop-modal-b.tabletop-modal-b,
+html body .rex-major-choice-prompt.tabletop-modal-b.tabletop-modal-b.tabletop-modal-b {
+    background: url('assets/skin/modals/unified-v201/panel-large.webp') center / 100% 100% no-repeat !important;
+    background-color: transparent !important;
+}
+
+html body :is(#target-banner, #reward-toast-inner).tabletop-modal-b.tabletop-modal-b.tabletop-modal-b,
+html body #waiting-overlay.tabletop-modal-b.tabletop-modal-b.tabletop-modal-b::before {
+    background: url('assets/skin/modals/unified-v201/panel-compact.webp') center / 100% 100% no-repeat !important;
+    background-color: transparent !important;
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+    body #target-banner.tabletop-modal-b.tabletop-modal-b {
+        top: clamp(48px, 13dvh, 62px) !important;
+        box-sizing: border-box !important;
+        width: min(92vw, 680px) !important;
+        max-width: 680px !important;
+        padding: 14px 28px 12px !important;
+    }
+
+    body #target-banner.tabletop-modal-b.tabletop-modal-b h2 {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 5px 10px !important;
+        margin: 0 !important;
+        font-size: clamp(.68rem, 2vw, .9rem) !important;
+        line-height: 1.2 !important;
+    }
+
+    body #target-banner.tabletop-modal-b.tabletop-modal-b h2 br {
+        display: none !important;
+    }
+
+    body #target-banner.tabletop-modal-b.tabletop-modal-b .action-btn.inline {
+        min-height: 32px !important;
+        padding: 5px 12px !important;
+        font-size: clamp(.62rem, 1.65vw, .78rem) !important;
+    }
+}
+
+@media (hover: hover) and (pointer: fine) {
+    body .tabletop-modal-b :is(.action-btn, button):hover:not(:disabled) {
+        filter: brightness(1.12) !important;
+    }
+}

@@ -50,6 +50,7 @@ function createInitialGameState() {
     pendingAction: null, // { type, playerToChoose, amount, originalActor }
     pendingRoll: null, // { type: 'SKILL'|'ATTACK', rollerId, targetId, baseRoll, currentRoll, passedPlayers: [] }
     pendingChallenge: null, // { rollerId, card, passedPlayers: [] }
+    pendingHeroSkillPrompt: null, // { playerId, cardId, cardName } — may belong to a non-active Saffyre Phoenix owner
     pendingSilentShieldActorIds: [],
     mainDeck: [],
     monsterDeck: [],
@@ -870,6 +871,7 @@ function resetGameForNextMatch() {
     gameState.pendingRoll = null;
     gameState.pendingChallenge = null;
     gameState.pendingCard = null;
+    gameState.pendingHeroSkillPrompt = null;
     gameState.pendingPeek = null;
     gameState.pendingGlobalAction = null;
     gameState.pendingPassiveDraws = [];
@@ -937,6 +939,18 @@ function resetToPlayingState() {
     gameState.challengePhase = false;
     gameState.modifierPhase = false;
     gameState.pendingChallenge = null;
+    gameState.pendingHeroSkillPrompt = null;
+}
+
+function isAuthorizedHeroSkillActor(state, playerId, cardId = null) {
+    if (!state || !playerId) return false;
+    if (state.state === 'PROMPT_SKILL_ROLL') {
+        const prompt = state.pendingHeroSkillPrompt;
+        return Boolean(prompt
+            && prompt.playerId === playerId
+            && (!cardId || prompt.cardId === cardId));
+    }
+    return state.state === 'PLAYING' && state.activePlayerSocketId === playerId;
 }
 
 function completeShadowSaintDiscard(nextAction) {
@@ -1267,6 +1281,30 @@ function completeLumberingDrawStep(sequence, drawnCards) {
     drawnCards.forEach(card => gameState.pendingDeferredDrawPassives.push({
         playerId: sequence.playerId, card
     }));
+}
+
+function createLumberingDemonDiscardAction(playerId, drawnCards) {
+    return {
+        type: 'LUMBERING_DEMON_DISCARD',
+        playerToChoose: playerId,
+        originalActor: playerId,
+        amount: 1,
+        allowedCardIds: drawnCards.map(card => card.id),
+        nextAction: { type: 'COMPLETE_LUMBERING_DEMON_DRAW', drawn: drawnCards }
+    };
+}
+
+function isValidPenaltyDiscardSelection(player, action, cardIds) {
+    if (!player || !action || !Array.isArray(cardIds) || cardIds.length !== action.amount) return false;
+    const uniqueIds = [...new Set(cardIds)];
+    if (uniqueIds.length !== cardIds.length) return false;
+    const allowedTypes = action.allowedTypes;
+    const allowedCardIds = action.allowedCardIds;
+    const excludedCardId = action.excludeCardId;
+    return uniqueIds.every(cardId => player.hand.some(card => card.id === cardId
+        && card.id !== excludedCardId
+        && (!allowedTypes || allowedTypes.includes(card.type))
+        && (!allowedCardIds || allowedCardIds.includes(card.id))));
 }
 
 function resolveLumberingContinuation(sequence) {
@@ -1678,6 +1716,7 @@ function broadcastState() {
             pendingRoll: playerState.pendingRoll,
             passedModifiers: playerState.passedModifiers || [],
             pendingChallenge: playerState.pendingChallenge,
+            pendingHeroSkillPrompt: playerState.pendingHeroSkillPrompt,
             activeMonsters: playerState.activeMonsters,
             discardPile: playerState.discardPile,
             pendingGlobalAction: playerState.pendingGlobalAction,
@@ -1706,6 +1745,11 @@ function resolvePendingCard() {
             card.usedSkillThisTurn = false;
             player.party.push(card);
             gameState.state = 'PROMPT_SKILL_ROLL';
+            gameState.pendingHeroSkillPrompt = {
+                playerId: rollerId,
+                cardId: card.id,
+                cardName: card.name
+            };
             io.to(rollerId).emit('heroPlayedPrompt', { cardId: card.id, cardName: card.name });
         } else if (card.type === 'Item Card' || card.type === 'Cursed Item Card') {
             const targetPlayerId = gameState.pendingChallenge.targetPlayerId || gameState.pendingChallenge.targetData?.targetPlayerId;
@@ -2869,6 +2913,21 @@ ioServer.on('connection', (socket) => {
         broadcastState();
     });
 
+    // Test-only: replace the caller's Party Leader so mobile interaction tests can
+    // exercise a specific active leader without depending on a random lobby roll.
+    socket.on('debug_set_leader', ({ cardId } = {}, acknowledge) => {
+        const player = gameState.players[socket.id];
+        const leader = ALL_CARDS.find(card => card.id === cardId && card.type === 'Party Leader');
+        if (!player || !leader) {
+            if (typeof acknowledge === 'function') acknowledge({ ok: false });
+            return;
+        }
+        player.leader = { ...leader };
+        player.usedLeaderSkillThisTurn = false;
+        broadcastState();
+        if (typeof acknowledge === 'function') acknowledge({ ok: true, leaderId: leader.id });
+    });
+
     // Test-only: force the next skill/attack roll to specific dice (defaults to
     // 6+6=12) so effect-asserting e2e tests don't depend on random roll success.
     socket.on('debug_force_next_roll', ({ roll1 = 6, roll2 = 6 } = {}) => {
@@ -3071,17 +3130,14 @@ ioServer.on('connection', (socket) => {
     });
 
     socket.on('decline_hero_skill', () => {
-        if (gameState.state === 'PROMPT_SKILL_ROLL' && socket.id === gameState.activePlayerSocketId) {
+        if (isAuthorizedHeroSkillActor(gameState, socket.id)) {
             resetToPlayingState();
             broadcastState();
         }
     });
 
     socket.on('use_hero_skill', ({ cardId, isFree, targetPlayerId, targetHeroId, targetCardId, targetHeroIds }) => {
-        if (gameState.state !== 'PLAYING' && gameState.state !== 'PROMPT_SKILL_ROLL') {
-            return;
-        }
-        if (socket.id !== gameState.activePlayerSocketId) {
+        if (!isAuthorizedHeroSkillActor(gameState, socket.id, cardId)) {
             return;
         }
 
@@ -3101,7 +3157,12 @@ ioServer.on('connection', (socket) => {
             return;
         }
 
-        if (!isFree) {
+        // A just-played Hero's offered skill is always free. Derive that on the
+        // authoritative server instead of trusting the client flag. This matters
+        // for Saffyre Phoenix, whose owner can be acting outside the active turn.
+        const resolvedIsFree = gameState.state === 'PROMPT_SKILL_ROLL' ? true : isFree === true;
+
+        if (!resolvedIsFree) {
             const skillCost = hasEquippedEffect(hero, 'CURSE_SOULBOUND_GRIMOIRE') ? 2 : 1;
             if (player.ap < skillCost) {
                 return;
@@ -3112,6 +3173,7 @@ ioServer.on('connection', (socket) => {
         // Delay setting usedSkillThisTurn to true until the skill actually resolves
 
         gameState.state = 'WAITING_TO_ROLL';
+        gameState.pendingHeroSkillPrompt = null;
         gameState.pendingRoll = {
             type: 'HERO_SKILL',
             rollerId: socket.id,
@@ -3127,7 +3189,7 @@ ioServer.on('connection', (socket) => {
             baseRoll: 0,
             currentRoll: 0,
             passedPlayers: [],
-            apSpent: isFree ? 0 : (hasEquippedEffect(hero, 'CURSE_SOULBOUND_GRIMOIRE') ? 2 : 1)
+            apSpent: resolvedIsFree ? 0 : (hasEquippedEffect(hero, 'CURSE_SOULBOUND_GRIMOIRE') ? 2 : 1)
         };
 
         broadcastState();
@@ -3135,8 +3197,9 @@ ioServer.on('connection', (socket) => {
 
     socket.on('submit_skill_target', (targetData) => {
         if (gameState.state !== 'WAITING_FOR_SKILL_TARGET') return;
-        if (socket.id !== gameState.activePlayerSocketId) return;
         if (!gameState.pendingAction) return;
+        if (socket.id !== gameState.activePlayerSocketId
+            && socket.id !== gameState.pendingAction.playerToChoose) return;
 
         if (gameState.pendingAction.type === 'LIGHTNING_LABRYS_PLAYER') {
             if (socket.id !== gameState.pendingAction.playerToChoose) return;
@@ -4542,11 +4605,7 @@ socket.on('resolve_immediate_play', (data) => {
             );
             if (drawn.length > 0 && player.hand.length > 0) {
                 gameState.state = 'WAITING_FOR_DISCARD_PENALTY';
-                gameState.pendingAction = {
-                    type: 'LUMBERING_DEMON_DISCARD', playerToChoose: socket.id,
-                    originalActor: socket.id, amount: 1,
-                    nextAction: { type: 'COMPLETE_LUMBERING_DEMON_DRAW', drawn }
-                };
+                gameState.pendingAction = createLumberingDemonDiscardAction(socket.id, drawn);
                 io.emit('message', `${getPlayerName(gameState, socket.id)} replaced one draw with Lumbering Demon and must discard a card.`);
             } else {
                 completeLumberingDrawStep(sequence, drawn);
@@ -4696,15 +4755,7 @@ socket.on('resolve_immediate_play', (data) => {
 
         if (gameState.state === 'WAITING_FOR_DISCARD_PENALTY') {
             if (socket.id !== gameState.pendingAction.playerToChoose) return;
-            if (!cardIds || !Array.isArray(cardIds) || cardIds.length !== gameState.pendingAction.amount) return;
-
-            const uniqueIds = [...new Set(cardIds)];
-            if (uniqueIds.length !== cardIds.length) return;
-            const allowedTypes = gameState.pendingAction.allowedTypes;
-            const excludedCardId = gameState.pendingAction.excludeCardId;
-            if (!uniqueIds.every(cardId => player.hand.some(card => card.id === cardId
-                && card.id !== excludedCardId
-                && (!allowedTypes || allowedTypes.includes(card.type))))) return;
+            if (!isValidPenaltyDiscardSelection(player, gameState.pendingAction, cardIds)) return;
 
             for (const cardId of cardIds) {
                 const cardIndex = player.hand.findIndex(c => c.id === cardId);
@@ -5566,6 +5617,7 @@ module.exports = {
     gameState,
     removePlayerAndResetMatch,
     isValidItemEquipTarget,
+    isAuthorizedHeroSkillActor,
     getEligibleThiefLeaderTargets,
     clearUntilNextTurnProtections,
     playerHasEffectiveClass,
@@ -5582,6 +5634,8 @@ module.exports = {
     eligibleEndTurnMonsterEffects,
     restoreDragonWaspHero,
     completeLumberingDrawStep,
+    createLumberingDemonDiscardAction,
+    isValidPenaltyDiscardSelection,
     resolveLumberingContinuation,
     resetGameForNextMatch,
     resolvePendingCard,

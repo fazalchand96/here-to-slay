@@ -54,7 +54,7 @@ test('expansion Monsters use complete baked frames without HTML requirement over
 
         document.body.className = 'landscape';
         document.body.innerHTML = `
-            <main class="monster-requirement-test-stage">
+            <main id="game-board" class="monster-requirement-test-stage">
                 <div id="active-monsters">
                     ${cards.map(card => renderCard(card, false, false, true, false)).join('')}
                 </div>
@@ -71,24 +71,27 @@ test('expansion Monsters use complete baked frames without HTML requirement over
                 place-items: center;
                 background: #17110d;
             }
-            .monster-requirement-test-stage #active-monsters {
+            html body.landscape #game-board.monster-requirement-test-stage #active-monsters {
                 position: static !important;
                 display: flex !important;
                 width: 688px !important;
                 height: 245px !important;
                 gap: 18px !important;
             }
-            .monster-requirement-test-stage #active-monsters > .card {
+            html body.landscape #game-board.monster-requirement-test-stage #active-monsters > .card {
+                flex: 0 0 150px !important;
                 width: 150px !important;
                 height: 225px !important;
+                max-height: none !important;
             }
             @media (max-width: 600px) {
-                .monster-requirement-test-stage #active-monsters {
+                html body.landscape #game-board.monster-requirement-test-stage #active-monsters {
                     width: 370px !important;
                     height: 180px !important;
                     gap: 8px !important;
                 }
-                .monster-requirement-test-stage #active-monsters > .card {
+                html body.landscape #game-board.monster-requirement-test-stage #active-monsters > .card {
+                    flex-basis: 86px !important;
                     width: 86px !important;
                     height: 129px !important;
                 }
@@ -99,8 +102,14 @@ test('expansion Monsters use complete baked frames without HTML requirement over
     await expect(page.locator('#active-monsters .monster-requirement-badge')).toHaveCount(0);
     await expect(page.locator('#active-monsters .card.full-card-art')).toHaveCount(4);
     await expect(page.locator('#active-monsters .monster-attack-bonus-badge')).toHaveCount(1);
-    await expect(page.locator('#active-monsters .monster-attack-bonus-badge')).toContainText('ATTACK +1');
+    await expect(page.locator('#active-monsters .monster-attack-bonus-badge')).toContainText('+1');
     await expect(page.locator('#active-monsters .monster-attack-bonus-badge')).toContainText('PER EXTRA HERO');
+    const bonusCoverage = await page.locator('#active-monsters .card').nth(3).evaluate((card) => {
+        const cardRect = card.getBoundingClientRect();
+        const badgeRect = card.querySelector('.monster-attack-bonus-badge').getBoundingClientRect();
+        return (badgeRect.width * badgeRect.height) / (cardRect.width * cardRect.height);
+    });
+    expect(bonusCoverage, 'bonus marker should leave the Monster illustration visible').toBeLessThan(0.08);
     await expect(page.locator('#active-monsters .card .card-img').nth(0)).toHaveCSS(
         'background-image',
         /monster-fullgen-v2\/card_208\.webp/
@@ -113,6 +122,14 @@ test('expansion Monsters use complete baked frames without HTML requirement over
         'background-image',
         /monster-fullgen-v2\/card_175\.webp/
     );
+
+    await page.waitForFunction(() => [...document.querySelectorAll('#active-monsters .card-img')].every((node) => {
+        const match = getComputedStyle(node).backgroundImage.match(/url\(["']?(.*?)["']?\)/);
+        if (!match) return false;
+        const loaded = new Image();
+        loaded.src = match[1];
+        return loaded.complete && loaded.naturalWidth > 0;
+    }));
 
     await page.screenshot({
         path: path.join('screenshots', `monster-requirement-baked-${testInfo.project.name}.png`),

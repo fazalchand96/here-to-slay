@@ -17,6 +17,7 @@ const {
     checkWinCondition,
     checkShamanagaArrivalWin,
     isValidItemEquipTarget,
+    isAuthorizedHeroSkillActor,
     getEligibleThiefLeaderTargets,
     clearUntilNextTurnProtections,
     playerHasEffectiveClass,
@@ -30,6 +31,8 @@ const {
     eligibleEndTurnMonsterEffects,
     restoreDragonWaspHero,
     completeLumberingDrawStep,
+    createLumberingDemonDiscardAction,
+    isValidPenaltyDiscardSelection,
     resolveLumberingContinuation,
     resetGameForNextMatch,
     resolvePendingCard,
@@ -69,6 +72,21 @@ test('Thief Party Leader automatically finds the sole eligible duel opponent', (
     state.players.opponent.hand = [{ id: 'loot' }];
     state.players.opponent.connected = false;
     assert.deepEqual(getEligibleThiefLeaderTargets(state, 'thief'), []);
+});
+
+test('Saffyre Phoenix Hero prompt belongs to its owner even outside their turn', () => {
+    const state = {
+        state: 'PROMPT_SKILL_ROLL',
+        activePlayerSocketId: 'active-player',
+        pendingHeroSkillPrompt: {
+            playerId: 'phoenix-owner',
+            cardId: 'free-hero'
+        }
+    };
+
+    assert.equal(isAuthorizedHeroSkillActor(state, 'phoenix-owner', 'free-hero'), true);
+    assert.equal(isAuthorizedHeroSkillActor(state, 'active-player', 'free-hero'), false);
+    assert.equal(isAuthorizedHeroSkillActor(state, 'phoenix-owner', 'different-hero'), false);
 });
 
 test('a Modifier pass locks that player until another Modifier resets the window', () => {
@@ -354,6 +372,19 @@ test('Lumbering Demon completes one replacement before applying Quick Draw conti
     assert.equal(gameState.state, 'WAITING_FOR_HAND_SELECTION');
     assert.deepEqual(gameState.pendingAction.allowedCardIds, ['drawn-item']);
     assert.equal(gameState.pendingAction.optional, true);
+});
+
+test('Lumbering Demon restricts its discard to exactly the newly drawn cards', () => {
+    const oldCard = { id: 'old-hand-card', type: 'Hero Card' };
+    const drawnOne = { id: 'new-draw-one', type: 'Magic Card' };
+    const drawnTwo = { id: 'new-draw-two', type: 'Item Card' };
+    const player = { id: 'owner', hand: [oldCard, drawnOne, drawnTwo] };
+    const action = createLumberingDemonDiscardAction(player.id, [drawnOne, drawnTwo]);
+
+    assert.deepEqual(action.allowedCardIds, ['new-draw-one', 'new-draw-two']);
+    assert.equal(isValidPenaltyDiscardSelection(player, action, [oldCard.id]), false);
+    assert.equal(isValidPenaltyDiscardSelection(player, action, [drawnOne.id]), true);
+    assert.equal(isValidPenaltyDiscardSelection(player, action, [drawnTwo.id]), true);
 });
 
 test('Lumbering Demon preserves Pan Chucks Challenge detection across both replacement draws', () => {

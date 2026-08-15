@@ -1,6 +1,7 @@
 'use strict';
 
 const { defineConfig, devices } = require('@playwright/test');
+const externalBaseURL = process.env.PLAYWRIGHT_BASE_URL;
 
 module.exports = defineConfig({
     testDir: './test/e2e',
@@ -12,7 +13,7 @@ module.exports = defineConfig({
     reporter: 'list',
 
     use: {
-        baseURL: 'http://localhost:3000',
+        baseURL: externalBaseURL || 'http://localhost:3000',
         // Landscape viewport — bypasses the rotation-lock overlay
         viewport: { width: 1280, height: 800 },
         // Block the PWA service worker so it can't serve a stale app.js during tests
@@ -50,7 +51,7 @@ module.exports = defineConfig({
     ],
 
     // Auto-start the server before tests; skip if something is already on port 3000
-    webServer: {
+    webServer: externalBaseURL ? undefined : {
         command: 'node server.js',
         url: 'http://localhost:3000',
         reuseExistingServer: true,
