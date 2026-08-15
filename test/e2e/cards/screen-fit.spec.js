@@ -16,6 +16,10 @@ const OUT = path.join(process.cwd(), 'screenshots', 'fit');
 // width<height → portrait; width>height → landscape (the client picks the shell off
 // the window aspect ratio).
 const VIEWPORTS = [
+    { name: 'land-iphone17pro-874x402', w: 874, h: 402 },
+    { name: 'land-iphone17promax-956x440', w: 956, h: 440 },
+    { name: 'land-samsung-large-915x412', w: 915, h: 412 },
+    { name: 'land-samsung-small-740x360', w: 740, h: 360 },
     // Landscape — Android landscapes are commonly only 360px tall (vs iPhone ~390-430).
     { name: 'land-pixel7-915x412', w: 915, h: 412 },
     { name: 'land-iphoneSE-667x375', w: 667, h: 375 },
@@ -47,8 +51,8 @@ for (const vp of VIEWPORTS) {
         await p2.goto('/', { waitUntil: 'domcontentloaded' });
         const roomCode = await createRoom(host);
         await joinRoom(p2, roomCode);
-        await rollLeader(host, 'Host');
-        await rollLeader(p2, 'Guest');
+        await rollLeader(host, 'Alexander');
+        await rollLeader(p2, 'Maximiliaan');
         await expect(host.locator('#start-game-btn')).not.toHaveClass(/hidden/, { timeout: 10_000 });
         await host.click('#start-game-btn', { force: true });
         await expect(host.locator('#app-container')).not.toHaveClass(/hidden/, { timeout: 12_000 });
@@ -73,7 +77,26 @@ for (const vp of VIEWPORTS) {
                     offBottom: b.bottom > vh + 1, offRight: b.right > vw + 1, offTop: b.top < -1,
                 };
             };
-            return { vw, vh, end: check('#end-turn-btn'), hand: check('#player-hand'), bar: check('#opponents-bar') };
+            const contains = (parentSelector, childSelector) => {
+                const parent = document.querySelector(parentSelector)?.getBoundingClientRect();
+                const child = document.querySelector(childSelector)?.getBoundingClientRect();
+                if (!parent || !child) return { found: false };
+                return {
+                    found: true,
+                    contained: child.left >= parent.left - 1 && child.right <= parent.right + 1
+                        && child.top >= parent.top - 1 && child.bottom <= parent.bottom + 1,
+                };
+            };
+            return {
+                vw,
+                vh,
+                end: check('#end-turn-btn'),
+                hand: check('#player-hand'),
+                bar: check('#opponents-bar'),
+                timerName: document.querySelector('#action-point-timer-player')?.textContent?.trim(),
+                timerNameFit: contains('#action-point-timer', '#action-point-timer-player'),
+                timerClockFit: contains('#action-point-timer', '.action-point-timer-clock'),
+            };
         });
         console.log(`[FIT ${vp.name}]`, JSON.stringify(fit));
 
@@ -86,5 +109,8 @@ for (const vp of VIEWPORTS) {
         if (fit.hand.found) {
             expect(fit.hand.offBottom, `hand clipped off the bottom on ${vp.name}`).toBe(false);
         }
+        expect(fit.timerName, `active player's full name missing from timer on ${vp.name}`).toBe('Alexander');
+        expect(fit.timerNameFit.contained, `player name overflows timer on ${vp.name}`).toBe(true);
+        expect(fit.timerClockFit.contained, `seconds overflow timer on ${vp.name}`).toBe(true);
     });
 }

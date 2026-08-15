@@ -90,8 +90,8 @@ test('landscape phone QA keeps full names, Monsters and the hand inside their we
     assert.match(htmlSource, /id="player-name-input"[^>]*maxlength="16"/);
     assert.match(appSource, /class="opponent-name-text">\$\{safeName\}<\/span>/);
     assert.doesNotMatch(appSource, /class="opponent-name-text">\$\{initials\}<\/span>/);
-    assert.match(styleSource, /LANDSCAPE_MOBILE_FIT_V194/);
-    assert.match(styleSource, /html body\.landscape #game-board #board-center \.monsters-area \{[\s\S]*?top: 19\.6%/);
+    assert.match(styleSource, /LANDSCAPE_MOBILE_FIT_V195/);
+    assert.match(styleSource, /html body\.landscape #game-board #board-center \.monsters-area \{[\s\S]*?top: 21\.2%/);
     assert.match(styleSource, /html body\.landscape #game-board #hand-carousel #player-hand \{[\s\S]*?padding: 2px 34px 14px/);
     assert.match(styleSource, /height: min\(100%, 17\.2dvh, 106px\)/);
     assert.match(appSource, /class="opponent-active-gem" aria-hidden="true"/);
@@ -100,6 +100,9 @@ test('landscape phone QA keeps full names, Monsters and the hand inside their we
     assert.match(styleSource, /opponent-active-gem[\s\S]*?top: 25%[\s\S]*?opponent-crystal-breathe-v194/);
     assert.match(appSource, /const visibleActionPoints = isMyTurn \? me\.ap : 0;/);
     assert.match(appSource, /updatePremiumBoardBackground\(isMyTurn \? me\.ap : 0, boardParts\.classProgress\)/);
+    assert.match(appSource, /const actionName = activePlayer\.name \|\| \(isMine \? 'YOU' : 'OPPONENT'\)/);
+    assert.match(styleSource, /#action-point-timer-player::after \{[\s\S]*?display: none/);
+    assert.match(styleSource, /grid-template-columns: minmax\(0, 1fr\) clamp\(20px, 2\.6vw, 30px\)/);
 });
 
 test('the player hand uses an always-visible horizontal carousel with a large-hand indicator', () => {

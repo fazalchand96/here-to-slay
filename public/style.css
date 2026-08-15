@@ -11890,7 +11890,7 @@ html body #game-board.portrait #hand-carousel #player-hand > .card.selected {
 }
 
 /* ==========================================================================
-   LANDSCAPE_MOBILE_FIT_V194
+   LANDSCAPE_MOBILE_FIT_V195
    Perspective-calibrated landscape source-of-truth. Coordinates below follow
    the painted wells in the 1672x941 tabletop instead of treating them as a
    flat, evenly-spaced UI grid.
@@ -11935,8 +11935,8 @@ html body.landscape #game-board #opponents-bar .opponent-chip-name {
     z-index: 1 !important;
     display: flex !important;
     align-items: center !important;
-    left: 8% !important;
-    right: 17% !important;
+    left: 9.5% !important;
+    right: 15.5% !important;
     top: 16% !important;
     width: auto !important;
     height: 40% !important;
@@ -12210,8 +12210,8 @@ html body.landscape #game-board #party-dock .party-dock-slay-fan {
 }
 
 html body.landscape #game-board #board-center .monsters-area {
-    top: 19.6% !important;
-    height: 23.1% !important;
+    top: 21.2% !important;
+    height: 21.5% !important;
     padding: 0 !important;
 }
 
@@ -12284,9 +12284,9 @@ html body.landscape #game-board #action-point-timer {
     height: 7.5% !important;
     box-sizing: border-box !important;
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-columns: minmax(0, 1fr) clamp(20px, 2.6vw, 30px) !important;
     align-items: center !important;
-    gap: 3% !important;
+    gap: 2% !important;
     margin: 0 !important;
     padding: clamp(2px, .5dvh, 4px) clamp(4px, .52vw, 7px) clamp(3px, .65dvh, 5px) clamp(17px, 2.45vw, 25px) !important;
     border: 0 !important;
@@ -12301,26 +12301,29 @@ html body.landscape #game-board #action-point-timer-player {
     max-width: 100% !important;
     overflow: hidden !important;
     color: #d7bf91 !important;
-    font: 800 clamp(.25rem, .46vw, .38rem)/.95 var(--font-body) !important;
+    font: 800 clamp(.28rem, .52vw, .43rem)/1 var(--font-body) !important;
     letter-spacing: 0 !important;
     text-overflow: clip !important;
     white-space: nowrap !important;
 }
 
 html body.landscape #game-board #action-point-timer-player::after {
-    content: "ACTION" !important;
-    display: block !important;
-    margin-top: 1px !important;
-    color: #9e835d !important;
-    font-size: .78em !important;
-    letter-spacing: .11em !important;
+    display: none !important;
 }
 
 html body.landscape #game-board .action-point-timer-clock {
     min-width: 0 !important;
+    display: inline-flex !important;
+    align-items: baseline !important;
+    justify-content: flex-end !important;
     color: #f7dfae !important;
-    font: 900 clamp(.62rem, 1.12vw, .92rem)/1 var(--font-display) !important;
+    font: 900 clamp(.58rem, 1vw, .82rem)/1 var(--font-display) !important;
     text-shadow: 0 1px 2px #050202, 0 0 5px rgba(76, 148, 255, .45) !important;
+}
+
+html body.landscape #game-board .action-point-timer-clock small {
+    margin-left: 1px !important;
+    font-size: .48em !important;
 }
 
 html body.landscape #game-board #action-point-timer::after {

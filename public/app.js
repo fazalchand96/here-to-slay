@@ -1137,9 +1137,9 @@ function syncActionPointCountdown(data) {
     actionPointTimer?.classList.remove('hidden');
     actionPointTimer?.classList.toggle('is-mine', isMine);
     if (actionPointTimerPlayer) {
-        const actionName = isMine ? 'YOUR' : (activePlayer.name || 'OPPONENT');
+        const actionName = activePlayer.name || (isMine ? 'YOU' : 'OPPONENT');
         actionPointTimerPlayer.textContent = actionName;
-        actionPointTimerPlayer.title = `${actionName} ACTION`;
+        actionPointTimerPlayer.title = `${actionName} action timer`;
     }
 
     const update = () => {
