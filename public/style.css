@@ -3624,7 +3624,14 @@ body.landscape #event-console #challenge-modal .challenge-buttons-container .act
 
 .action-btn:active {
     top: 2px; /* Push-down effect */
+    transform: scale(0.97);
     box-shadow: 0 1px 0 rgba(0,0,0,0.22);
+}
+
+body.selection-submitting .valid-target,
+body.selection-submitting [data-decision-button] {
+    pointer-events: none !important;
+    cursor: wait !important;
 }
 
 /* DRAW Button (Tactile Golden Fiche) */
@@ -9543,6 +9550,10 @@ body.target-mode-active #target-banner {
 }
 body.target-mode-active #target-banner-text {
     font-size: clamp(.58rem, 1.45vw, .78rem) !important;
+}
+body.target-mode-active.party-selection-modal-open #target-banner {
+    visibility: hidden !important;
+    pointer-events: none !important;
 }
 body.target-mode-active #opponent-modal.own-party-view #opponent-modal-title {
     margin-bottom: 1px !important;

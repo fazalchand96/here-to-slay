@@ -30,8 +30,10 @@ test('Wise Shield: modifier window has no leftover roll button', async ({ browse
     const state = await host.evaluate(() => window.latestGameState.state);
     expect(state).toBe('WAITING_FOR_MODIFIERS');
 
-    // The modifier prompt is up...
-    await expect(host.locator('#modifier-modal')).not.toHaveClass(/hidden/);
+    // The current unified roll/modifier surface is up. The old standalone
+    // #modifier-modal was removed when these controls moved into #dice-overlay.
+    await expect(host.locator('#dice-overlay')).not.toHaveClass(/hidden/);
+    await expect(host.locator('#dice-pass-btn')).toBeVisible();
 
     // ...and the pre-roll roll button is hidden (the bug left it visible with a
     // stale "ROLL FOR CHALLENGE" label).

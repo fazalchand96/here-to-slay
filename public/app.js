@@ -1213,7 +1213,7 @@ function buildClassPartyGrid(player, isOwn) {
                 <div class="party-class-card-slot${leader ? ' party-class-leader-card' : ''}"
                     style="--party-card-index:${index};--party-card-left:${cardLeft}%"
                     title="${leader ? `Party Leader: ${card.name}` : card.name}">
-                    ${renderCard(card, isOwn, false, false, isMyTurn)}
+                    ${renderCard(card, isOwn, false, false, isMyTurn, '', player.id)}
                 </div>`;
             }).join('')
             : `<div class="party-class-empty">Empty</div>`;
@@ -1708,24 +1708,89 @@ let isLeaderSkillTargeting = false;
 let multiTargetSelected = [];
 
 let multiTargetMax = 2;
-let penaltyDiscardSubmitting = false;
+let authoritativeSelectionInFlight = false;
 
 let pendingHeroSkillCard = null;
+
+function heroTargetAction(action = currentPendingAction) {
+    if (!action) return null;
+    if (action.type === 'DESTROY') return 'DESTROY';
+    if (action.type === 'STEAL' || action.type === 'EXCHANGE_STEP_1') return 'STEAL';
+    if (action.type === 'SKILL_TARGET_HERO') {
+        if (action.targetAction) return action.targetAction;
+        return ['STEAL_HERO', 'SKILL_MEOWZIO', 'SKILL_TIPSY_TOOTIE', 'SKILL_WIGGLES', 'SKILL_PERFECT_VESSEL']
+            .includes(action.skillId) ? 'STEAL' : 'DESTROY';
+    }
+    if (action.type === 'SKILL_TARGET_MULTI') {
+        return action.skillId === 'SKILL_TENACIOUS_TIMBER' ? 'STEAL' : 'DESTROY';
+    }
+    return null;
+}
+
+function isLegalOpponentHeroTarget(action, ownerId, card) {
+    if (!card || card.type !== 'Hero Card' || !ownerId || !latestGameState?.players?.[ownerId]) return false;
+    const actorId = action?.originalActor || action?.playerToChoose || myId;
+    if (ownerId === actorId) return false;
+    const owner = latestGameState.players[ownerId];
+    const targetAction = heroTargetAction(action);
+    if (targetAction === 'STEAL') return !owner.cannotBeStolen;
+    if (targetAction === 'DESTROY') {
+        return !owner.cannotBeDestroyed
+            && !(owner.slainMonsters || []).some(monster => monster.effect_id === 'MONSTER_TERRATUGA');
+    }
+    return true;
+}
+
+function isAllowedHandSelectionCard(action, card) {
+    if (!action || !card) return false;
+    const allowedTypes = action.allowedTypes || [];
+    if (!allowedTypes.includes(card.type)) return false;
+    return !Array.isArray(action.allowedCardIds) || action.allowedCardIds.includes(card.id);
+}
+
+function isLegalDiscardSelectionCard(action, card) {
+    if (!action || !card) return false;
+    return card.id !== action.excludeCardId
+        && (!Array.isArray(action.allowedTypes) || action.allowedTypes.includes(card.type))
+        && (!Array.isArray(action.allowedCardIds) || action.allowedCardIds.includes(card.id));
+}
+
+function submitAuthoritativeSelection(eventName, payload, { onAccepted = null } = {}) {
+    if (authoritativeSelectionInFlight) return false;
+    authoritativeSelectionInFlight = true;
+    document.body?.classList.add('selection-submitting');
+
+    socket.timeout(4000).emit(eventName, payload, (error, response) => {
+        authoritativeSelectionInFlight = false;
+        document.body?.classList.remove('selection-submitting');
+        if (error || response?.ok !== true) {
+            showNotification(response?.reason
+                || 'The selection could not be confirmed. Nothing was changed; please try again.');
+            return;
+        }
+        if (typeof onAccepted === 'function') onAccepted(response);
+    });
+    return true;
+}
 
 
 
 function cancelDiscardSearch() {
-
-    document.getElementById('discard-search-modal').classList.add('hidden');
-
     // If the server is waiting on a deferred discard-pile pick (e.g. Bun Bun after
     // a successful roll), client-only cleanup leaves it stuck in
     // WAITING_FOR_SKILL_TARGET. Tell the server to abort so the turn can continue.
     if (latestGameState && latestGameState.state === 'WAITING_FOR_SKILL_TARGET'
         && latestGameState.pendingAction && latestGameState.pendingAction.type === 'SKILL_TARGET_DISCARD') {
-        socket.emit('submit_skill_target', { cancel: true });
+        submitAuthoritativeSelection('submit_skill_target', { cancel: true }, {
+            onAccepted: () => {
+                document.getElementById('discard-search-modal').classList.add('hidden');
+                cancelSkillTargeting();
+            }
+        });
+        return;
     }
 
+    document.getElementById('discard-search-modal').classList.add('hidden');
     cancelSkillTargeting();
 
 }
@@ -1800,7 +1865,7 @@ function formatMonsterRequirement(card) {
     return parts.join(' • ') || 'None';
 }
 
-function renderCard(card, isMine = false, inHand = false, isMonster = false, isMyTurn = false, inlineStyle = "") {
+function renderCard(card, isMine = false, inHand = false, isMonster = false, isMyTurn = false, inlineStyle = "", ownerId = null) {
 
     if (!card) return '';
 
@@ -1836,7 +1901,7 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
     if (isTargetMode) {
 
         if (myTargetMode && inHand && isMine && currentPendingAction.type === 'DISCARD'
-            && (!currentPendingAction.allowedTypes || currentPendingAction.allowedTypes.includes(card.type))) {
+            && isLegalDiscardSelectionCard(currentPendingAction, card)) {
 
             glowClass += ' valid-target valid-target-equip';
 
@@ -1844,7 +1909,9 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
 
             glowClass += ' valid-target valid-target-equip';
 
-        } else if (myTargetMode && !isMine && !inHand && (currentPendingAction.type === 'DESTROY' || currentPendingAction.type === 'STEAL' || currentPendingAction.type === 'EXCHANGE_STEP_1') && card.type === 'Hero Card') {
+        } else if (myTargetMode && !isMine && !inHand
+            && ['DESTROY', 'STEAL', 'EXCHANGE_STEP_1'].includes(currentPendingAction.type)
+            && isLegalOpponentHeroTarget(currentPendingAction, ownerId, card)) {
 
             glowClass += ' valid-target valid-target-steal';
 
@@ -1860,11 +1927,23 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
 
     } else {
 
-        if (isSkillTargeting && !isMine && !inHand && card.type === 'Hero Card') {
+        if (inHand && isMine
+            && latestGameState?.state === 'WAITING_FOR_HAND_SELECTION'
+            && latestGameState.pendingAction?.playerToChoose === myId
+            && isAllowedHandSelectionCard(latestGameState.pendingAction, card)) {
+
+            glowClass += ' valid-target valid-target-equip';
+
+        } else if (isSkillTargeting && !isMine && !inHand
+            && isLegalOpponentHeroTarget(currentPendingAction || {
+                type: 'SKILL_TARGET_HERO', skillId: pendingHeroSkillCard?.skill_id
+            }, ownerId, card)) {
 
             glowClass += ' valid-target valid-target-steal';
 
-        } else if (isMultiTargeting && !isMine && !inHand && card.type === 'Hero Card' && (!window.latestGameState || !['WAITING_FOR_DISCARD_PENALTY', 'WAITING_FOR_MULTIPLE_DISCARDS', 'WAITING_FOR_VARIABLE_DISCARD'].includes(window.latestGameState.state))) {
+        } else if (isMultiTargeting && !isMine && !inHand
+            && isLegalOpponentHeroTarget(currentPendingAction, ownerId, card)
+            && (!window.latestGameState || !['WAITING_FOR_DISCARD_PENALTY', 'WAITING_FOR_MULTIPLE_DISCARDS', 'WAITING_FOR_VARIABLE_DISCARD'].includes(window.latestGameState.state))) {
 
             glowClass += ' valid-target valid-target-steal';
 
@@ -1883,8 +1962,8 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
 
             glowClass += ' valid-target valid-target-steal';
 
-        } else if (isMultiTargeting && inHand && isMine && card.id !== currentPendingAction?.excludeCardId
-            && (!currentPendingAction?.allowedCardIds || currentPendingAction.allowedCardIds.includes(card.id))
+        } else if (isMultiTargeting && inHand && isMine
+            && isLegalDiscardSelectionCard(currentPendingAction, card)
             && window.latestGameState && ['WAITING_FOR_DISCARD_PENALTY', 'WAITING_FOR_MULTIPLE_DISCARDS', 'WAITING_FOR_VARIABLE_DISCARD'].includes(window.latestGameState.state)) {
 
             const isSelected = multiTargetSelected && multiTargetSelected.includes(card.id);
@@ -2026,7 +2105,7 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
     // names are intact: data-id on root, .card-img/.card-info/.card-name/.card-type/
     // .card-class/.card-req/.equipped-item-thumb, and every targeting glow class.
     return `
-        <div class="card${variantClass} type-${typeSlug}${classSlug ? ` class-${classSlug}` : ''}${artClass(card)}${fullCardArtClass(card)} ${glowClass}" id="${card.id}" data-id="${card.id}" title="${detailTitle}" style="--cc:${cardTint}; ${card.artUrl ? '' : artCropStyle(card.id)} ${inlineStyle}">
+        <div class="card${variantClass} type-${typeSlug}${classSlug ? ` class-${classSlug}` : ''}${artClass(card)}${fullCardArtClass(card)} ${glowClass}" id="${card.id}" data-id="${card.id}" data-owner-id="${ownerId || ''}" data-location="${isMonster ? 'monsters' : (inHand ? 'hand' : (ownerId ? 'party' : ''))}" title="${detailTitle}" style="--cc:${cardTint}; ${card.artUrl ? '' : artCropStyle(card.id)} ${inlineStyle}">
             <div class="card-req">${badgeVal}</div>
             ${monsterRequirement}
             ${monsterAttackBonus}
@@ -2063,8 +2142,9 @@ function syncPartyViewTabs(section) {
 
 window.openOwnPartyModal = function(requestedSection = 'classes') {
     if (isPlayerTargeting && latestGameState?.pendingAction?.allowSelf) {
-        socket.emit('submit_skill_target', { targetPlayerId: myId });
-        cancelSkillTargeting();
+        submitAuthoritativeSelection('submit_skill_target', { targetPlayerId: myId }, {
+            onAccepted: () => cancelSkillTargeting()
+        });
         return;
     }
     const me = latestGameState?.players?.[myId];
@@ -2087,6 +2167,7 @@ window.openOwnPartyModal = function(requestedSection = 'classes') {
         : buildClassPartyGrid(me, true);
     modal.style.display = 'flex';
     modal.classList.remove('hidden');
+    document.body?.classList.add('party-selection-modal-open');
     window._oppModalSig = oppModalSignature(myId);
 };
 
@@ -2110,11 +2191,13 @@ window.openOpponentModal = function(id, requestedSection = 'classes') {
 
         if (latestGameState && latestGameState.state === 'WAITING_FOR_SKILL_TARGET') {
 
-            socket.emit('submit_skill_target', {
-
+            submitAuthoritativeSelection('submit_skill_target', {
                 targetPlayerId: id
-
+            }, {
+                onAccepted: () => cancelSkillTargeting()
             });
+
+            return;
 
         } else {
 
@@ -2191,6 +2274,7 @@ window.openOpponentModal = function(id, requestedSection = 'classes') {
     modal.style.display = 'flex';
 
     modal.classList.remove('hidden');
+    document.body?.classList.add('party-selection-modal-open');
 
     // Remember what we just rendered so the broadcast loop only rebuilds the modal
     // when it actually changes (see oppModalSignature) — rebuilding on every
@@ -2254,6 +2338,7 @@ window.closeOpponentModal = function() {
         document.getElementById('party-view-tabs')?.classList.add('hidden');
         delete modal.dataset.view;
         delete modal.dataset.section;
+        document.body?.classList.remove('party-selection-modal-open');
 
     }
 };
@@ -3369,7 +3454,8 @@ function renderBoard(data) {
         'WAITING_FOR_SMOK_CHOICE',
         'WAITING_FOR_MIRRORYU_CHOICE',
         'WAITING_FOR_LUUT_CHOICE',
-        'WAITING_FOR_CALAMITY_MONGREL_CHOICE'
+        'WAITING_FOR_CALAMITY_MONGREL_CHOICE',
+        'WAITING_FOR_MODIFIER_RETRIEVAL'
     ];
     isTargetMode = currentPendingAction !== null && !dedicatedStates.includes(data.state);
 
@@ -3594,8 +3680,8 @@ function renderBoard(data) {
         if (myId === data.pendingAction?.playerToChoose) {
 
             const meSel = data.players[myId];
-            const allowedSel = data.pendingAction.allowedTypes || [];
-            const hasPlayable = !!(meSel && meSel.hand.some(c => allowedSel.includes(c.type)));
+            const hasPlayable = !!(meSel && meSel.hand.some(card =>
+                isAllowedHandSelectionCard(data.pendingAction, card)));
 
             targetBannerText.innerText = 'SELECT A CARD FROM YOUR HAND TO PLAY';
 
@@ -4055,7 +4141,7 @@ function renderBoard(data) {
         if (data.pendingAction?.playerToChoose === myId) {
             waitingOverlay?.classList.add('hidden');
             targetBannerText.innerHTML = `CHOOSE A CLASS FOR ROARYAL GUARD<br>${PARTY_CLASS_ORDER.map(className =>
-                `<button class="action-btn inline" onclick="socket.emit('choose_roaryal_guard_class', { className: '${className}' })">${className}</button>`
+                `<button class="action-btn inline" data-decision-button onclick="submitAuthoritativeSelection('choose_roaryal_guard_class', { className: '${className}' })">${className}</button>`
             ).join(' ')}`;
         } else {
             waitingOverlay?.classList.remove('hidden');
@@ -4072,8 +4158,8 @@ function renderBoard(data) {
             waitingOverlay?.classList.add('hidden');
             const heroName = data.pendingAction.trigger?.hero?.name || 'YOUR HERO';
             targetBannerText.innerHTML = `DISCARD 2 CARDS WITH DRAGON WASP TO SAVE ${String(heroName).toUpperCase()}?
-                <button class="action-btn inline" onclick="socket.emit('resolve_dragon_wasp_choice', { use: true })">DISCARD 2</button>
-                <button class="action-btn inline attack" onclick="socket.emit('resolve_dragon_wasp_choice', { use: false })">LET IT GO</button>`;
+                <button class="action-btn inline" data-decision-button onclick="submitAuthoritativeSelection('resolve_dragon_wasp_choice', { use: true })">DISCARD 2</button>
+                <button class="action-btn inline attack" data-decision-button onclick="submitAuthoritativeSelection('resolve_dragon_wasp_choice', { use: false })">LET IT GO</button>`;
         } else {
             waitingOverlay?.classList.remove('hidden');
             targetBannerText.innerText = 'WAITING FOR THE DRAGON WASP CHOICE...';
@@ -4088,8 +4174,8 @@ function renderBoard(data) {
         if (data.pendingAction?.playerToChoose === myId) {
             waitingOverlay?.classList.add('hidden');
             targetBannerText.innerHTML = `USE LUMBERING DEMON FOR THIS DRAW?<br>DRAW 2, THEN DISCARD 1
-                <button class="action-btn inline" onclick="socket.emit('resolve_lumbering_demon_draw', { use: true })">USE EFFECT</button>
-                <button class="action-btn inline attack" onclick="socket.emit('resolve_lumbering_demon_draw', { use: false })">DRAW 1</button>`;
+                <button class="action-btn inline" data-decision-button onclick="submitAuthoritativeSelection('resolve_lumbering_demon_draw', { use: true })">USE EFFECT</button>
+                <button class="action-btn inline attack" data-decision-button onclick="submitAuthoritativeSelection('resolve_lumbering_demon_draw', { use: false })">DRAW 1</button>`;
         } else {
             waitingOverlay?.classList.remove('hidden');
             targetBannerText.innerText = 'WAITING FOR THE LUMBERING DEMON CHOICE...';
@@ -4104,8 +4190,8 @@ function renderBoard(data) {
         if (data.pendingAction?.playerToChoose === myId) {
             waitingOverlay?.classList.add('hidden');
             targetBannerText.innerHTML = `SACRIFICE GOBLET OF CAFFEINATION TO REROLL FOR 0 AP?
-                <button class="action-btn inline" onclick="socket.emit('resolve_goblet_reroll', { use: true })">REROLL</button>
-                <button class="action-btn inline" onclick="socket.emit('resolve_goblet_reroll', { use: false })">DECLINE</button>`;
+                <button class="action-btn inline" data-decision-button onclick="submitAuthoritativeSelection('resolve_goblet_reroll', { use: true })">REROLL</button>
+                <button class="action-btn inline" data-decision-button onclick="submitAuthoritativeSelection('resolve_goblet_reroll', { use: false })">DECLINE</button>`;
         } else {
             waitingOverlay?.classList.remove('hidden');
             targetBannerText.innerText = 'WAITING FOR THE GOBLET OF CAFFEINATION CHOICE...';
@@ -4121,8 +4207,8 @@ function renderBoard(data) {
             && data.pendingAction.type === 'MONSTER_OPTIONAL_DRAW') {
             waitingOverlay?.classList.add('hidden');
             targetBannerText.innerHTML = `DRAW A CARD WITH ${String(data.pendingAction.source || 'MONSTER EFFECT').toUpperCase()}?
-                <button class="action-btn inline" onclick="socket.emit('resolve_wandering_behemoth_draw', { use: true })">DRAW</button>
-                <button class="action-btn inline" onclick="socket.emit('resolve_wandering_behemoth_draw', { use: false })">SKIP</button>`;
+                <button class="action-btn inline" data-decision-button onclick="submitAuthoritativeSelection('resolve_wandering_behemoth_draw', { use: true })">DRAW</button>
+                <button class="action-btn inline" data-decision-button onclick="submitAuthoritativeSelection('resolve_wandering_behemoth_draw', { use: false })">SKIP</button>`;
         } else {
             waitingOverlay?.classList.remove('hidden');
             targetBannerText.innerText = 'WAITING FOR A MONSTER EFFECT CHOICE...';
@@ -4142,8 +4228,8 @@ function renderBoard(data) {
             };
             waitingOverlay?.classList.add('hidden');
             targetBannerText.innerHTML = `${labels[data.pendingAction.effect] || 'USE END-OF-TURN MONSTER EFFECT?'}
-                <button class="action-btn inline" onclick="socket.emit('resolve_end_turn_monster_effect', { use: true })">USE EFFECT</button>
-                <button class="action-btn inline" onclick="socket.emit('resolve_end_turn_monster_effect', { use: false })">SKIP</button>`;
+                <button class="action-btn inline" data-decision-button onclick="submitAuthoritativeSelection('resolve_end_turn_monster_effect', { use: true })">USE EFFECT</button>
+                <button class="action-btn inline" data-decision-button onclick="submitAuthoritativeSelection('resolve_end_turn_monster_effect', { use: false })">SKIP</button>`;
         } else {
             waitingOverlay?.classList.remove('hidden');
             targetBannerText.innerText = 'WAITING FOR AN END-OF-TURN MONSTER EFFECT...';
@@ -4155,7 +4241,7 @@ function renderBoard(data) {
             waitingOverlay?.classList.add('hidden');
             const cards = (data.players?.[myId]?.hand || []).filter(card => data.pendingAction.allowedCardIds?.includes(card.id));
             targetBannerText.innerHTML = `CHOOSE A MODIFIER TO DISCARD FOR DRAGALTER<br>${cards.flatMap(card =>
-                (card.modifier_values || []).map(value => `<button class="action-btn inline" onclick="socket.emit('resolve_dragalter_choice',{cardId:'${card.id}',value:${value}})">${card.name}: ${value >= 0 ? '+' : ''}${value}</button>`)
+                (card.modifier_values || []).map(value => `<button class="action-btn inline" data-decision-button onclick="submitAuthoritativeSelection('resolve_dragalter_choice',{cardId:'${card.id}',value:${value}})">${card.name}: ${value >= 0 ? '+' : ''}${value}</button>`)
             ).join(' ')}`;
         } else {
             waitingOverlay?.classList.remove('hidden');
@@ -4168,8 +4254,8 @@ function renderBoard(data) {
             waitingOverlay?.classList.add('hidden');
             const cards = (data.players?.[myId]?.hand || []).filter(card => data.pendingAction.allowedCardIds?.includes(card.id));
             targetBannerText.innerHTML = `REVEAL A MAGIC CARD TO GAIN 1 EXTRA ACTION POINT?<br>${cards.map(card =>
-                `<button class="action-btn inline" onclick="socket.emit('resolve_smok_choice',{cardId:'${card.id}'})">REVEAL ${card.name}</button>`
-            ).join(' ')} <button class="action-btn inline" onclick="socket.emit('resolve_smok_choice',{})">KEEP HIDDEN</button>`;
+                `<button class="action-btn inline" data-decision-button onclick="submitAuthoritativeSelection('resolve_smok_choice',{cardId:'${card.id}'})">REVEAL ${card.name}</button>`
+            ).join(' ')} <button class="action-btn inline" data-decision-button onclick="submitAuthoritativeSelection('resolve_smok_choice',{})">KEEP HIDDEN</button>`;
         } else {
             waitingOverlay?.classList.remove('hidden');
             targetBannerText.innerText = 'WAITING FOR SMOK...';
@@ -4181,7 +4267,7 @@ function renderBoard(data) {
             waitingOverlay?.classList.add('hidden');
             const heroes = (data.players?.[myId]?.party || []).filter(card => data.pendingAction.allowedHeroIds?.includes(card.id));
             targetBannerText.innerHTML = `CHOOSE ANOTHER HERO EFFECT FOR MIRRORYU (+3 TO ITS ROLL)<br>${heroes.map(card =>
-                `<button class="action-btn inline" onclick="socket.emit('resolve_mirroryu_choice',{heroId:'${card.id}'})">${card.name}</button>`
+                `<button class="action-btn inline" data-decision-button onclick="submitAuthoritativeSelection('resolve_mirroryu_choice',{heroId:'${card.id}'})">${card.name}</button>`
             ).join(' ')}`;
         } else {
             waitingOverlay?.classList.remove('hidden');
@@ -4197,13 +4283,13 @@ function renderBoard(data) {
                     const owner = data.players?.[entry.ownerId];
                     const hero = owner?.party?.find(card => card.id === entry.heroId);
                     const item = [hero?.equippedItem, hero?.equippedItem2].find(card => card?.id === entry.itemId);
-                    return `<button class="action-btn inline" onclick="socket.emit('resolve_luut_choice',{itemId:'${entry.itemId}'})">${item?.name || 'Equipped Item'} (${hero?.name || 'Hero'})</button>`;
+                    return `<button class="action-btn inline" data-decision-button onclick="submitAuthoritativeSelection('resolve_luut_choice',{itemId:'${entry.itemId}'})">${item?.name || 'Equipped Item'} (${hero?.name || 'Hero'})</button>`;
                 });
                 targetBannerText.innerHTML = `CHOOSE AN EQUIPPED ITEM TO STEAL WITH LUUT<br>${choices.join(' ')}`;
             } else {
                 const heroes = (data.players?.[myId]?.party || []).filter(card => data.pendingAction.destinationHeroIds?.includes(card.id));
                 targetBannerText.innerHTML = `CHOOSE A HERO TO EQUIP THE STOLEN ITEM<br>${heroes.map(card =>
-                    `<button class="action-btn inline" onclick="socket.emit('resolve_luut_choice',{heroId:'${card.id}'})">${card.name}</button>`
+                    `<button class="action-btn inline" data-decision-button onclick="submitAuthoritativeSelection('resolve_luut_choice',{heroId:'${card.id}'})">${card.name}</button>`
                 ).join(' ')}`;
             }
         } else {
@@ -4217,8 +4303,8 @@ function renderBoard(data) {
             waitingOverlay?.classList.add('hidden');
             const card = data.players?.[myId]?.hand?.find(entry => entry.id === data.pendingAction.cardId);
             targetBannerText.innerHTML = `CALAMITY MONGREL: DISCARD ${card?.name || 'THIS CHALLENGE'} AND DRAW 2 CARDS?
-                <button class="action-btn inline" onclick="socket.emit('resolve_calamity_mongrel_choice',{use:true})">DISCARD & DRAW 2</button>
-                <button class="action-btn inline" onclick="socket.emit('resolve_calamity_mongrel_choice',{use:false})">KEEP CARD</button>`;
+                <button class="action-btn inline" data-decision-button onclick="submitAuthoritativeSelection('resolve_calamity_mongrel_choice',{use:true})">DISCARD & DRAW 2</button>
+                <button class="action-btn inline" data-decision-button onclick="submitAuthoritativeSelection('resolve_calamity_mongrel_choice',{use:false})">KEEP CARD</button>`;
         } else {
             waitingOverlay?.classList.remove('hidden');
             targetBannerText.innerText = 'WAITING FOR CALAMITY MONGREL...';
@@ -4533,7 +4619,11 @@ function renderBoard(data) {
         const rollingStates = ['WAITING_FOR_MODIFIERS', 'WAITING_TO_ROLL', 'WAITING_TO_ROLL_CHALLENGE'];
         const actNowStates = ['WAITING_FOR_DISCARD_PENALTY', 'WAITING_FOR_MULTIPLE_DISCARDS', 'WAITING_FOR_VARIABLE_DISCARD',
             'WAITING_FOR_SACRIFICE', 'WAITING_FOR_HAND_SELECTION', 'WAITING_FOR_GLOBAL_ACTION',
-            'WAITING_FOR_IMMEDIATE_PLAY', 'WAITING_FOR_SKILL_TARGET', 'WAITING_FOR_MAJESTELK_CHOICE'];
+            'WAITING_FOR_IMMEDIATE_PLAY', 'WAITING_FOR_SKILL_TARGET', 'WAITING_FOR_MAJESTELK_CHOICE',
+            'WAITING_FOR_CLASS_SELECTION', 'WAITING_FOR_DRAGON_WASP_CHOICE', 'WAITING_FOR_LUMBERING_DEMON_CHOICE',
+            'WAITING_FOR_GOBLET_REROLL', 'WAITING_FOR_MONSTER_TRIGGER_CHOICE', 'WAITING_FOR_END_TURN_CHOICE',
+            'WAITING_FOR_DRAGALTER_CHOICE', 'WAITING_FOR_SMOK_CHOICE', 'WAITING_FOR_MIRRORYU_CHOICE',
+            'WAITING_FOR_LUUT_CHOICE', 'WAITING_FOR_CALAMITY_MONGREL_CHOICE', 'WAITING_FOR_MODIFIER_RETRIEVAL'];
         const hideNow = () => {
             if (diceOv) {
                 diceOv.classList.add('hidden');
@@ -6084,16 +6174,20 @@ function logEvent(msg) {
 // Decline an optional / unsatisfiable "play a card from hand" prompt. The server
 // resets to PLAYING when the action is optional or the hand has no playable card.
 window.skipHandSelection = function() {
-    socket.emit('play_from_hand', { cancel: true });
-    closeInspectorModal();
+    submitAuthoritativeSelection('play_from_hand', { cancel: true }, {
+        onAccepted: () => closeInspectorModal()
+    });
 };
 
 // Decline an OPTIONAL pending target action (e.g. Pan Chucks' "you MAY destroy").
 // The server clears the action and returns to PLAYING.
 window.skipOptionalAction = function() {
-    socket.emit('skip_optional_action');
-    document.body?.classList.remove('target-mode-active');
-    targetBanner?.classList.add('hidden');
+    submitAuthoritativeSelection('skip_optional_action', {}, {
+        onAccepted: () => {
+            document.body?.classList.remove('target-mode-active');
+            targetBanner?.classList.add('hidden');
+        }
+    });
 };
 
 function playCard(id) {
@@ -6101,9 +6195,15 @@ function playCard(id) {
     playSound('cardDrop');
     if (latestGameState && latestGameState.state === 'WAITING_FOR_HAND_SELECTION') {
 
-        socket.emit('play_from_hand', { cardId: id });
+        const selected = latestGameState.players?.[myId]?.hand?.find(card => card.id === id);
+        if (!isAllowedHandSelectionCard(latestGameState.pendingAction, selected)) {
+            showNotification('That card is not available for this effect. Choose one of the highlighted cards.');
+            return;
+        }
 
-        closeInspectorModal();
+        submitAuthoritativeSelection('play_from_hand', { cardId: id }, {
+            onAccepted: () => closeInspectorModal()
+        });
 
         return;
 
@@ -6239,6 +6339,11 @@ function startEquipTargeting(cardId, fromHandSelection = false) {
 
     if (!context || !context.card) return;
 
+    if (fromHandSelection && !isAllowedHandSelectionCard(latestGameState?.pendingAction, context.card)) {
+        showNotification('That Item is not one of the cards this effect allows you to play.');
+        return;
+    }
+
 
 
     isLocalTargeting = true;
@@ -6272,10 +6377,9 @@ function startEquipTargeting(cardId, fromHandSelection = false) {
 
 
 window.resolveImmediatePlay = function(action) {
-
-    document.getElementById('immediate-play-modal').classList.add('hidden');
-
-    socket.emit('resolve_immediate_play', { playNow: action === 'PLAY' });
+    submitAuthoritativeSelection('resolve_immediate_play', { playNow: action === 'PLAY' }, {
+        onAccepted: () => document.getElementById('immediate-play-modal').classList.add('hidden')
+    });
 
 };
 
@@ -6496,8 +6600,9 @@ function openDiscardSearch(skillId) {
         skip.className = 'action-btn';
         skip.innerText = 'DONE';
         skip.onclick = () => {
-            socket.emit('skip_optional_action');
-            modal?.classList.add('hidden');
+            submitAuthoritativeSelection('skip_optional_action', {}, {
+                onAccepted: () => modal?.classList.add('hidden')
+            });
         };
         container.appendChild(skip);
     }
@@ -6562,11 +6667,12 @@ window.openPoolSelection = function() {
 
 window.selectPoolCard = function(cardId) {
 
-    socket.emit('target_selected', cardId);
-
-    document.getElementById('discard-search-modal').classList.add('hidden');
-
-    document.getElementById('discard-search-title').innerText = "Search Discard Pile"; // reset
+    submitAuthoritativeSelection('target_selected', cardId, {
+        onAccepted: () => {
+            document.getElementById('discard-search-modal').classList.add('hidden');
+            document.getElementById('discard-search-title').innerText = "Search Discard Pile";
+        }
+    });
 
 };
 
@@ -6576,8 +6682,9 @@ window.selectDiscardCard = function selectDiscardCard(cardId) {
 
     if (latestGameState && latestGameState.state === 'WAITING_FOR_MODIFIER_RETRIEVAL'
         && latestGameState.pendingAction && latestGameState.pendingAction.type === 'MODIFIER_MINUS_FOUR_RETRIEVAL') {
-        socket.emit('submit_minus_four_retrieval', { cardId });
-        document.getElementById('discard-search-modal').classList.add('hidden');
+        submitAuthoritativeSelection('submit_minus_four_retrieval', { cardId }, {
+            onAccepted: () => document.getElementById('discard-search-modal').classList.add('hidden')
+        });
         return;
     }
 
@@ -6585,9 +6692,12 @@ window.selectDiscardCard = function selectDiscardCard(cardId) {
     // is waiting for the discard target. Submit it without re-rolling.
     if (latestGameState && latestGameState.state === 'WAITING_FOR_SKILL_TARGET'
         && latestGameState.pendingAction && latestGameState.pendingAction.type === 'SKILL_TARGET_DISCARD') {
-        socket.emit('submit_skill_target', { targetCardId: cardId });
-        document.getElementById('discard-search-modal').classList.add('hidden');
-        pendingHeroSkillCard = null;
+        submitAuthoritativeSelection('submit_skill_target', { targetCardId: cardId }, {
+            onAccepted: () => {
+                document.getElementById('discard-search-modal').classList.add('hidden');
+                pendingHeroSkillCard = null;
+            }
+        });
         return;
     }
 
@@ -6609,7 +6719,7 @@ window.selectDiscardCard = function selectDiscardCard(cardId) {
 
     } else {
 
-        socket.emit('use_hero_skill', { 
+        socket.emit('use_hero_skill', {
 
             cardId: pendingHeroSkillCard.id, 
 
@@ -6632,13 +6742,11 @@ window.selectDiscardCard = function selectDiscardCard(cardId) {
 window.submitMultiTargets = function() {
 
     if (latestGameState && latestGameState.state === 'WAITING_FOR_SKILL_TARGET') {
-
-        socket.emit('submit_skill_target', {
-
-            targetHeroIds: multiTargetSelected
-
+        submitAuthoritativeSelection('submit_skill_target', {
+            targetHeroIds: [...multiTargetSelected]
+        }, {
+            onAccepted: () => cancelSkillTargeting()
         });
-
     } else {
 
         socket.emit('use_hero_skill', {
@@ -6650,10 +6758,8 @@ window.submitMultiTargets = function() {
             targetHeroIds: multiTargetSelected
 
         });
-
+        cancelSkillTargeting();
     }
-
-    cancelSkillTargeting();
 
 };
 
@@ -6661,7 +6767,7 @@ window.submitMultiTargets = function() {
 
 window.submitPenaltyDiscard = function() {
 
-    if (!latestGameState || !latestGameState.pendingAction || penaltyDiscardSubmitting) return;
+    if (!latestGameState || !latestGameState.pendingAction) return;
 
     // Fixed-amount discards carry `amount` (select exactly N); variable ones
     // (Qi Bear's "up to N") carry `maxAmount` only - the old exact-match check
@@ -6674,35 +6780,14 @@ window.submitPenaltyDiscard = function() {
         : multiTargetSelected.length === pa.amount;
 
     if (okCount) {
-
-        if (latestGameState.state === 'WAITING_FOR_VARIABLE_DISCARD') {
-            penaltyDiscardSubmitting = true;
-            const confirmButton = targetBanner?.querySelector('[data-submit-variable-discard]');
-            if (confirmButton) {
-                confirmButton.disabled = true;
-                confirmButton.textContent = 'DISCARDING...';
+        submitAuthoritativeSelection('submit_penalty_discard', {
+            cardIds: [...multiTargetSelected]
+        }, {
+            onAccepted: () => {
+                isMultiTargeting = false;
+                multiTargetSelected = [];
             }
-            socket.timeout(4000).emit(
-                'submit_penalty_discard',
-                { cardIds: [...multiTargetSelected] },
-                (error, response) => {
-                    penaltyDiscardSubmitting = false;
-                    if (error || !response?.ok) {
-                        if (latestGameState) renderBoard(latestGameState);
-                        alert(response?.reason || 'The discard could not be confirmed. Please try again.');
-                        return;
-                    }
-                    isMultiTargeting = false;
-                    multiTargetSelected = [];
-                }
-            );
-            return;
-        }
-
-        socket.emit('submit_penalty_discard', { cardIds: multiTargetSelected });
-        isMultiTargeting = false;
-
-        multiTargetSelected = [];
+        });
 
     } else {
 
@@ -6811,20 +6896,23 @@ function selectTarget(id) {
 
     triggerHaptic(15);
 
-    socket.emit('target_selected', id);
-
-    closeOpponentModal();
+    submitAuthoritativeSelection('target_selected', id, {
+        onAccepted: () => closeOpponentModal()
+    });
 
 }
 
 function submitSkillHeroTarget(context) {
     if (!context?.card?.id || !context.owner) return;
-    socket.emit('submit_skill_target', {
+    submitAuthoritativeSelection('submit_skill_target', {
         targetPlayerId: context.owner,
         targetHeroId: context.card.id
+    }, {
+        onAccepted: () => {
+            cancelSkillTargeting();
+            closeOpponentModal();
+        }
     });
-    cancelSkillTargeting();
-    closeOpponentModal();
 }
 
 
@@ -7097,7 +7185,7 @@ function openGruesomeGladiatorChoice(cards, targetName) {
 }
 
 function chooseMajestelkModifier(value) {
-    socket.emit('choose_majestelk_modifier', { value });
+    submitAuthoritativeSelection('choose_majestelk_modifier', { value });
 }
 window.chooseMajestelkModifier = chooseMajestelkModifier;
 
@@ -7180,6 +7268,32 @@ function findCardContext(id) {
 
     return null;
 
+}
+
+function findCardContextForElement(cardEl, cardId) {
+    const ownerId = cardEl?.dataset?.ownerId;
+    const location = cardEl?.dataset?.location;
+    if (ownerId && latestGameState?.players?.[ownerId]) {
+        const owner = latestGameState.players[ownerId];
+        if (location === 'party') {
+            const card = owner.party?.find(candidate => candidate.id === cardId)
+                || (owner.leader?.id === cardId ? owner.leader : null);
+            if (card) return {
+                card,
+                location: card.type === 'Party Leader' ? 'leader' : 'party',
+                owner: ownerId
+            };
+        }
+        if (location === 'hand') {
+            const card = owner.hand?.find(candidate => candidate.id === cardId);
+            if (card) return { card, location: 'hand', owner: ownerId };
+        }
+    }
+    if (location === 'monsters') {
+        const card = latestGameState?.activeMonsters?.find(candidate => candidate.id === cardId);
+        if (card) return { card, location: 'monsters', owner: null };
+    }
+    return findCardContext(cardId);
 }
 
 
@@ -7369,7 +7483,7 @@ window.inspectCard = function(cardId, scopedContext = null) {
         } else if (latestGameState && latestGameState.state === 'WAITING_FOR_HAND_SELECTION'
                    && latestGameState.pendingAction
                    && latestGameState.pendingAction.playerToChoose === myId
-                   && (latestGameState.pendingAction.allowedTypes || []).includes(card.type)) {
+                   && isAllowedHandSelectionCard(latestGameState.pendingAction, card)) {
 
             // "Draw then you MAY play" prompts (Quick Draw, Hook, Fuzzy Cheeks,
             // Snowball). Plays via play_from_hand — no normal AP cost here.
@@ -7686,11 +7800,13 @@ window.inspectCard = function(cardId, scopedContext = null) {
             const type = currentPendingAction.type;
 
             if (type === 'DISCARD' && inHand && isMine
-                && (!currentPendingAction.allowedTypes || currentPendingAction.allowedTypes.includes(card.type))) isValid = true;
+                && isLegalDiscardSelectionCard(currentPendingAction, card)) isValid = true;
 
             else if (type === 'EQUIP' && !inHand && isMine && card.type === 'Hero Card') isValid = true;
 
-            else if ((type === 'DESTROY' || type === 'STEAL' || type === 'EXCHANGE_STEP_1' || type === 'SKILL_TARGET_HERO') && !inHand && !isMine && card.type === 'Hero Card') isValid = true;
+            else if (['DESTROY', 'STEAL', 'EXCHANGE_STEP_1', 'SKILL_TARGET_HERO'].includes(type)
+                && !inHand && !isMine
+                && isLegalOpponentHeroTarget(currentPendingAction, context.owner, card)) isValid = true;
 
             else if (type === 'EXCHANGE_STEP_2' && !inHand && isMine && card.type === 'Hero Card') isValid = true;
 
@@ -7712,19 +7828,24 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
         } else if (isMultiTargeting) {
 
-            if (latestGameState && card.id !== currentPendingAction?.excludeCardId && ['WAITING_FOR_DISCARD_PENALTY', 'WAITING_FOR_MULTIPLE_DISCARDS', 'WAITING_FOR_VARIABLE_DISCARD'].includes(latestGameState.state)) {
+            if (latestGameState && isLegalDiscardSelectionCard(currentPendingAction, card)
+                && ['WAITING_FOR_DISCARD_PENALTY', 'WAITING_FOR_MULTIPLE_DISCARDS', 'WAITING_FOR_VARIABLE_DISCARD'].includes(latestGameState.state)) {
 
                 if (context.location === 'hand' && isMine) isValid = true;
 
             } else {
 
-                if (context.location === 'party' && card.type === 'Hero Card' && !isMine) isValid = true;
+                if (context.location === 'party' && !isMine
+                    && isLegalOpponentHeroTarget(currentPendingAction, context.owner, card)) isValid = true;
 
             }
 
         } else if (isSkillTargeting) {
 
-            if (context.location === 'party' && card.type === 'Hero Card' && !isMine) isValid = true;
+            if (context.location === 'party' && !isMine
+                && isLegalOpponentHeroTarget(currentPendingAction || {
+                    type: 'SKILL_TARGET_HERO', skillId: pendingHeroSkillCard?.skill_id
+                }, context.owner, card)) isValid = true;
 
         }
 
@@ -7765,8 +7886,9 @@ window.inspectCard = function(cardId, scopedContext = null) {
                     submitSkillHeroTarget(context);
 
                 } else if (myTargetMode && ['PENALTY', 'DRUID_SKILL_SACRIFICE', 'LIGHTNING_LABRYS_SACRIFICE', 'DRAGONS_BILE_SACRIFICE', 'ORACON_SACRIFICE'].includes(currentPendingAction.type) && window.latestGameState?.state === 'WAITING_FOR_SACRIFICE') {
-
-                    socket.emit('submit_penalty_sacrifice', { targetHeroId: card.id });
+                    submitAuthoritativeSelection('submit_penalty_sacrifice', { targetHeroId: card.id }, {
+                        onAccepted: () => cancelSkillTargeting()
+                    });
 
                 } else if (isLocalTargeting) {
 
@@ -7776,14 +7898,18 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
                     if (equipFromHandSelection) {
 
-                        socket.emit('play_from_hand', {
+                        submitAuthoritativeSelection('play_from_hand', {
 
                             cardId: localPendingEquipCard.id,
 
                             targetPlayerId: context.owner,
 
                             targetHeroId: card.id
-
+                        }, {
+                            onAccepted: () => {
+                                window.isNextPlayFree = false;
+                                cancelEquipTargeting();
+                            }
                         });
 
                     } else {
@@ -7802,18 +7928,19 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
                     }
 
-                    window.isNextPlayFree = false;
-
-                    cancelEquipTargeting();
+                    if (!equipFromHandSelection) {
+                        window.isNextPlayFree = false;
+                        cancelEquipTargeting();
+                    }
 
                 } else if (isSelfItemTargeting) {
 
                     if (latestGameState && latestGameState.state === 'WAITING_FOR_SKILL_TARGET') {
 
-                        socket.emit('submit_skill_target', {
-
+                        submitAuthoritativeSelection('submit_skill_target', {
                             targetHeroId: card.id
-
+                        }, {
+                            onAccepted: () => cancelSkillTargeting()
                         });
 
                     } else {
@@ -7828,9 +7955,9 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
                         });
 
-                    }
+                        cancelSkillTargeting();
 
-                    cancelSkillTargeting();
+                    }
 
                 } else if (isMultiTargeting) {
 
@@ -7857,15 +7984,18 @@ window.inspectCard = function(cardId, scopedContext = null) {
                         socket.emit('playCard', { cardId: pendingHeroSkillCard.id, isFree: window.isNextPlayFree, targetData: { targetPlayerId: context.owner, targetHeroId: card.id } });
 
                         window.isNextPlayFree = false;
+                        cancelSkillTargeting();
+                        closeOpponentModal();
 
                     } else if (latestGameState && latestGameState.state === 'WAITING_FOR_SKILL_TARGET') {
-
-                        socket.emit('submit_skill_target', {
-
+                        submitAuthoritativeSelection('submit_skill_target', {
                             targetPlayerId: context.owner,
-
                             targetHeroId: card.id
-
+                        }, {
+                            onAccepted: () => {
+                                cancelSkillTargeting();
+                                closeOpponentModal();
+                            }
                         });
 
                     } else {
@@ -7882,9 +8012,10 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
                         });
 
-                    }
+                        cancelSkillTargeting();
+                        closeOpponentModal();
 
-                    cancelSkillTargeting();
+                    }
 
                 } else {
 
@@ -7971,7 +8102,7 @@ function handleTargetingClick(cardEl, cardId) {
             const card = latestGameState?.activeMonsters?.find(c => c.id === cardId);
             if (card) context = { card, location: 'monsters', owner: null };
         }
-        context = context || findCardContext(cardId);
+        context = context || findCardContextForElement(cardEl, cardId);
 
         if (context) {
 
@@ -7990,11 +8121,13 @@ function handleTargetingClick(cardEl, cardId) {
             
 
             if (type === 'DISCARD' && inHand && isMine
-                && (!currentPendingAction.allowedTypes || currentPendingAction.allowedTypes.includes(card.type))) isValid = true;
+                && isLegalDiscardSelectionCard(currentPendingAction, card)) isValid = true;
 
             else if (type === 'EQUIP' && !inHand && isMine && card.type === 'Hero Card') isValid = true;
 
-            else if ((type === 'DESTROY' || type === 'STEAL' || type === 'EXCHANGE_STEP_1' || type === 'SKILL_TARGET_HERO') && !inHand && !isMine && card.type === 'Hero Card') isValid = true;
+            else if (['DESTROY', 'STEAL', 'EXCHANGE_STEP_1', 'SKILL_TARGET_HERO'].includes(type)
+                && !inHand && !isMine
+                && isLegalOpponentHeroTarget(currentPendingAction, context.owner, card)) isValid = true;
 
             else if (type === 'EXCHANGE_STEP_2' && !inHand && isMine && card.type === 'Hero Card') isValid = true;
 
@@ -8015,7 +8148,9 @@ function handleTargetingClick(cardEl, cardId) {
 
                 } else if (['PENALTY', 'DRUID_SKILL_SACRIFICE', 'LIGHTNING_LABRYS_SACRIFICE', 'DRAGONS_BILE_SACRIFICE', 'ORACON_SACRIFICE'].includes(type) && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE') {
 
-                    socket.emit('submit_penalty_sacrifice', { targetHeroId: cardId });
+                    submitAuthoritativeSelection('submit_penalty_sacrifice', { targetHeroId: cardId }, {
+                        onAccepted: () => cancelSkillTargeting()
+                    });
 
                 } else {
 
@@ -8035,20 +8170,24 @@ function handleTargetingClick(cardEl, cardId) {
 
     if (isLocalTargeting) {
 
-        const context = findCardContext(cardId);
+        const context = findCardContextForElement(cardEl, cardId);
 
         if (context && context.location === 'party' && context.card.type === 'Hero Card') {
 
             if (equipFromHandSelection) {
 
-                socket.emit('play_from_hand', {
+                submitAuthoritativeSelection('play_from_hand', {
 
                     cardId: localPendingEquipCard.id,
 
                     targetPlayerId: context.owner,
 
                     targetHeroId: context.card.id
-
+                }, {
+                    onAccepted: () => {
+                        window.isNextPlayFree = false;
+                        cancelEquipTargeting();
+                    }
                 });
 
             } else {
@@ -8067,9 +8206,10 @@ function handleTargetingClick(cardEl, cardId) {
 
             }
 
-            window.isNextPlayFree = false;
-
-            cancelEquipTargeting();
+            if (!equipFromHandSelection) {
+                window.isNextPlayFree = false;
+                cancelEquipTargeting();
+            }
 
         }
 
@@ -8081,7 +8221,7 @@ function handleTargetingClick(cardEl, cardId) {
 
     if (isSelfItemTargeting) {
 
-        const context = findCardContext(cardId);
+        const context = findCardContextForElement(cardEl, cardId);
 
         if (context && context.location === 'party' && context.owner === myId && context.card.equippedItem?.type === 'Cursed Item Card') {
 
@@ -8091,7 +8231,9 @@ function handleTargetingClick(cardEl, cardId) {
                 // turn): the roll already happened, so the server is waiting on a target.
                 // It only accepts submit_skill_target here — use_hero_skill is rejected
                 // outside PLAYING/PROMPT_SKILL_ROLL, which silently dropped the pick.
-                socket.emit('submit_skill_target', { targetHeroId: context.card.id });
+                submitAuthoritativeSelection('submit_skill_target', { targetHeroId: context.card.id }, {
+                    onAccepted: () => cancelSkillTargeting()
+                });
 
             } else {
 
@@ -8105,9 +8247,9 @@ function handleTargetingClick(cardEl, cardId) {
 
                 });
 
-            }
+                cancelSkillTargeting();
 
-            cancelSkillTargeting();
+            }
 
         }
 
@@ -8119,10 +8261,9 @@ function handleTargetingClick(cardEl, cardId) {
 
     if (isMultiTargeting) {
 
-        const context = findCardContext(cardId);
+        const context = findCardContextForElement(cardEl, cardId);
 
-        if (latestGameState && cardId !== currentPendingAction?.excludeCardId
-            && (!currentPendingAction?.allowedCardIds || currentPendingAction.allowedCardIds.includes(cardId))
+        if (latestGameState && isLegalDiscardSelectionCard(currentPendingAction, context?.card)
             && ['WAITING_FOR_DISCARD_PENALTY', 'WAITING_FOR_MULTIPLE_DISCARDS', 'WAITING_FOR_VARIABLE_DISCARD'].includes(latestGameState.state)) {
 
             if (context && context.location === 'hand' && context.owner === myId) {
@@ -8179,7 +8320,7 @@ function handleTargetingClick(cardEl, cardId) {
 
     if (isSkillTargeting) {
 
-        const context = findCardContext(cardId);
+        const context = findCardContextForElement(cardEl, cardId);
 
         if (context && context.location === 'party' && context.card.type === 'Hero Card' && context.owner !== myId) {
 
@@ -8198,15 +8339,19 @@ function handleTargetingClick(cardEl, cardId) {
                 socket.emit('playCard', { cardId: pendingHeroSkillCard.id, isFree: window.isNextPlayFree, targetData: { targetPlayerId: context.owner, targetHeroId: context.card.id } });
 
                 window.isNextPlayFree = false;
+                cancelSkillTargeting();
+                closeOpponentModal();
 
             } else if (latestGameState && latestGameState.state === 'WAITING_FOR_SKILL_TARGET') {
 
-                socket.emit('submit_skill_target', {
-
+                submitAuthoritativeSelection('submit_skill_target', {
                     targetPlayerId: context.owner,
-
                     targetHeroId: context.card.id
-
+                }, {
+                    onAccepted: () => {
+                        cancelSkillTargeting();
+                        closeOpponentModal();
+                    }
                 });
 
             } else {
@@ -8225,13 +8370,10 @@ function handleTargetingClick(cardEl, cardId) {
 
                 });
 
+                cancelSkillTargeting();
+                closeOpponentModal();
+
             }
-
-            
-
-            cancelSkillTargeting();
-
-            closeOpponentModal();
 
         }
 
@@ -8292,7 +8434,7 @@ document.body.addEventListener('click', (e) => {
             return;
         }
 
-        const context = findCardContext(cardId);
+        const context = findCardContextForElement(cardEl, cardId);
 
         if (context) {
 

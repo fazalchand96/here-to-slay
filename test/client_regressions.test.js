@@ -332,7 +332,7 @@ test('Lightning Labrys confirmation uses a tappable banner and waits for server 
 
     assert.match(appSource, /data-submit-variable-discard/);
     assert.match(appSource, /socket\.timeout\(4000\)\.emit\([\s\S]*?'submit_penalty_discard'/);
-    assert.match(appSource, /if \(error \|\| !response\?\.ok\)/);
+    assert.match(appSource, /if \(error \|\| response\?\.ok !== true\)/);
     assert.match(styleSource, /#target-banner \{[\s\S]*?pointer-events: auto !important;/);
     assert.match(serverSource, /reply\(\{ ok: true, discardedCount \}\)/);
 });
@@ -581,4 +581,32 @@ test('Druid skill rolls show low-roll labels and Majestelk reaches its dedicated
     assert.match(htmlSource, /id="majestelk-choice-modal"/);
     assert.match(htmlSource, /onclick="chooseMajestelkModifier\(5\)"/);
     assert.match(htmlSource, /onclick="chooseMajestelkModifier\(-5\)"/);
+});
+
+test('every authoritative mobile choice clears the dice overlay and waits for acknowledgement', () => {
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const serverSource = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+
+    const actNowStates = appSource.match(/const actNowStates = \[[\s\S]*?\];/);
+    assert.ok(actNowStates);
+    [
+        'WAITING_FOR_CLASS_SELECTION', 'WAITING_FOR_DRAGON_WASP_CHOICE',
+        'WAITING_FOR_LUMBERING_DEMON_CHOICE', 'WAITING_FOR_GOBLET_REROLL',
+        'WAITING_FOR_MONSTER_TRIGGER_CHOICE', 'WAITING_FOR_END_TURN_CHOICE',
+        'WAITING_FOR_DRAGALTER_CHOICE', 'WAITING_FOR_SMOK_CHOICE',
+        'WAITING_FOR_MIRRORYU_CHOICE', 'WAITING_FOR_LUUT_CHOICE',
+        'WAITING_FOR_CALAMITY_MONGREL_CHOICE', 'WAITING_FOR_MODIFIER_RETRIEVAL'
+    ].forEach(state => assert.match(actNowStates[0], new RegExp(state)));
+
+    assert.match(appSource, /function submitAuthoritativeSelection\([\s\S]*?socket\.timeout\(4000\)\.emit/);
+    assert.match(appSource, /isAllowedHandSelectionCard[\s\S]*?allowedCardIds\.includes\(card\.id\)/);
+    assert.match(appSource, /function isLegalDiscardSelectionCard[\s\S]*?allowedCardIds\.includes\(card\.id\)/);
+    assert.match(appSource, /isLegalOpponentHeroTarget[\s\S]*?cannotBeStolen[\s\S]*?cannotBeDestroyed[\s\S]*?MONSTER_TERRATUGA/);
+    assert.match(appSource, /data-owner-id="\$\{ownerId \|\| ''\}" data-location=/);
+    assert.match(appSource, /function findCardContextForElement/);
+    assert.match(serverSource, /function heroTargetBlockReason[\s\S]*?cannotBeStolen[\s\S]*?cannotBeDestroyed[\s\S]*?MONSTER_TERRATUGA/);
+    assert.match(serverSource, /socket\.on\('target_selected',[\s\S]*?reply\(accepted/);
+    assert.match(serverSource, /socket\.on\('play_from_hand',[\s\S]*?isAllowedCard/);
+    ['resolve_immediate_play', 'submit_penalty_sacrifice', 'skip_optional_action', 'submit_penalty_discard']
+        .forEach(eventName => assert.match(serverSource, new RegExp(`socket\\.on\\('${eventName}'[\\s\\S]*?acknowledge`)));
 });

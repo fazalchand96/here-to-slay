@@ -1,7 +1,7 @@
 'use strict';
 
 const { test, expect } = require('../helpers/fixtures');
-const { startGame, injectCard, playCardFromHand, passChallenge, rollDice, passModifiers, passOpponentModifiers } = require('../helpers/gameSetup');
+const { startGame, injectCard, playCardFromHand, passChallenge, rollDice, passModifiers, passOpponentModifiers, setHand } = require('../helpers/gameSetup');
 
 // Cards whose primary effect is drawing cards (no complex targeting).
 const DRAW_CARDS = [
@@ -93,35 +93,26 @@ test(`${name}: hand-selection banner or hand grows after draw`, async ({ browser
 });
 }
 
-// Fuzzy Cheeks ("DRAW a card; you MAY play a Hero") must never soft-lock: the
-// hand-selection prompt is optional, so a Skip button must appear and return to
-// PLAYING even when there's no Hero to play.
-test('Fuzzy Cheeks (card_025): hand-selection is skippable (no soft-lock)', async ({ browser }) => {
+// Fuzzy Cheeks requires a Hero play when one is available. With no Hero after
+// drawing, it must resolve directly instead of opening an impossible selection.
+test('Fuzzy Cheeks (card_025): no Hero means no hand-selection soft-lock', async ({ browser }) => {
     const errors = [];
     const { host, p2, ctx1, ctx2 } = await startGame(browser);
     host.on('pageerror', e => errors.push(e.message));
 
-    await injectCard(host, 'card_025');
+    await setHand(host, ['card_025']);
+    await host.evaluate(() => window._socket.emit('debug_stack_deck', { cardId: 'card_064' }));
     await playCardFromHand(host, 'card_025');
     await passChallenge(p2);
     await rollDice(host);
     await passModifiers(host);
     await passOpponentModifiers(p2);
 
-    // The skill resolved into the hand-selection prompt (which means the draw ran,
-    // since drawCards is called immediately before setting that state).
-    await expect(host.locator('#target-banner')).not.toHaveClass(/hidden/, { timeout: 8_000 });
-    await expect.poll(async () => host.evaluate(() =>
-        window.latestGameState && window.latestGameState.state)).toBe('WAITING_FOR_HAND_SELECTION');
-
-    // A Skip button must be offered (optional action) — click it and confirm we're
-    // back to PLAYING rather than stuck.
-    const skipBtn = host.locator('#target-banner button').filter({ hasText: /SKIP/i }).first();
-    await expect(skipBtn).toBeVisible({ timeout: 5_000 });
-    await skipBtn.click();
-
+    // The non-Hero draw resolves immediately with no unusable chooser.
     await expect.poll(async () => host.evaluate(() =>
         window.latestGameState && window.latestGameState.state)).toBe('PLAYING');
+    await expect(host.locator('#target-banner')).toHaveClass(/hidden/);
+
     expect(errors).toEqual([]);
 
     await ctx1.close(); await ctx2.close();
@@ -139,6 +130,10 @@ test('Quick Draw (card_043): an item played from the prompt equips to a hero', a
     // Give the host a Hero in their party so there's a valid equip target.
     await host.evaluate(() => window._socket.emit('debug_inject_to_party', { cardId: 'card_016' }));
     await host.waitForTimeout(300);
+    await host.evaluate(() => {
+        window._socket.emit('debug_stack_deck', { cardId: 'card_030' });
+        window._socket.emit('debug_stack_deck', { cardId: 'card_064' });
+    });
 
     await injectCard(host, 'card_043');
     await playCardFromHand(host, 'card_043');
@@ -150,18 +145,20 @@ test('Quick Draw (card_043): an item played from the prompt equips to a hero', a
     await expect.poll(async () => host.evaluate(() =>
         window.latestGameState && window.latestGameState.state)).toBe('WAITING_FOR_HAND_SELECTION');
 
-    // Guarantee a playable item is in hand, then choose it from the prompt.
-    await injectCard(host, 'card_064'); // Bard Mask (Item)
-    await host.locator('#player-hand [data-id="card_064"]').first().click();
+    // Choose the exact Item drawn by Quick Draw. An older or subsequently
+    // injected Item is intentionally not eligible for this prompt.
+    await host.locator('#player-hand [data-id="card_064"]').first().click({ force: true });
     await expect(host.locator('#inspector-modal')).toBeVisible({ timeout: 5_000 });
     await host.locator('#inspector-modal-actions button').filter({ hasText: /Play This Card/i }).first().click();
 
-    // Now in client-only equip targeting: the party hero is a valid target. Click
-    // it, then confirm via SELECT TARGET.
-    const heroTarget = host.locator('#player-party [data-id="card_016"]').first();
+    // Now in client-only equip targeting: one tap on the Party Hero submits it.
+    await host.locator('#party-dock').click({ force: true });
+    const heroTarget = host.locator('#opponent-modal [data-id="card_016"]').first();
     await expect(heroTarget).toHaveClass(/valid-target/, { timeout: 5_000 });
     await heroTarget.click({ force: true });
-    await host.locator('#inspector-modal-actions button').filter({ hasText: /SELECT TARGET/i }).first().click();
+    const confirmTarget = host.locator('#inspector-modal-actions button')
+        .filter({ hasText: /SELECT TARGET/i }).first();
+    if (await confirmTarget.isVisible().catch(() => false)) await confirmTarget.click();
 
     // The item enters the challenge phase; let the opponent pass.
     await passChallenge(p2);

@@ -45,15 +45,16 @@ test('Hopper: the TARGET chooses which Hero to sacrifice', async ({ browser }) =
     await expect.poll(async () => p2.evaluate(() =>
         window.latestGameState.players[window.myId].party.length)).toBe(2);
 
-    // The targeting UI must be enabled for p2: their hero shows as a valid target.
+    // The compact mobile board keeps Party cards inside the Party modal. Open it
+    // and verify the chosen player's Heroes are actionable there.
     const heroToKeep = 'card_016';
     const heroToSacrifice = 'card_031';
-    const sacTarget = p2.locator(`#player-party [data-id="${heroToSacrifice}"]`).first();
+    await p2.locator('#party-dock').click({ force: true });
+    const sacTarget = p2.locator(`#opponent-modal [data-id="${heroToSacrifice}"]`).first();
     await expect(sacTarget).toHaveClass(/valid-target/, { timeout: 5_000 });
 
-    // p2 taps the hero they choose to sacrifice, then confirms via SELECT TARGET.
+    // One tap submits the sacrifice; no hidden second confirmation is required.
     await sacTarget.click({ force: true });
-    await p2.locator('#inspector-modal-actions button').filter({ hasText: /SELECT TARGET/i }).first().click();
 
     // The CHOSEN hero is gone; the other one stays. Flow resumes to PLAYING.
     await expect.poll(async () => stateOf(p2)).toBe('PLAYING');

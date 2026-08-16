@@ -186,17 +186,33 @@ function canPlayerSubmitModifierPlay(state, playerId) {
 // no legal target exists (e.g. Entangling Trap's "then STEAL a Hero" with no
 // opponent heroes on the board). Party Leaders aren't Hero Cards, so they're
 // excluded automatically. Respects Calming Voice / Mighty Blade / Terratuga.
+function heroTargetBlockReason(player, type) {
+    if (!player) return 'That player is no longer available.';
+    if (type === 'STEAL' && player.cannotBeStolen) {
+        return `${getPlayerName(gameState, player.id)}'s Heroes cannot be stolen right now.`;
+    }
+    if (type === 'DESTROY' && player.cannotBeDestroyed) {
+        return `${getPlayerName(gameState, player.id)}'s Heroes cannot be destroyed right now.`;
+    }
+    if (type === 'DESTROY'
+        && (player.slainMonsters || []).some(monster => monster.effect_id === 'MONSTER_TERRATUGA')) {
+        return `${getPlayerName(gameState, player.id)}'s Heroes are protected by Terratuga.`;
+    }
+    return null;
+}
+
+function replyToSelection(acknowledge, ok, reason = null) {
+    if (typeof acknowledge !== 'function') return;
+    acknowledge(ok ? { ok: true } : { ok: false, reason: reason || 'That choice is no longer valid.' });
+}
+
 function hasStealOrDestroyTarget(actorId, type) {
     for (const pid in gameState.players) {
         if (pid === actorId) continue;
         const p = gameState.players[pid];
         if (!p || !p.party) continue;
         if (!p.party.some(h => h.type === 'Hero Card')) continue;
-        if (type === 'STEAL' && p.cannotBeStolen) continue;
-        if (type === 'DESTROY') {
-            if (p.cannotBeDestroyed) continue;
-            if (p.slainMonsters && p.slainMonsters.some(m => m.effect_id === 'MONSTER_TERRATUGA')) continue;
-        }
+        if (heroTargetBlockReason(p, type)) continue;
         return true;
     }
     return false;
@@ -3196,22 +3212,42 @@ ioServer.on('connection', (socket) => {
         broadcastState();
     });
 
-    socket.on('submit_skill_target', (targetData) => {
-        if (gameState.state !== 'WAITING_FOR_SKILL_TARGET') return;
-        if (!gameState.pendingAction) return;
+    socket.on('submit_skill_target', (targetData, acknowledge) => {
+        const reply = payload => {
+            if (typeof acknowledge === 'function') acknowledge(payload);
+        };
+        const reject = reason => reply({ ok: false, reason });
+        if (gameState.state !== 'WAITING_FOR_SKILL_TARGET') {
+            reject('This target choice is no longer active.');
+            return;
+        }
+        if (!gameState.pendingAction) {
+            reject('There is no target to select right now.');
+            return;
+        }
         if (socket.id !== gameState.activePlayerSocketId
-            && socket.id !== gameState.pendingAction.playerToChoose) return;
+            && socket.id !== gameState.pendingAction.playerToChoose) {
+            reject('Another player must make this choice.');
+            return;
+        }
 
         if (gameState.pendingAction.type === 'LIGHTNING_LABRYS_PLAYER') {
-            if (socket.id !== gameState.pendingAction.playerToChoose) return;
+            if (socket.id !== gameState.pendingAction.playerToChoose) {
+                reject('Another player must make this choice.');
+                return;
+            }
             const targetPlayerId = targetData?.targetPlayerId;
             const result = queueLightningLabrysSacrifice(gameState, targetPlayerId);
-            if (!result) return;
+            if (!result) {
+                reject('That player cannot be selected for Lightning Labrys.');
+                return;
+            }
             if (result === 'NO_HERO') {
                 io.emit('message', `${getPlayerName(gameState, targetPlayerId)} has no Hero to sacrifice for Lightning Labrys.`);
             } else {
                 io.emit('message', `${getPlayerName(gameState, targetPlayerId)} must choose a Hero to sacrifice for Lightning Labrys.`);
             }
+            reply({ ok: true });
             broadcastState();
             return;
         }
@@ -3220,7 +3256,10 @@ ioServer.on('connection', (socket) => {
             const targetId = targetData?.targetPlayerId;
             const target = gameState.players[targetId];
             const actor = gameState.players[socket.id];
-            if (!target || targetId === socket.id || target.connected === false || target.hand.length === 0) return;
+            if (!target || targetId === socket.id || target.connected === false || target.hand.length === 0) {
+                reject('That opponent is not a valid target.');
+                return;
+            }
             let pulled = 0;
             while (pulled < 2 && target.hand.length > 0) {
                 const index = Math.floor(Math.random() * target.hand.length);
@@ -3238,35 +3277,50 @@ ioServer.on('connection', (socket) => {
             );
             resetToPlayingState();
             advanceEndTurnMonsterEffect();
+            reply({ ok: true });
             broadcastState();
             return;
         }
 
         if (gameState.pendingAction.skillId === 'SKILL_BOSTON_TERROR_RETRIEVE') {
             const action = gameState.pendingAction;
-            if (socket.id !== action.playerToChoose) return;
+            if (socket.id !== action.playerToChoose) {
+                reject('Another player must make this choice.');
+                return;
+            }
             const cardIndex = gameState.discardPile.findIndex(card => card.id === targetData?.targetCardId
                 && action.allowedTypes.includes(card.type));
-            if (cardIndex === -1) return;
+            if (cardIndex === -1) {
+                reject('That discard card is not available for this effect.');
+                return;
+            }
             const card = gameState.discardPile.splice(cardIndex, 1)[0];
             gameState.players[socket.id].hand.push(card);
             action.remaining -= 1;
             io.emit('message', `${getPlayerName(gameState, socket.id)} retrieved ${card.name} with Boston Terror.`);
             if (action.remaining <= 0 || gameState.discardPile.length === 0) resetToPlayingState();
+            reply({ ok: true });
             broadcastState();
             return;
         }
 
         if (gameState.pendingAction.skillId === 'MONSTER_DOOMBRINGER_RETRIEVE') {
             const action = gameState.pendingAction;
-            if (socket.id !== action.playerToChoose) return;
+            if (socket.id !== action.playerToChoose) {
+                reject('Another player must make this choice.');
+                return;
+            }
             const cardIndex = gameState.discardPile.findIndex(card => card.id === targetData?.targetCardId
                 && action.allowedTypes.includes(card.type));
-            if (cardIndex === -1) return;
+            if (cardIndex === -1) {
+                reject('That discard card is not available for this effect.');
+                return;
+            }
             const card = gameState.discardPile.splice(cardIndex, 1)[0];
             gameState.players[socket.id].hand.push(card);
             io.emit('message', `${getPlayerName(gameState, socket.id)} retrieved ${card.name} with Doombringer.`);
             resetToPlayingState();
+            reply({ ok: true });
             broadcastState();
             return;
         }
@@ -3278,6 +3332,7 @@ ioServer.on('connection', (socket) => {
         if (targetData && targetData.cancel) {
             io.emit('message', `${getPlayerName(gameState, socket.id)} found no valid target and cancelled the skill.`);
             resetToPlayingState();
+            reply({ ok: true });
             broadcastState();
             return;
         }
@@ -3288,14 +3343,20 @@ ioServer.on('connection', (socket) => {
         if (gameState.pendingAction.type === 'SKILL_TARGET_DISCARD' && targetData?.targetCardId) {
             const selected = gameState.discardPile.find(card => card.id === targetData.targetCardId);
             const allowedTypes = gameState.pendingAction.allowedTypes;
-            if (!selected || (allowedTypes && !allowedTypes.includes(selected.type))) return;
+            if (!selected || (allowedTypes && !allowedTypes.includes(selected.type))) {
+                reject('That discard card is not valid for this effect.');
+                return;
+            }
         }
         if (gameState.pendingAction.type === 'SKILL_TARGET_HERO') {
             const targetPlayerId = targetData?.targetPlayerId;
             const targetPlayer = gameState.players[targetPlayerId];
             const targetHero = targetPlayer?.party?.find(card =>
                 card.id === targetData?.targetHeroId && card.type === 'Hero Card');
-            if (!targetPlayer || targetPlayerId === rollerId || !targetHero) return;
+            if (!targetPlayer || targetPlayerId === rollerId || !targetHero) {
+                reject('That Hero is no longer a valid target.');
+                return;
+            }
 
             const targetAction = gameState.pendingAction.targetAction;
             const destroyProtected = targetAction === 'DESTROY'
@@ -3305,6 +3366,7 @@ ioServer.on('connection', (socket) => {
             const stealProtected = targetAction === 'STEAL' && targetPlayer.cannotBeStolen;
             if (destroyProtected || stealProtected) {
                 socket.emit('message', `${getPlayerName(gameState, targetPlayerId)} is protected. Choose another Hero.`);
+                reject(`${getPlayerName(gameState, targetPlayerId)} is protected. Choose another Hero.`);
                 broadcastState();
                 return;
             }
@@ -3313,6 +3375,7 @@ ioServer.on('connection', (socket) => {
         // Reset state
         resetToPlayingState();
         executeSkill(gameState, io, skillId, rollerId, heroId, targetData);
+        reply({ ok: true });
         broadcastState();
     });
 
@@ -3912,12 +3975,18 @@ ioServer.on('connection', (socket) => {
         return true;
     }
 
-    socket.on('submit_minus_four_retrieval', ({ cardId } = {}) => {
+    socket.on('submit_minus_four_retrieval', ({ cardId } = {}, acknowledge) => {
         const action = gameState.pendingAction;
         if (gameState.state !== 'WAITING_FOR_MODIFIER_RETRIEVAL' || !action
-            || action.type !== 'MODIFIER_MINUS_FOUR_RETRIEVAL' || action.playerToChoose !== socket.id) return;
+            || action.type !== 'MODIFIER_MINUS_FOUR_RETRIEVAL' || action.playerToChoose !== socket.id) {
+            replyToSelection(acknowledge, false);
+            return;
+        }
         const cardIndex = gameState.discardPile.findIndex(card => card.id === cardId);
-        if (cardIndex === -1) return;
+        if (cardIndex === -1) {
+            replyToSelection(acknowledge, false, 'That discard card is no longer available.');
+            return;
+        }
         const [card] = gameState.discardPile.splice(cardIndex, 1);
         gameState.players[socket.id].hand.push(card);
         io.emit('message', `${getPlayerName(gameState, socket.id)} retrieved ${card.name} with Modifier -4.`);
@@ -3926,6 +3995,7 @@ ioServer.on('connection', (socket) => {
         if (action.queue.length > 0 && gameState.discardPile.length > 0) {
             action.playerToChoose = action.queue[0];
             io.emit('message', `${getPlayerName(gameState, action.playerToChoose)} may now retrieve a card with Modifier -4.`);
+            replyToSelection(acknowledge, true);
             broadcastState();
             return;
         }
@@ -3935,6 +4005,7 @@ ioServer.on('connection', (socket) => {
         gameState.pendingRoll.heldMinusFourCards = [];
         gameState.pendingAction = null;
         gameState.state = 'WAITING_FOR_MODIFIERS';
+        replyToSelection(acknowledge, true);
         resolvePendingRoll();
     });
 
@@ -4239,16 +4310,33 @@ ioServer.on('connection', (socket) => {
     });
 
     
-    socket.on('play_from_hand', (data) => {
-        if (gameState.state !== 'WAITING_FOR_HAND_SELECTION') return;
-        if (socket.id !== gameState.pendingAction.playerToChoose) return;
+    socket.on('play_from_hand', (data = {}, acknowledge) => {
+        const reply = payload => {
+            if (typeof acknowledge === 'function') acknowledge(payload);
+        };
+        if (gameState.state !== 'WAITING_FOR_HAND_SELECTION' || !gameState.pendingAction) {
+            reply({ ok: false, reason: 'This hand selection is no longer active.' });
+            return;
+        }
+        if (socket.id !== gameState.pendingAction.playerToChoose) {
+            reply({ ok: false, reason: 'Another player must make this choice.' });
+            return;
+        }
         const player = gameState.players[socket.id];
-        if (!player) return;
+        if (!player) {
+            reply({ ok: false, reason: 'Your player seat is not available.' });
+            return;
+        }
 
-        if (data.cancel && (gameState.pendingAction.optional || !player.hand.some(c => gameState.pendingAction.allowedTypes.includes(c.type)))) {
+        const isAllowedCard = card => gameState.pendingAction.allowedTypes.includes(card.type)
+            && (!Array.isArray(gameState.pendingAction.allowedCardIds)
+                || gameState.pendingAction.allowedCardIds.includes(card.id));
+
+        if (data.cancel && (gameState.pendingAction.optional || !player.hand.some(isAllowedCard))) {
             io.emit('message', `${getPlayerName(gameState, player.id)} declined to play a card.`);
             if (gameState.pendingAction.expansionFreePlay) gameState.freePlayQueue = null;
             resetToPlayingState();
+            reply({ ok: true });
             broadcastState();
             return;
         }
@@ -4256,9 +4344,7 @@ ioServer.on('connection', (socket) => {
         const cardIndex = player.hand.findIndex(c => c.id === data.cardId);
         if (cardIndex !== -1) {
             const card = player.hand[cardIndex];
-            const allowedIds = gameState.pendingAction.allowedCardIds;
-            if (gameState.pendingAction.allowedTypes.includes(card.type)
-                && (!allowedIds || allowedIds.includes(card.id))) {
+            if (isAllowedCard(card)) {
                 // Capture follow-up draw count, then clear the PLAY_FROM_HAND action.
                 // It has been consumed; leaving it set makes resolvePendingCard mistake
                 // it for a Magic follow-up (forcing PLAYING and clobbering a Hero's
@@ -4279,6 +4365,7 @@ ioServer.on('connection', (socket) => {
                 }, 'immediate play effect')) {
                     gameState.pendingCard = null;
                     gameState.state = 'PLAYING';
+                    reply({ ok: true });
                     broadcastState();
                     return;
                 }
@@ -4311,16 +4398,29 @@ ioServer.on('connection', (socket) => {
                     });
                     broadcastState();
                 }
+                reply({ ok: true });
             } else {
                  io.emit('message', `You must select a ${gameState.pendingAction.allowedTypes.join(' or ')}.`);
+                 reply({ ok: false, reason: 'That card is not available for this effect.' });
             }
+        } else {
+            reply({ ok: false, reason: 'That card is no longer in your hand.' });
         }
     });
-socket.on('resolve_immediate_play', (data) => {
-        if (gameState.state !== 'WAITING_FOR_IMMEDIATE_PLAY') return;
-        if (socket.id !== gameState.pendingAction.playerToChoose) return;
+socket.on('resolve_immediate_play', (data, acknowledge) => {
+        if (gameState.state !== 'WAITING_FOR_IMMEDIATE_PLAY') {
+            replyToSelection(acknowledge, false, 'This immediate-play choice is no longer active.');
+            return;
+        }
+        if (socket.id !== gameState.pendingAction.playerToChoose) {
+            replyToSelection(acknowledge, false, 'Another player must make this choice.');
+            return;
+        }
         const player = gameState.players[socket.id];
-        if (!player || !gameState.pendingCard) return;
+        if (!player || !gameState.pendingCard) {
+            replyToSelection(acknowledge, false, 'The drawn card is no longer available.');
+            return;
+        }
         
         // Snowball: drawing a second card is part of choosing to PLAY the drawn
         // Magic card. Read it before clearing the choice action.
@@ -4328,6 +4428,7 @@ socket.on('resolve_immediate_play', (data) => {
 
         if (data.playNow === true) {
             if (prepareImmediateItemPlay(gameState, socket.id)) {
+                replyToSelection(acknowledge, true);
                 broadcastState();
                 return;
             }
@@ -4340,6 +4441,7 @@ socket.on('resolve_immediate_play', (data) => {
             }, 'Snowball')) {
                 gameState.pendingCard = null;
                 gameState.state = 'PLAYING';
+                replyToSelection(acknowledge, true);
                 broadcastState();
                 return;
             }
@@ -4365,16 +4467,24 @@ socket.on('resolve_immediate_play', (data) => {
         }
 
         gameState.pendingCard = null;
+        replyToSelection(acknowledge, true);
         broadcastState();
     });
 
-    socket.on('submit_penalty_sacrifice', (data) => {
-        if (gameState.state !== 'WAITING_FOR_SACRIFICE') return;
+    socket.on('submit_penalty_sacrifice', (data, acknowledge) => {
+        if (gameState.state !== 'WAITING_FOR_SACRIFICE') {
+            replyToSelection(acknowledge, false, 'This sacrifice choice is no longer active.');
+            return;
+        }
         const player = gameState.players[socket.id];
-        if (!player || socket.id !== gameState.pendingAction.playerToChoose) return;
+        if (!player || socket.id !== gameState.pendingAction.playerToChoose) {
+            replyToSelection(acknowledge, false, 'Another player must make this choice.');
+            return;
+        }
 
         const tHeroIndex = player.party.findIndex(h => h.id === data.targetHeroId);
         if (tHeroIndex !== -1) {
+            replyToSelection(acknowledge, true);
             const targetHero = player.party[tHeroIndex];
             const pendingAction = gameState.pendingAction;
             const pendingSkillId = pendingAction.skillId;
@@ -4438,47 +4548,72 @@ socket.on('resolve_immediate_play', (data) => {
                 resetToPlayingState();
             }
             broadcastState();
+        } else {
+            replyToSelection(acknowledge, false, 'That Hero is no longer in your Party.');
         }
     });
 
-    socket.on('choose_majestelk_modifier', ({ value }) => {
-        if (gameState.state !== 'WAITING_FOR_MAJESTELK_CHOICE' || gameState.pendingAction?.playerToChoose !== socket.id) return;
-        if (![5, -5].includes(value)) return;
+    socket.on('choose_majestelk_modifier', ({ value } = {}, acknowledge) => {
+        if (gameState.state !== 'WAITING_FOR_MAJESTELK_CHOICE' || gameState.pendingAction?.playerToChoose !== socket.id) {
+            replyToSelection(acknowledge, false);
+            return;
+        }
+        if (![5, -5].includes(value)) {
+            replyToSelection(acknowledge, false, 'Choose either +5 or -5.');
+            return;
+        }
         const player = gameState.players[socket.id];
         player.untilNextTurnRollBonus = value;
         io.emit('message', `${getPlayerName(gameState, socket.id)} chose ${value > 0 ? '+' : ''}${value} with Majestelk until the start of their next turn.`);
         resetToPlayingState();
+        replyToSelection(acknowledge, true);
         broadcastState();
     });
 
-    socket.on('resolve_dragalter_choice', ({ cardId, value } = {}) => {
+    socket.on('resolve_dragalter_choice', ({ cardId, value } = {}, acknowledge) => {
         const action = gameState.pendingAction;
         if (gameState.state !== 'WAITING_FOR_DRAGALTER_CHOICE'
             || action?.type !== 'DRAGALTER_MODIFIER' || action.playerToChoose !== socket.id
-            || !action.allowedCardIds?.includes(cardId)) return;
+            || !action.allowedCardIds?.includes(cardId)) {
+            replyToSelection(acknowledge, false);
+            return;
+        }
         const player = gameState.players[socket.id];
         const index = player?.hand?.findIndex(card => card.id === cardId && card.type === 'Modifier Card') ?? -1;
-        if (index === -1) return;
+        if (index === -1) {
+            replyToSelection(acknowledge, false, 'That Modifier is no longer in your hand.');
+            return;
+        }
         const modifier = player.hand[index];
         const allowed = Array.isArray(modifier.modifier_values) ? modifier.modifier_values : [];
-        if (!allowed.includes(value)) return;
+        if (!allowed.includes(value)) {
+            replyToSelection(acknowledge, false, 'That Modifier value is not available.');
+            return;
+        }
         player.hand.splice(index, 1);
         gameState.discardPile.push(modifier);
         player.rollBonus = (player.rollBonus || 0) + value;
         (player.rollBonusSources = player.rollBonusSources || []).push({ source: 'Dragalter', value });
         resetToPlayingState();
         io.emit('message', `${getPlayerName(gameState, socket.id)} discarded ${modifier.name}; Dragalter applies ${value >= 0 ? '+' : ''}${value} to all of their rolls for the rest of this turn.`);
+        replyToSelection(acknowledge, true);
         broadcastState();
     });
 
-    socket.on('resolve_smok_choice', ({ cardId } = {}) => {
+    socket.on('resolve_smok_choice', ({ cardId } = {}, acknowledge) => {
         const action = gameState.pendingAction;
         if (gameState.state !== 'WAITING_FOR_SMOK_CHOICE' || action?.type !== 'SMOK_REVEAL'
-            || action.playerToChoose !== socket.id) return;
+            || action.playerToChoose !== socket.id) {
+            replyToSelection(acknowledge, false);
+            return;
+        }
         const player = gameState.players[socket.id];
         if (cardId) {
             const card = player?.hand?.find(entry => entry.id === cardId && entry.type === 'Magic Card');
-            if (!card || !action.allowedCardIds?.includes(card.id)) return;
+            if (!card || !action.allowedCardIds?.includes(card.id)) {
+                replyToSelection(acknowledge, false, 'That Magic card cannot be revealed for Smok.');
+                return;
+            }
             player.ap = (player.ap || 0) + 1;
             io.emit('card_revealed', { playerId: socket.id, playerName: getPlayerName(gameState, socket.id), card, source: 'Smok' });
             io.emit('message', `${getPlayerName(gameState, socket.id)} revealed ${card.name} with Smok and gained 1 extra action point this turn.`);
@@ -4486,16 +4621,23 @@ socket.on('resolve_immediate_play', (data) => {
             io.emit('message', `${getPlayerName(gameState, socket.id)} declined to reveal a Magic card for Smok.`);
         }
         resetToPlayingState();
+        replyToSelection(acknowledge, true);
         broadcastState();
     });
 
-    socket.on('resolve_mirroryu_choice', ({ heroId } = {}) => {
+    socket.on('resolve_mirroryu_choice', ({ heroId } = {}, acknowledge) => {
         const action = gameState.pendingAction;
         if (gameState.state !== 'WAITING_FOR_MIRRORYU_CHOICE' || action?.type !== 'MIRRORYU_HERO'
-            || action.playerToChoose !== socket.id || !action.allowedHeroIds?.includes(heroId)) return;
+            || action.playerToChoose !== socket.id || !action.allowedHeroIds?.includes(heroId)) {
+            replyToSelection(acknowledge, false);
+            return;
+        }
         const player = gameState.players[socket.id];
         const hero = player?.party?.find(card => card.id === heroId && card.skill_id);
-        if (!hero || hero.id === action.sourceHeroId || hasEquippedEffect(hero, 'ITEM_SEALING_KEY')) return;
+        if (!hero || hero.id === action.sourceHeroId || hasEquippedEffect(hero, 'ITEM_SEALING_KEY')) {
+            replyToSelection(acknowledge, false, 'That Hero effect is not available for Mirroryu.');
+            return;
+        }
         gameState.state = 'WAITING_TO_ROLL';
         gameState.pendingAction = null;
         gameState.pendingRoll = {
@@ -4505,22 +4647,33 @@ socket.on('resolve_immediate_play', (data) => {
             mirroryuBonus: 3, mirroryuFreeRoll: true
         };
         io.emit('message', `${getPlayerName(gameState, socket.id)} chose ${hero.name}; Mirroryu grants +3 to its immediate skill roll.`);
+        replyToSelection(acknowledge, true);
         broadcastState();
     });
 
-    socket.on('resolve_luut_choice', ({ itemId, heroId } = {}) => {
+    socket.on('resolve_luut_choice', ({ itemId, heroId } = {}, acknowledge) => {
         const action = gameState.pendingAction;
-        if (gameState.state !== 'WAITING_FOR_LUUT_CHOICE' || !action || action.playerToChoose !== socket.id) return;
+        if (gameState.state !== 'WAITING_FOR_LUUT_CHOICE' || !action || action.playerToChoose !== socket.id) {
+            replyToSelection(acknowledge, false);
+            return;
+        }
         const player = gameState.players[socket.id];
         if (action.type === 'LUUT_ITEM') {
             const candidate = action.availableItems?.find(entry => entry.itemId === itemId);
-            if (!candidate) return;
+            if (!candidate) {
+                replyToSelection(acknowledge, false, 'That equipped Item is no longer available.');
+                return;
+            }
             gameState.pendingAction = { ...action, type: 'LUUT_DESTINATION', selectedItem: candidate };
             io.emit('message', `${getPlayerName(gameState, socket.id)} selected an Item with Luut and must choose a Hero to equip it to.`);
+            replyToSelection(acknowledge, true);
             broadcastState();
             return;
         }
-        if (action.type !== 'LUUT_DESTINATION' || !action.destinationHeroIds?.includes(heroId)) return;
+        if (action.type !== 'LUUT_DESTINATION' || !action.destinationHeroIds?.includes(heroId)) {
+            replyToSelection(acknowledge, false, 'That Hero cannot receive Luut\'s Item.');
+            return;
+        }
         const destination = player?.party?.find(card => card.id === heroId);
         const selected = action.selectedItem;
         const owner = selected && gameState.players[selected.ownerId];
@@ -4528,19 +4681,26 @@ socket.on('resolve_immediate_play', (data) => {
         const slot = ['equippedItem', 'equippedItem2'].find(key => sourceHero?.[key]?.id === selected.itemId);
         const targetSlot = ['equippedItem', 'equippedItem2'].slice(0, destination?.item_slots || 1)
             .find(key => destination && !destination[key]);
-        if (!slot || !targetSlot) return;
+        if (!slot || !targetSlot) {
+            replyToSelection(acknowledge, false, 'The selected Item or destination slot is no longer available.');
+            return;
+        }
         const item = sourceHero[slot];
         sourceHero[slot] = null;
         destination[targetSlot] = item;
         resetToPlayingState();
         io.emit('message', `${getPlayerName(gameState, socket.id)} stole ${item.name} with Luut and equipped it to ${destination.name}.`);
+        replyToSelection(acknowledge, true);
         broadcastState();
     });
 
-    socket.on('choose_roaryal_guard_class', ({ className } = {}) => {
+    socket.on('choose_roaryal_guard_class', ({ className } = {}, acknowledge) => {
         const action = gameState.pendingAction;
         if (gameState.state !== 'WAITING_FOR_CLASS_SELECTION' || action?.type !== 'ROARYAL_GUARD_CLASS'
-            || action.playerToChoose !== socket.id || !CLASSES.includes(className)) return;
+            || action.playerToChoose !== socket.id || !CLASSES.includes(className)) {
+            replyToSelection(acknowledge, false);
+            return;
+        }
 
         let returned = 0;
         Object.values(gameState.players).forEach(owner => {
@@ -4557,17 +4717,24 @@ socket.on('resolve_immediate_play', (data) => {
         });
         io.emit('message', `${getPlayerName(gameState, socket.id)} chose ${className} with Roaryal Guard and returned ${returned} Hero${returned === 1 ? '' : 'es'} to their owners' hands.`);
         resetToPlayingState();
+        replyToSelection(acknowledge, true);
         broadcastState();
     });
 
-    socket.on('resolve_dragon_wasp_choice', ({ use } = {}) => {
+    socket.on('resolve_dragon_wasp_choice', ({ use } = {}, acknowledge) => {
         const action = gameState.pendingAction;
         if (gameState.state !== 'WAITING_FOR_DRAGON_WASP_CHOICE'
             || action?.type !== 'DRAGON_WASP_REPLACEMENT'
-            || action.playerToChoose !== socket.id) return;
+            || action.playerToChoose !== socket.id) {
+            replyToSelection(acknowledge, false);
+            return;
+        }
         const player = gameState.players[socket.id];
         const trigger = action.trigger;
-        if (!player || !trigger) return;
+        if (!player || !trigger) {
+            replyToSelection(acknowledge, false, 'The Dragon Wasp replacement is no longer available.');
+            return;
+        }
         if (use === true && player.hand.length >= 2) {
             gameState.state = 'WAITING_FOR_DISCARD_PENALTY';
             gameState.pendingAction = {
@@ -4583,17 +4750,24 @@ socket.on('resolve_immediate_play', (data) => {
             resetToPlayingState();
             resumeExpansionChoices();
         }
+        replyToSelection(acknowledge, true);
         broadcastState();
     });
 
-    socket.on('resolve_lumbering_demon_draw', ({ use } = {}) => {
+    socket.on('resolve_lumbering_demon_draw', ({ use } = {}, acknowledge) => {
         const action = gameState.pendingAction;
         const sequence = gameState.pendingLumberingDraws?.[0];
         if (gameState.state !== 'WAITING_FOR_LUMBERING_DEMON_CHOICE'
             || action?.type !== 'LUMBERING_DEMON_DRAW'
-            || action.playerToChoose !== socket.id || sequence?.playerId !== socket.id) return;
+            || action.playerToChoose !== socket.id || sequence?.playerId !== socket.id) {
+            replyToSelection(acknowledge, false);
+            return;
+        }
         const player = gameState.players[socket.id];
-        if (!player) return;
+        if (!player) {
+            replyToSelection(acknowledge, false, 'Your Lumbering Demon draw is no longer available.');
+            return;
+        }
         gameState.pendingAction = null;
         if (use === true) {
             const drawn = drawCardsWithoutPassives(gameState, io, 2, player);
@@ -4619,23 +4793,31 @@ socket.on('resolve_immediate_play', (data) => {
             resetToPlayingState();
             resumeExpansionChoices();
         }
+        replyToSelection(acknowledge, true);
         broadcastState();
     });
 
-    socket.on('resolve_goblet_reroll', ({ use } = {}) => {
+    socket.on('resolve_goblet_reroll', ({ use } = {}, acknowledge) => {
         const action = gameState.pendingAction;
         if (gameState.state !== 'WAITING_FOR_GOBLET_REROLL' || action?.type !== 'GOBLET_REROLL'
-            || action.playerToChoose !== socket.id) return;
+            || action.playerToChoose !== socket.id) {
+            replyToSelection(acknowledge, false);
+            return;
+        }
         const player = gameState.players[socket.id];
         const hero = player?.party?.find(card => card.id === action.heroId);
         if (use !== true || !hero) {
             resetToPlayingState();
+            replyToSelection(acknowledge, true);
             broadcastState();
             return;
         }
         const slot = ['equippedItem', 'equippedItem2']
             .find(key => hero[key]?.effect_id === 'ITEM_GOBLET_CAFFEINATION');
-        if (!slot) return;
+        if (!slot) {
+            replyToSelection(acknowledge, false, 'Goblet of Caffeination is no longer equipped.');
+            return;
+        }
         const goblet = hero[slot];
         hero[slot] = null;
         gameState.discardPile.push(goblet);
@@ -4649,26 +4831,34 @@ socket.on('resolve_immediate_play', (data) => {
             gobletReroll: true
         };
         io.emit('message', `${getPlayerName(gameState, socket.id)} sacrificed Goblet of Caffeination and may immediately reroll ${hero.name}'s skill for 0 AP.`);
+        replyToSelection(acknowledge, true);
         broadcastState();
     });
 
-    socket.on('resolve_wandering_behemoth_draw', ({ use } = {}) => {
+    socket.on('resolve_wandering_behemoth_draw', ({ use } = {}, acknowledge) => {
         const action = gameState.pendingAction;
         if (gameState.state !== 'WAITING_FOR_MONSTER_TRIGGER_CHOICE'
-            || action?.type !== 'MONSTER_OPTIONAL_DRAW' || action.playerToChoose !== socket.id) return;
+            || action?.type !== 'MONSTER_OPTIONAL_DRAW' || action.playerToChoose !== socket.id) {
+            replyToSelection(acknowledge, false);
+            return;
+        }
         const source = action.source;
         resetToPlayingState();
         if (use === true) {
             dealCards(1, socket.id, source);
             io.emit('message', `${getPlayerName(gameState, socket.id)} drew a card with ${source}.`);
         }
+        replyToSelection(acknowledge, true);
         broadcastState();
     });
 
-    socket.on('resolve_calamity_mongrel_choice', ({ use } = {}) => {
+    socket.on('resolve_calamity_mongrel_choice', ({ use } = {}, acknowledge) => {
         const action = gameState.pendingAction;
         if (gameState.state !== 'WAITING_FOR_CALAMITY_MONGREL_CHOICE'
-            || action?.type !== 'CALAMITY_MONGREL_REPLACE' || action.playerToChoose !== socket.id) return;
+            || action?.type !== 'CALAMITY_MONGREL_REPLACE' || action.playerToChoose !== socket.id) {
+            replyToSelection(acknowledge, false);
+            return;
+        }
         const player = gameState.players[socket.id];
         const index = player?.hand?.findIndex(card => card.id === action.cardId && card.type === 'Challenge Card') ?? -1;
         resetToPlayingState();
@@ -4681,17 +4871,22 @@ socket.on('resolve_immediate_play', (data) => {
         } else {
             io.emit('message', `${getPlayerName(gameState, socket.id)} kept the Challenge card drawn with Calamity Mongrel.`);
         }
+        replyToSelection(acknowledge, true);
         broadcastState();
     });
 
-    socket.on('resolve_end_turn_monster_effect', ({ use } = {}) => {
+    socket.on('resolve_end_turn_monster_effect', ({ use } = {}, acknowledge) => {
         const action = gameState.pendingAction;
         if (gameState.state !== 'WAITING_FOR_END_TURN_CHOICE'
-            || action?.type !== 'END_TURN_MONSTER_CHOICE' || action.playerToChoose !== socket.id) return;
+            || action?.type !== 'END_TURN_MONSTER_CHOICE' || action.playerToChoose !== socket.id) {
+            replyToSelection(acknowledge, false);
+            return;
+        }
         const effect = action.effect;
         resetToPlayingState();
         if (use !== true) {
             advanceEndTurnMonsterEffect();
+            replyToSelection(acknowledge, true);
             broadcastState();
             return;
         }
@@ -4739,6 +4934,7 @@ socket.on('resolve_immediate_play', (data) => {
                 advanceEndTurnMonsterEffect();
             }
         }
+        replyToSelection(acknowledge, true);
         broadcastState();
     });
 
@@ -4755,8 +4951,15 @@ socket.on('resolve_immediate_play', (data) => {
         const { cardIds } = data; // Expect an array of card IDs
 
         if (gameState.state === 'WAITING_FOR_DISCARD_PENALTY') {
-            if (socket.id !== gameState.pendingAction.playerToChoose) return;
-            if (!isValidPenaltyDiscardSelection(player, gameState.pendingAction, cardIds)) return;
+            if (!gameState.pendingAction || socket.id !== gameState.pendingAction.playerToChoose) {
+                reply({ ok: false, reason: 'Another player must make this discard.' });
+                return;
+            }
+            if (!isValidPenaltyDiscardSelection(player, gameState.pendingAction, cardIds)) {
+                reply({ ok: false, reason: 'Choose exactly the highlighted cards required by this effect.' });
+                return;
+            }
+            reply({ ok: true });
 
             for (const cardId of cardIds) {
                 const cardIndex = player.hand.findIndex(c => c.id === cardId);
@@ -4847,10 +5050,15 @@ socket.on('resolve_immediate_play', (data) => {
             broadcastState();
         } else if (gameState.state === 'WAITING_FOR_MULTIPLE_DISCARDS') {
             const pAction = gameState.pendingAction;
-            if (!pAction.targets.includes(socket.id)) return;
-            if (pAction.completed.includes(socket.id)) return;
-
-            if (!cardIds || !Array.isArray(cardIds) || cardIds.length !== pAction.amount) return;
+            if (!pAction?.targets?.includes(socket.id) || pAction.completed?.includes(socket.id)) {
+                reply({ ok: false, reason: 'You do not have an active discard choice.' });
+                return;
+            }
+            if (!isValidPenaltyDiscardSelection(player, pAction, cardIds)) {
+                reply({ ok: false, reason: `Choose exactly ${pAction.amount} highlighted card(s).` });
+                return;
+            }
+            reply({ ok: true });
 
             for (const cardId of cardIds) {
                 const cardIndex = player.hand.findIndex(c => c.id === cardId);
@@ -4957,6 +5165,8 @@ socket.on('resolve_immediate_play', (data) => {
             }
             reply({ ok: true, discardedCount });
             broadcastState();
+        } else {
+            reply({ ok: false, reason: 'This discard choice is no longer active.' });
         }
     });
 
@@ -5064,24 +5274,44 @@ socket.on('resolve_immediate_play', (data) => {
 
     // Decline an OPTIONAL pending action (the card said "you MAY ..."). Only the
     // chosen player can skip, and only when the action is flagged optional.
-    socket.on('skip_optional_action', () => {
+    socket.on('skip_optional_action', (data, acknowledge) => {
         const pa = gameState.pendingAction;
-        if (!pa || !pa.optional) return;
-        if (pa.playerToChoose !== socket.id) return;
+        if (!pa || !pa.optional) {
+            replyToSelection(acknowledge, false, 'This optional choice is no longer active.');
+            return;
+        }
+        if (pa.playerToChoose !== socket.id) {
+            replyToSelection(acknowledge, false, 'Another player must make this choice.');
+            return;
+        }
         gameState.pendingAction = null;
         resetToPlayingState();
         io.emit('message', `${getPlayerName(gameState, socket.id)} declined the optional effect.`);
+        replyToSelection(acknowledge, true);
         broadcastState();
     });
 
-    socket.on('target_selected', (targetId) => {
-        if (gameState.state !== 'PLAYING') return;
-        if (!gameState.pendingAction) return;
+    socket.on('target_selected', (targetId, acknowledge) => {
+        const reply = payload => {
+            if (typeof acknowledge === 'function') acknowledge(payload);
+        };
+        if (gameState.state !== 'PLAYING') {
+            reply({ ok: false, reason: 'This target choice is no longer active.' });
+            return;
+        }
+        if (!gameState.pendingAction) {
+            reply({ ok: false, reason: 'There is no target to select right now.' });
+            return;
+        }
 
         const pAction = gameState.pendingAction;
-        if (pAction.playerToChoose !== socket.id) return;
+        if (pAction.playerToChoose !== socket.id) {
+            reply({ ok: false, reason: 'Another player must make this choice.' });
+            return;
+        }
 
         const player = gameState.players[socket.id];
+        let accepted = false;
 
         if (pAction.type === 'FREE_SLAY') {
             if (!gameState.activeMonsters.some(monster => monster.id === targetId)) return;
@@ -5096,17 +5326,22 @@ socket.on('resolve_immediate_play', (data) => {
                 gameState.forcedEndTurnPlayerId = null;
                 beginEndTurn(socket.id);
             }
+            reply({ ok: true });
             broadcastState();
             return;
         }
 
         if (pAction.type === 'FREE_ATTACK') {
             const monster = gameState.activeMonsters.find(card => card.id === targetId);
-            if (!monster || !meetsMonsterRequirements(player, monster.requirement)) return;
+            if (!monster || !meetsMonsterRequirements(player, monster.requirement)) {
+                reply({ ok: false, reason: 'That Monster is not a legal target.' });
+                return;
+            }
             const cost = monster.attack_cost;
             if (cost?.count > 0) {
                 if (!canPayMonsterAttackCost(player, monster)) {
                     io.to(socket.id).emit('message', `You need ${cost.count} ${cost.discard === 'ANY' ? '' : cost.discard + ' '}card${cost.count === 1 ? '' : 's'} to attack ${monster.name}.`);
+                    reply({ ok: false, reason: `You cannot pay ${monster.name}'s attack cost.` });
                     return;
                 }
                 gameState.pendingAction = {
@@ -5120,6 +5355,7 @@ socket.on('resolve_immediate_play', (data) => {
                 startMonsterAttackRoll(socket.id, monster.id, { freeAttack: true });
                 io.emit('message', `${getPlayerName(gameState, socket.id)} selected ${monster.name} for Big Buckley's free attack.`);
             }
+            reply({ ok: true });
             broadcastState();
             return;
         }
@@ -5127,7 +5363,11 @@ socket.on('resolve_immediate_play', (data) => {
         if (pAction.type === 'DISCARD') {
             const cardIndex = player.hand.findIndex(c => c.id === targetId);
             if (cardIndex !== -1) {
-                if (pAction.allowedTypes && !pAction.allowedTypes.includes(player.hand[cardIndex].type)) return;
+                if (pAction.allowedTypes && !pAction.allowedTypes.includes(player.hand[cardIndex].type)) {
+                    reply({ ok: false, reason: 'That card cannot be discarded for this action.' });
+                    return;
+                }
+                accepted = true;
                 const card = player.hand.splice(cardIndex, 1)[0];
                 gameState.discardPile.push(card);
                 pAction.amount -= 1;
@@ -5197,17 +5437,19 @@ socket.on('resolve_immediate_play', (data) => {
                 const p = gameState.players[pId];
                 const heroIndex = p.party.findIndex(h => h.id === targetId);
                 if (heroIndex !== -1) {
-                    if (pAction.type === 'STEAL' && (pId === pAction.originalActor || p.cannotBeStolen)) return;
-                    const hero = p.party[heroIndex];
-
-                    if (pAction.type === 'DESTROY') {
-                        const targetHasTerratuga = p.slainMonsters && p.slainMonsters.some(m => m.effect_id === 'MONSTER_TERRATUGA');
-                        if (targetHasTerratuga) {
-                            io.emit('message', `This player's Heroes cannot be destroyed!`);
-                            gameState.pendingAction = null;
-                            break;
-                        }
+                    if (pId === pAction.originalActor) {
+                        reply({ ok: false, reason: 'You must choose an opponent Hero.' });
+                        return;
                     }
+                    const blockedReason = heroTargetBlockReason(p, pAction.type);
+                    if (blockedReason) {
+                        io.to(socket.id).emit('message', blockedReason);
+                        reply({ ok: false, reason: blockedReason });
+                        broadcastState();
+                        return;
+                    }
+                    accepted = true;
+                    const hero = p.party[heroIndex];
 
                     // Decoy Doll absorbs sacrifice/destroy only. It does not block steals.
                     if (consumeDecoyDoll(hero, pAction.type)) {
@@ -5264,6 +5506,7 @@ socket.on('resolve_immediate_play', (data) => {
             for (const pId in gameState.players) {
                 if (pId === socket.id) continue;
                 const p = gameState.players[pId];
+                if (p.cannotBeStolen) continue;
                 const heroIndex = p.party.findIndex(h => h.id === targetId);
                 if (heroIndex !== -1) {
                     targetOpponentId = pId;
@@ -5272,6 +5515,7 @@ socket.on('resolve_immediate_play', (data) => {
                 }
             }
             if (targetOpponentId && targetHero) {
+                accepted = true;
                 gameState.pendingAction.type = 'EXCHANGE_STEP_2';
                 gameState.pendingAction.targetOpponentId = targetOpponentId;
                 gameState.pendingAction.targetHeroToSteal = targetHero;
@@ -5280,6 +5524,7 @@ socket.on('resolve_immediate_play', (data) => {
         } else if (pAction.type === 'EXCHANGE_STEP_2') {
             const heroIndex = player.party.findIndex(h => h.id === targetId);
             if (heroIndex !== -1) {
+                accepted = true;
                 const myHeroToGive = player.party.splice(heroIndex, 1)[0];
                 const tp = gameState.players[pAction.targetOpponentId];
                 
@@ -5305,6 +5550,7 @@ socket.on('resolve_immediate_play', (data) => {
         } else if (pAction.type === 'RETURN_ITEM') {
             const returned = returnEquippedItemToOwner(gameState, targetId);
             if (returned) {
+                accepted = true;
                 io.emit('message', `${getPlayerName(gameState, returned.owner.id)} got ${returned.item.name} back in their hand!`);
                 // The caster still receives the separate draw named by the spell.
                 dealCards(1, player.id, 'Winds of Change');
@@ -5313,6 +5559,7 @@ socket.on('resolve_immediate_play', (data) => {
         } else if (pAction.type === 'FORCE_DISCARD_TARGET' || pAction.type === 'CONDITIONAL_PULL' || pAction.type === 'PUMA_PULL' || pAction.type === 'LOOK_AND_PULL') {
             const tp = gameState.players[targetId];
             if (tp && targetId !== socket.id) {
+                accepted = true;
                 if (pAction.type === 'FORCE_DISCARD_TARGET') {
                     if (tp.hand.length === 0) {
                         io.emit('message', `${getPlayerName(gameState, tp.id)} has no cards to discard!`);
@@ -5394,6 +5641,7 @@ socket.on('resolve_immediate_play', (data) => {
         } else if (pAction.type === 'CHOOSE_FROM_POOL') {
             const cardIndex = pAction.pooledCards.findIndex(c => c.id === targetId);
             if (cardIndex !== -1) {
+                accepted = true;
                 const card = pAction.pooledCards.splice(cardIndex, 1)[0];
                 player.hand.push(card);
                 
@@ -5411,6 +5659,9 @@ socket.on('resolve_immediate_play', (data) => {
             handleGameOver(winner);
         }
 
+        reply(accepted
+            ? { ok: true }
+            : { ok: false, reason: 'That target is no longer valid. Please choose again.' });
         broadcastState();
     });
 
