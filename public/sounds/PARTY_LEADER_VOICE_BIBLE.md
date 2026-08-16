@@ -15,7 +15,9 @@
 
 Voice identity: cheerful anthropomorphic squirrel; velvet tenor, agile and warm, theatrical confidence with quick squirrel-like energy. Musical cadence, but never sings.
 
-Voice Design prompt: `Anthropomorphic squirrel fantasy bard, warm young-adult polished velvet tenor, human-level clarity with a lightly bright woodland resonance and quick squirrel-like timing. Intimate close-mic studio recording, playful intelligence, theatrical British-neutral diction and effortless charm. Premium animated character: cartoony and clearly animal, but never squeaky, childish, sing-song, camp, or mascot-like. Perfect audio quality.`
+Voice Design prompt: `Highly expressive anthropomorphic red squirrel fantasy bard. Voice balance is 60 percent animated talking squirrel and 40 percent human actor: bright nimble tenor with a clearly non-human small-animal resonance, springy rhythm, quick delighted breaths, mischievous chirpy energy and musical theatrical diction. Words remain crisp and easy to understand. Premium warm cartoon performance, lively and charismatic. Never babyish, mascot-like, helium-squeaky, gibberish, literally squealing, constantly singing, or annoying. Perfect close-mic studio quality.`
+
+Final acting direction: Eleven v3 at Creative stability. Fast musical timing, delighted breaths, bright laughter and theatrical emotional turns; every line is acted as its own beat rather than read neutrally.
 
 | File | Line |
 | --- | --- |
@@ -33,7 +35,9 @@ Voice Design prompt: `Anthropomorphic squirrel fantasy bard, warm young-adult po
 
 Voice identity: strong anthropomorphic bear; grounded low alto, warm chest resonance and compact delivery. Battle-tested calm instead of anger; every sentence lands like a padded paw with real weight.
 
-Voice Design prompt: `Anthropomorphic brown bear fantasy fighter, battle-tested female low alto with warm bearish chest resonance, human-level clarity and subtly heavy consonants. Close-mic, dry confidence, concise delivery and understated humor. Premium animated animal character, strong and cartoony but believable. Never growling, lumbering, macho, angry, raspy, or shouty. Perfect audio quality.`
+Voice Design prompt: `Highly expressive anthropomorphic brown bear fantasy fighter. Voice balance is 60 percent animated talking bear and 40 percent human actor: strong female low alto with warm padded bearish chest resonance, weighty but clear consonants, compact deliberate rhythm, calm dry wit, and small breathy bear huffs between phrases. Clearly non-human, friendly bear presence; grounded, battle-tested, warm and formidable. Words remain crisp and easy to understand. Premium animated fantasy performance. Never growling, roaring, angry, lumbering, macho, raspy, shouty, babyish, mascot-like, or villainous. Perfect close-mic studio quality.`
+
+Final acting direction: Eleven v3 at Creative stability. Warm breaths, grounded pauses, approving weight and dry chuckles create a strong talking-bear character without growling or shouting.
 
 | File | Line |
 | --- | --- |
@@ -88,6 +92,8 @@ Voice Design prompt: `Anthropomorphic red fox fantasy ranger, focused female mez
 Voice identity: nimble anthropomorphic black cat rogue, smooth low-mid register with a subtle feline purr in the resonance, quick controlled pace and a private smile. Sly, not sinister; cartoony, not childish.
 
 Voice Design prompt: `Anthropomorphic black cat fantasy thief, nimble young-adult male voice in a smooth low-mid register. Human-level clarity blended with a subtle feline purr in the resonance, velvet paw-like softness, crisp consonants, quick controlled pacing and mischievous cartoon timing. Sly and playful, not sinister; premium animated animal character, not a realistic human. Natural British-neutral English. Never meow, hiss, growl, squeak, sound childish, breathy ASMR, pirate-like, or like a villain. Perfect close-mic studio quality.`
+
+Final acting direction: Eleven v3 at Creative stability. Sly chuckles, innocent deflection, smug satisfaction and sudden comic offence make the feline personality audible without literal meows or hissing.
 
 | File | Line |
 | --- | --- |
@@ -210,12 +216,12 @@ Voice Design prompt: `Anthropomorphic young dragon fantasy sorcerer, luminous ag
 | `discard_01.mp3` | Fuel for the flame. |
 | `modifier_01.mp3` | One spark changes everything. |
 
-## Pilot gate
+## Completed character pass
 
-Start with The Shadow Claw only:
+The first three Party Leaders now have complete expressive voice sets:
 
-1. Generated three Voice Design candidates using the prompt above.
-2. Auditioned all candidates with: `What is yours is already mine. You just have not noticed yet.`
-3. Voice 1 was selected and saved in ElevenLabs as `Here to Slay - The Shadow Claw`.
-4. Generated `intro_01`, `steal_01`, and `failure_01` with Eleven v3 as the first short-line performance test.
-5. Only produce the remaining leaders after the pilot works in-game on a phone speaker.
+1. The Charismatic Song: 9 final lines with musical squirrel timing and theatrical emotion.
+2. The Fist of Reason: 9 final lines with warm talking-bear weight and dry humor.
+3. The Shadow Claw: 10 final lines with sly feline timing and distinct comic reactions.
+4. Every final line was generated separately with Eleven v3 at Creative stability.
+5. The next Party Leader should follow this acting-first standard after a voice slot is made available.

@@ -11,7 +11,40 @@ const SIGNATURE_SOUNDS = {
     sacrifice: [0.85, 1.15],
 };
 
-const SHADOW_CLAW_VOICES = ['intro_01', 'steal_01', 'failure_01'];
+const SHADOW_CLAW_VOICES = [
+    'intro_01',
+    'card_played_01',
+    'card_played_02',
+    'success_01',
+    'success_02',
+    'failure_01',
+    'failure_02',
+    'steal_01',
+    'steal_02',
+    'victim_01',
+];
+const CHARISMATIC_SONG_VOICES = [
+    'intro_01',
+    'card_played_01',
+    'card_played_02',
+    'success_01',
+    'success_02',
+    'failure_01',
+    'failure_02',
+    'challenge_01',
+    'sacrifice_01',
+];
+const FIST_OF_REASON_VOICES = [
+    'intro_01',
+    'card_played_01',
+    'card_played_02',
+    'success_01',
+    'success_02',
+    'failure_01',
+    'failure_02',
+    'challenge_01',
+    'destroy_01',
+];
 
 test('premium signature WAVs decode correctly in the mobile browser', async ({ page }) => {
     await page.goto('/');
@@ -45,7 +78,7 @@ test('premium signature WAVs decode correctly in the mobile browser', async ({ p
     }
 });
 
-test('The Shadow Claw voice pilot decodes correctly in the mobile browser', async ({ page }) => {
+test('The Shadow Claw complete voice set decodes correctly in the mobile browser', async ({ page }) => {
     await page.goto('/');
 
     const decoded = await page.evaluate(async names => {
@@ -67,6 +100,66 @@ test('The Shadow Claw voice pilot decodes correctly in the mobile browser', asyn
     }, SHADOW_CLAW_VOICES);
 
     for (const name of SHADOW_CLAW_VOICES) {
+        expect(decoded[name].ok, `${name} should load`).toBe(true);
+        expect(decoded[name].type).toContain('audio/mpeg');
+        expect(decoded[name].channels).toBeGreaterThanOrEqual(1);
+        expect(decoded[name].duration).toBeGreaterThan(0.5);
+        expect(decoded[name].duration).toBeLessThan(5);
+    }
+});
+
+test('The Charismatic Song complete voice set decodes correctly in the mobile browser', async ({ page }) => {
+    await page.goto('/');
+
+    const decoded = await page.evaluate(async names => {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        const context = new AudioContextClass();
+        const results = {};
+        for (const name of names) {
+            const response = await fetch(`/sounds/voices/card_132/${name}.mp3`);
+            const audioBuffer = await context.decodeAudioData(await response.arrayBuffer());
+            results[name] = {
+                ok: response.ok,
+                type: response.headers.get('content-type'),
+                duration: audioBuffer.duration,
+                channels: audioBuffer.numberOfChannels,
+            };
+        }
+        await context.close();
+        return results;
+    }, CHARISMATIC_SONG_VOICES);
+
+    for (const name of CHARISMATIC_SONG_VOICES) {
+        expect(decoded[name].ok, `${name} should load`).toBe(true);
+        expect(decoded[name].type).toContain('audio/mpeg');
+        expect(decoded[name].channels).toBeGreaterThanOrEqual(1);
+        expect(decoded[name].duration).toBeGreaterThan(0.5);
+        expect(decoded[name].duration).toBeLessThan(5);
+    }
+});
+
+test('The Fist of Reason complete voice set decodes correctly in the mobile browser', async ({ page }) => {
+    await page.goto('/');
+
+    const decoded = await page.evaluate(async names => {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        const context = new AudioContextClass();
+        const results = {};
+        for (const name of names) {
+            const response = await fetch(`/sounds/voices/card_133/${name}.mp3`);
+            const audioBuffer = await context.decodeAudioData(await response.arrayBuffer());
+            results[name] = {
+                ok: response.ok,
+                type: response.headers.get('content-type'),
+                duration: audioBuffer.duration,
+                channels: audioBuffer.numberOfChannels,
+            };
+        }
+        await context.close();
+        return results;
+    }, FIST_OF_REASON_VOICES);
+
+    for (const name of FIST_OF_REASON_VOICES) {
         expect(decoded[name].ok, `${name} should load`).toBe(true);
         expect(decoded[name].type).toContain('audio/mpeg');
         expect(decoded[name].channels).toBeGreaterThanOrEqual(1);
