@@ -40,3 +40,35 @@ test('sound can be checked and changed before choosing a Party Leader', async ({
     expect(layout.insidePanel).toBe(true);
     expect(layout.usableSize).toBe(true);
 });
+
+test('Party Leader roll and inspection use only the selected card plop', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('#create-room-btn').click();
+    await expect(page.locator('#roll-leader-btn')).toBeVisible();
+
+    await page.evaluate(() => {
+        window.__playedAudioSources = [];
+        HTMLMediaElement.prototype.play = function() {
+            window.__playedAudioSources.push(this.getAttribute('src') || this.src);
+            return Promise.resolve();
+        };
+    });
+
+    await page.locator('#roll-leader-btn').click();
+    const rosterLeader = page.locator('[data-lobby-leader-player-id]').first();
+    await expect(rosterLeader).toBeVisible();
+
+    const rollSources = await page.evaluate(() => window.__playedAudioSources.slice());
+    expect(rollSources.some(src => src.includes('/sounds/sfx/card_tap.mp3'))).toBe(true);
+    expect(rollSources.some(src => src.includes('/sounds/sfx/tap.mp3'))).toBe(false);
+
+    await page.waitForTimeout(100);
+    await page.evaluate(() => { window.__playedAudioSources = []; });
+    await rosterLeader.click();
+    await expect(page.locator('#inspector-modal')).not.toHaveClass(/hidden/);
+
+    const inspectSources = await page.evaluate(() => window.__playedAudioSources.slice());
+    expect(inspectSources.some(src => src.includes('/sounds/sfx/card_tap.mp3'))).toBe(true);
+    expect(inspectSources.some(src => src.includes('/sounds/sfx/tap.mp3'))).toBe(false);
+    expect(inspectSources.some(src => src.includes('/sounds/sfx/open.mp3'))).toBe(false);
+});

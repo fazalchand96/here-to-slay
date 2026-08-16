@@ -683,7 +683,11 @@ test('premium signature sounds are mastered, routed once, and used by their game
     assert.match(manifestSource, /version: 'audio-v11-card-plop-2'/);
     assert.match(manifestSource, /cardTap: \{ src: '\/sounds\/sfx\/card_tap\.mp3'/);
     assert.ok(fs.statSync(path.join(sfxDir, 'card_tap.mp3')).size > 8_000);
-    assert.match(appSource, /playSound\(e\.target\.closest\('\.card'\) \? 'cardTap' : 'tap'\)/);
+    assert.match(appSource, /el\.matches\('\[data-lobby-leader-player-id\]'\)/);
+    assert.match(appSource, /playSound\(el\.dataset\.sound \|\| \(isCardInteraction \? 'cardTap' : 'tap'\)\)/);
+    assert.match(appSource, /id="roll-leader-btn" data-sound="cardTap"/);
+    assert.match(appSource, /class="action-btn lobby-reroll-btn" data-sound="cardTap"/);
+    assert.doesNotMatch(appSource, /function inspectCard\(id, contextOverride = null\)[\s\S]{0,700}?playSound\('open'\)/);
     assert.doesNotMatch(appSource, /function playCard\(id\) \{[\s\S]{0,140}?playSound\('cardDrop'\)/);
     assert.match(htmlSource, /id="room-sound-btn"[\s\S]*?data-sound-toggle/);
     assert.match(htmlSource, /id="lobby-sound-btn"[\s\S]*?data-sound-toggle/);

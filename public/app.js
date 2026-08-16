@@ -518,7 +518,11 @@ document.addEventListener('pointerdown', (e) => {
     );
     if (el && !el.disabled && !el.classList.contains('disabled')) {
         if (!el.matches('[data-sound-toggle]')) {
-            playSound(e.target.closest('.card') ? 'cardTap' : 'tap');
+            const isCardInteraction = Boolean(
+                e.target.closest('.card')
+                || el.matches('[data-lobby-leader-player-id]')
+            );
+            playSound(el.dataset.sound || (isCardInteraction ? 'cardTap' : 'tap'));
         }
         triggerHaptic(8);
     }
@@ -2877,7 +2881,7 @@ socket.on('gameStateUpdate', (data) => {
 
                 if (leader) {
                     const canReroll = !data.players[activeMe].hasRerolledLeader;
-                    const rerollBtnHtml = canReroll ? `<button onclick="socket.emit('reroll_leader')" class="action-btn lobby-reroll-btn">REROLL LEADER <span>1 LEFT</span></button>` : `<div class="lobby-reroll-spent">No rerolls remaining</div>`;
+                    const rerollBtnHtml = canReroll ? `<button onclick="socket.emit('reroll_leader')" class="action-btn lobby-reroll-btn" data-sound="cardTap">REROLL LEADER <span>1 LEFT</span></button>` : `<div class="lobby-reroll-spent">No rerolls remaining</div>`;
 
                     leaderSelection.innerHTML = `
 
@@ -2940,7 +2944,7 @@ socket.on('gameStateUpdate', (data) => {
 
                     <div class="roll-leader-container">
 
-                        <button id="roll-leader-btn" onclick="socket.emit('roll_leader')">
+                        <button id="roll-leader-btn" data-sound="cardTap" onclick="socket.emit('roll_leader')">
 
                             ROLL FOR LEADER
 
@@ -7452,10 +7456,6 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
 
     const card = context.card;
-
-    playSound('open');
-
-
 
     const modal = document.getElementById('inspector-modal');
 
