@@ -1472,10 +1472,65 @@ function hideModifierDecisionControls() {
     document.getElementById('noble-shaman-controls')?.remove();
     document.getElementById('biggest-ring-controls')?.remove();
     document.getElementById('fearless-flame-controls')?.remove();
+    const handModifiers = document.getElementById('dice-hand-modifiers');
+    if (handModifiers) handModifiers.replaceChildren();
+    document.getElementById('dice-overlay')?.classList.remove('has-playable-modifiers');
 }
 
 function hasPassedModifierPhase(state = latestGameState) {
     return Boolean(state && (state.passedModifiers || []).includes(myId));
+}
+
+function getPlayableHandModifiers(state = latestGameState) {
+    if (!state || state.state !== 'WAITING_FOR_MODIFIERS' || hasPassedModifierPhase(state)) return [];
+    return (state.players?.[myId]?.hand || []).filter(card => card.type === 'Modifier Card');
+}
+
+function renderDiceHandModifiers(state = latestGameState) {
+    const container = document.getElementById('dice-hand-modifiers');
+    const overlay = document.getElementById('dice-overlay');
+    if (!container || !overlay) return 0;
+
+    container.replaceChildren();
+    const modifiers = getPlayableHandModifiers(state);
+    overlay.classList.toggle('has-playable-modifiers', modifiers.length > 0);
+    if (!modifiers.length) return 0;
+
+    const heading = document.createElement('div');
+    heading.className = 'dice-hand-modifier-heading';
+    heading.textContent = 'PLAY A MODIFIER';
+
+    const list = document.createElement('div');
+    list.className = 'dice-hand-modifier-list';
+    modifiers.forEach(card => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'dice-hand-modifier-choice';
+        button.dataset.modifierCardId = card.id;
+        button.setAttribute('aria-label', `Play ${card.name}`);
+
+        const art = document.createElement('span');
+        art.className = 'dice-hand-modifier-art';
+        art.style.backgroundImage = `url('${cardArt(card)}')`;
+
+        const copy = document.createElement('span');
+        copy.className = 'dice-hand-modifier-copy';
+        const name = document.createElement('strong');
+        name.textContent = card.name;
+        const values = document.createElement('small');
+        values.textContent = (card.modifier_values || []).map(modValueLabel).join(' / ');
+        copy.append(name, values);
+        button.append(art, copy);
+        button.addEventListener('click', event => {
+            event.preventDefault();
+            event.stopPropagation();
+            playModifier(card.id);
+        });
+        list.appendChild(button);
+    });
+
+    container.append(heading, list);
+    return modifiers.length;
 }
 
 function syncModifierDecisionControls(state = latestGameState) {
@@ -1488,9 +1543,12 @@ function syncModifierDecisionControls(state = latestGameState) {
     }
 
     const passed = hasPassedModifierPhase(state);
+    const playableModifierCount = renderDiceHandModifiers(state);
     passButton.style.display = 'block';
     passButton.disabled = passed;
-    passButton.innerText = passed ? 'WAITING FOR OTHERS...' : 'NO MODIFIERS TO PLAY';
+    passButton.innerText = passed
+        ? 'WAITING FOR OTHERS...'
+        : playableModifierCount > 0 ? 'PASS MODIFIER' : 'NO MODIFIERS TO PLAY';
 
     document.getElementById('noble-shaman-controls')?.remove();
     document.getElementById('biggest-ring-controls')?.remove();
@@ -4796,8 +4854,8 @@ socket.on('dice_roll_pending', (data) => {
                 handMods.style.minHeight = '0px';
                 handMods.style.paddingTop = '0px';
                 handMods.style.marginTop = '0px';
-                handMods.innerHTML = ''; // Clear redundant text
             }
+            const playableModifierCount = renderDiceHandModifiers(latestGameState);
 
             // 2. FORCE HIDE REDUNDANT FINAL SCORE TEXT
             const finalResult = document.getElementById('dice-final-result');
@@ -4813,7 +4871,7 @@ socket.on('dice_roll_pending', (data) => {
                 passBtn.innerText = "WAITING FOR OTHERS...";
             } else {
                 passBtn.disabled = false;
-                passBtn.innerText = "NO MODIFIERS TO PLAY";
+                passBtn.innerText = playableModifierCount > 0 ? "PASS MODIFIER" : "NO MODIFIERS TO PLAY";
 
             }
         }
@@ -6759,6 +6817,16 @@ function selectTarget(id) {
 
 }
 
+function submitSkillHeroTarget(context) {
+    if (!context?.card?.id || !context.owner) return;
+    socket.emit('submit_skill_target', {
+        targetPlayerId: context.owner,
+        targetHeroId: context.card.id
+    });
+    cancelSkillTargeting();
+    closeOpponentModal();
+}
+
 
 
 // Modifier cards carry a `modifier_values` array — e.g. [1, -3] for "+1/-3", or a
@@ -7692,7 +7760,11 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
             btn.onclick = () => {
 
-                if (myTargetMode && ['PENALTY', 'DRUID_SKILL_SACRIFICE', 'LIGHTNING_LABRYS_SACRIFICE', 'DRAGONS_BILE_SACRIFICE', 'ORACON_SACRIFICE'].includes(currentPendingAction.type) && window.latestGameState?.state === 'WAITING_FOR_SACRIFICE') {
+                if (myTargetMode && currentPendingAction?.type === 'SKILL_TARGET_HERO') {
+
+                    submitSkillHeroTarget(context);
+
+                } else if (myTargetMode && ['PENALTY', 'DRUID_SKILL_SACRIFICE', 'LIGHTNING_LABRYS_SACRIFICE', 'DRAGONS_BILE_SACRIFICE', 'ORACON_SACRIFICE'].includes(currentPendingAction.type) && window.latestGameState?.state === 'WAITING_FOR_SACRIFICE') {
 
                     socket.emit('submit_penalty_sacrifice', { targetHeroId: card.id });
 
@@ -7937,7 +8009,11 @@ function handleTargetingClick(cardEl, cardId) {
 
             if (isValid) {
 
-                if (['PENALTY', 'DRUID_SKILL_SACRIFICE', 'LIGHTNING_LABRYS_SACRIFICE', 'DRAGONS_BILE_SACRIFICE', 'ORACON_SACRIFICE'].includes(type) && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE') {
+                if (type === 'SKILL_TARGET_HERO') {
+
+                    submitSkillHeroTarget(context);
+
+                } else if (['PENALTY', 'DRUID_SKILL_SACRIFICE', 'LIGHTNING_LABRYS_SACRIFICE', 'DRAGONS_BILE_SACRIFICE', 'ORACON_SACRIFICE'].includes(type) && window.latestGameState && window.latestGameState.state === 'WAITING_FOR_SACRIFICE') {
 
                     socket.emit('submit_penalty_sacrifice', { targetHeroId: cardId });
 

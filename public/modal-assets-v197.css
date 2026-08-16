@@ -122,6 +122,99 @@ html body #event-console #dice-overlay.tabletop-modal-b #modifier-decision-row .
     text-shadow: 0 1px 2px #050302 !important;
 }
 
+/* Keep playable Modifiers inside the roll panel: on phone landscape this panel
+   covers the hand by design, so hand-only controls would be unreachable. */
+html body #event-console #dice-overlay.mod-compact.has-playable-modifiers #dice-hand-modifiers {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-height: 57px !important;
+    height: 57px !important;
+    flex: 0 0 57px !important;
+    margin: 4px 0 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    overflow: visible !important;
+}
+
+html body #event-console #dice-overlay .dice-hand-modifier-heading {
+    margin: 0 0 3px !important;
+    color: #ead9b7 !important;
+    font-family: var(--font-display) !important;
+    font-size: clamp(.5rem, 1.4dvh, .65rem) !important;
+    font-weight: 900 !important;
+    letter-spacing: .06em !important;
+    line-height: 1 !important;
+}
+
+html body #event-console #dice-overlay .dice-hand-modifier-list {
+    width: 100% !important;
+    display: flex !important;
+    gap: 5px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scrollbar-width: thin !important;
+    touch-action: pan-x !important;
+}
+
+html body #event-console #dice-overlay button.dice-hand-modifier-choice {
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    min-height: 42px !important;
+    height: 42px !important;
+    flex: 1 0 calc(50% - 3px) !important;
+    margin: 0 !important;
+    padding: 3px 7px !important;
+    display: grid !important;
+    grid-template-columns: 24px minmax(0, 1fr) !important;
+    gap: 6px !important;
+    align-items: center !important;
+    color: #f1e2c4 !important;
+    text-align: left !important;
+    pointer-events: auto !important;
+}
+
+html body #event-console #dice-overlay.mod-compact.has-playable-modifiers #dice-monster-preview .card {
+    height: 82px !important;
+    max-height: 82px !important;
+}
+
+html body #event-console #dice-overlay.mod-compact.has-playable-modifiers #dice-monster-preview {
+    margin-bottom: 1px !important;
+}
+
+html body #event-console #dice-overlay .dice-hand-modifier-art {
+    width: 24px !important;
+    height: 32px !important;
+    display: block !important;
+    border: 1px solid rgba(220, 174, 96, .55) !important;
+    background-position: center !important;
+    background-size: cover !important;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, .65) !important;
+}
+
+html body #event-console #dice-overlay .dice-hand-modifier-copy {
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+}
+
+html body #event-console #dice-overlay .dice-hand-modifier-copy strong {
+    overflow: hidden !important;
+    font-size: clamp(.48rem, 1.25dvh, .6rem) !important;
+    line-height: 1.05 !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+
+html body #event-console #dice-overlay .dice-hand-modifier-copy small {
+    color: #f6cf79 !important;
+    font-size: clamp(.55rem, 1.45dvh, .68rem) !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+}
+
 body :is(#target-banner, #reward-toast-inner).tabletop-modal-b.tabletop-modal-b {
     border: 0 !important;
     border-radius: 0 !important;

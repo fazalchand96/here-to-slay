@@ -44,6 +44,7 @@ const {
     expireActionPoint,
     spendReloadActionPoints,
     canPlayerSubmitModifierPlay,
+    pendingActionForTargetingPlan,
     normalizePlayerName,
     PLAYER_NAME_MAX_LENGTH,
     loadCards,
@@ -87,6 +88,25 @@ test('Saffyre Phoenix Hero prompt belongs to its owner even outside their turn',
     assert.equal(isAuthorizedHeroSkillActor(state, 'phoenix-owner', 'free-hero'), true);
     assert.equal(isAuthorizedHeroSkillActor(state, 'active-player', 'free-hero'), false);
     assert.equal(isAuthorizedHeroSkillActor(state, 'phoenix-owner', 'different-hero'), false);
+});
+
+test('deferred Hero targets remain assigned to an out-of-turn skill owner', () => {
+    assert.deepEqual(
+        pendingActionForTargetingPlan(
+            { type: 'SKILL_TARGET_HERO', targetAction: 'DESTROY' },
+            'phoenix-owner',
+            'SKILL_SERIOUS_GREY',
+            'serious-grey'
+        ),
+        {
+            type: 'SKILL_TARGET_HERO',
+            playerToChoose: 'phoenix-owner',
+            originalActor: 'phoenix-owner',
+            skillId: 'SKILL_SERIOUS_GREY',
+            heroId: 'serious-grey',
+            targetAction: 'DESTROY'
+        }
+    );
 });
 
 test('a Modifier pass locks that player until another Modifier resets the window', () => {

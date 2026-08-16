@@ -41,10 +41,12 @@ test('Meowzio: steals a hero AND pulls a card (not destroy/self-discard)', async
     await host.waitForTimeout(600);
 
     // Hero was STOLEN (moved into host party), not destroyed.
-    const hostHasStolen    = await host.locator('#player-party [data-id="card_030"]').count();
-    const p2StillHasStolen = await p2.locator('#player-party [data-id="card_030"]').count();
-    expect(hostHasStolen, 'host should gain the stolen hero').toBeGreaterThan(0);
-    expect(p2StillHasStolen, 'p2 should lose the stolen hero').toBe(0);
+    const hostHasStolen = await host.evaluate((id) =>
+        window.latestGameState.players[window.myId].party.some(card => card.id === id), VICTIM_HERO);
+    const p2StillHasStolen = await p2.evaluate((id) =>
+        window.latestGameState.players[window.myId].party.some(card => card.id === id), VICTIM_HERO);
+    expect(hostHasStolen, 'host should gain the stolen hero').toBe(true);
+    expect(p2StillHasStolen, 'p2 should lose the stolen hero').toBe(false);
 
     // A card was pulled from p2 into host's hand: host +1, p2 -1. (The old bug made
     // the roller DISCARD 2 instead — host hand would have dropped.)

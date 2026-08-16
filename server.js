@@ -350,6 +350,7 @@ function pendingActionForTargetingPlan(plan, rollerId, skillId, heroId) {
     }
     return {
         type: plan.type,
+        playerToChoose: rollerId,
         originalActor: rollerId,
         skillId,
         heroId,
@@ -5646,4 +5647,5 @@ module.exports = {
     expireActionPoint,
     spendReloadActionPoints,
     canPlayerSubmitModifierPlay,
+    pendingActionForTargetingPlan,
 };

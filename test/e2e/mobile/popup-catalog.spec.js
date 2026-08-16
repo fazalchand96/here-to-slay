@@ -5,10 +5,17 @@ const { test, expect } = require('../helpers/fixtures');
 const { startMobileGame } = require('./mobileSetup');
 
 const VIEWPORT = { width: 874, height: 402 };
+const LANDSCAPE_PHONES = [
+    { name: 'small-samsung', width: 740, height: 360 },
+    { name: 'iphone-pro', width: 874, height: 402 },
+    { name: 'large-samsung', width: 915, height: 412 },
+    { name: 'iphone-pro-max', width: 956, height: 440 },
+];
 const PEANUT = 'card_030';
 const SNOWBALL = 'card_060';
 const BULLSEYE = 'card_040';
 const MODIFIER = 'card_079';
+const SECOND_MODIFIER = 'card_083';
 const MAGIC = 'card_106';
 
 async function startSuccessfulSkill(host, heroId) {
@@ -29,9 +36,12 @@ async function passModifierWindow(host, p2) {
     await p2.evaluate(() => window._socket.emit('submit_modifier_action', { action: 'PASS' }));
 }
 
-test('modifier popup shows a played Modifier in the unified frame', async ({ browser }) => {
-    const { host, p2, ctx1, ctx2 } = await startMobileGame(browser, VIEWPORT);
-    await p2.evaluate((id) => window._socket.emit('debug_set_hand', { cardIds: [id] }), MODIFIER);
+for (const viewport of LANDSCAPE_PHONES) {
+test(`modifier popup offers multiple cards at ${viewport.name}`, async ({ browser }) => {
+    const { host, p2, ctx1, ctx2 } = await startMobileGame(browser, viewport);
+    await p2.evaluate(({ first, second }) => window._socket.emit('debug_set_hand', {
+        cardIds: [first, second]
+    }), { first: MODIFIER, second: SECOND_MODIFIER });
     await startSuccessfulSkill(host, PEANUT);
 
     const dice = host.locator('#dice-overlay.tabletop-modal-b');
@@ -40,25 +50,37 @@ test('modifier popup shows a played Modifier in the unified frame', async ({ bro
         .toContain('unified-v201/panel-large.webp');
     const diceBox = await dice.boundingBox();
     expect(diceBox.x).toBeGreaterThanOrEqual(0);
-    expect(diceBox.x + diceBox.width).toBeLessThanOrEqual(VIEWPORT.width);
+    expect(diceBox.x + diceBox.width).toBeLessThanOrEqual(viewport.width);
+    expect(diceBox.y + diceBox.height).toBeLessThanOrEqual(viewport.height);
     expect(await host.locator('#dice-pass-btn').evaluate(element => getComputedStyle(element).backgroundImage))
         .toContain('unified-v197/button-secondary.webp');
+    const modifierChoices = p2.locator('[data-modifier-card-id]');
+    await expect(modifierChoices).toHaveCount(2);
+    await expect(p2.locator(`[data-modifier-card-id="${MODIFIER}"]`)).toBeVisible();
+    const modifierChoice = p2.locator(`[data-modifier-card-id="${SECOND_MODIFIER}"]`);
+    await expect(modifierChoice).toBeVisible();
+    await expect(p2.locator('#dice-pass-btn')).toHaveText(/PASS MODIFIER/i);
+    const modifierListBox = await p2.locator('.dice-hand-modifier-list').boundingBox();
+    const passButtonBox = await p2.locator('#dice-pass-btn').boundingBox();
+    expect(modifierListBox.y + modifierListBox.height).toBeLessThanOrEqual(passButtonBox.y - 2);
     await p2.screenshot({
-        path: path.join(process.cwd(), 'output', 'browser-qa', 'modifier-window-v197-874x402.png')
+        path: path.join(process.cwd(), 'output', 'browser-qa', `modifier-window-v203-${viewport.name}.png`)
     });
-    await p2.evaluate((id) => window._socket.emit('submit_modifier_action', {
-        action: 'PLAY', cardId: id, modValue: -3
-    }), MODIFIER);
+    await modifierChoice.click();
+    await expect(p2.locator('#target-banner')).toBeVisible();
+    await p2.locator('#target-banner button').filter({ hasText: '-2' }).click();
     await expect(host.locator('#math-breakdown-banner')).toContainText(/Modifiers\s*Total/i);
-    await expect.poll(() => p2.evaluate(() => window.latestGameState.players[window.myId].hand.length)).toBe(0);
+    await expect.poll(() => p2.evaluate(() => window.latestGameState.players[window.myId].hand.length)).toBe(1);
+    await expect(p2.locator(`[data-modifier-card-id="${MODIFIER}"]`)).toBeVisible();
     await expect(host.locator('#monster-trigger-modal')).toBeHidden({ timeout: 8_000 });
     await host.screenshot({
-        path: path.join(process.cwd(), 'output', 'browser-qa', 'modifier-played-v197-874x402.png')
+        path: path.join(process.cwd(), 'output', 'browser-qa', `modifier-played-v203-${viewport.name}.png`)
     });
 
     await ctx1.close();
     await ctx2.close();
 });
+}
 
 test('Snowball immediate-play and opponent waiting popups use the unified frame', async ({ browser }) => {
     const { host, p2, ctx1, ctx2 } = await startMobileGame(browser, VIEWPORT);

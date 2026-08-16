@@ -183,8 +183,8 @@ async function clickFirstValidTarget(page) {
     const visibleTarget = page.locator('.valid-target:visible').first();
     if (await visibleTarget.count() > 0) {
         await visibleTarget.click({ timeout: 8_000, force: true });
-        await expect(selectBtn).toBeVisible({ timeout: 8_000 });
-        await selectBtn.click();
+        await page.waitForTimeout(150);
+        if (await selectBtn.isVisible().catch(() => false)) await selectBtn.click();
         return;
     }
 
@@ -197,14 +197,11 @@ async function clickFirstValidTarget(page) {
     const modalTarget = page.locator('#opponent-modal .valid-target').first();
     await expect(modalTarget).toBeVisible({ timeout: 8_000 });
 
-    // The opponent modal re-renders on every server broadcast, which can drop a
-    // click before the inspector opens. Retry the click until the SELECT TARGET
-    // button actually appears.
-    await expect(async () => {
-        await modalTarget.click({ force: true });
-        await expect(selectBtn).toBeVisible({ timeout: 2_000 });
-    }).toPass({ timeout: 15_000 });
-    await selectBtn.click();
+    // Current skill targets submit directly on the card tap. Older flows may
+    // still open the inspector, so retain that confirmation as a fallback.
+    await modalTarget.click({ force: true });
+    await page.waitForTimeout(150);
+    if (await selectBtn.isVisible().catch(() => false)) await selectBtn.click();
 }
 
 // ---------------------------------------------------------------------------
