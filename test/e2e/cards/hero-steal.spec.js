@@ -41,11 +41,18 @@ test(`${name}: opponent hero moves into host party`, async ({ browser }) => {
     // move out of p2's party and into the host's. Counting party size doesn't work
     // for Tipsy Tootie, which swaps itself in — p2's size stays the same — so we
     // assert on the specific card moving instead.
-    const hostHasStolen   = await host.locator('#player-party [data-id="card_030"]').count();
-    const p2StillHasStolen = await p2.locator('#player-party [data-id="card_030"]').count();
+    const movement = await host.evaluate(() => {
+        const state = window.latestGameState;
+        const me = state.players[window.myId];
+        const opponentId = state.playerOrder.find(playerId => playerId !== window.myId);
+        return {
+            hostHasStolen: me.party.some(card => card.id === 'card_030'),
+            opponentHasStolen: state.players[opponentId].party.some(card => card.id === 'card_030'),
+        };
+    });
 
-    expect(hostHasStolen,    `${id}: host should gain the stolen hero`).toBeGreaterThan(0);
-    expect(p2StillHasStolen, `${id}: p2 should lose the stolen hero`).toBe(0);
+    expect(movement.hostHasStolen, `${id}: host should gain the stolen hero`).toBe(true);
+    expect(movement.opponentHasStolen, `${id}: p2 should lose the stolen hero`).toBe(false);
     expect(errors).toEqual([]);
 
     await ctx1.close(); await ctx2.close();

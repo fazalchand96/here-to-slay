@@ -610,3 +610,40 @@ test('every authoritative mobile choice clears the dice overlay and waits for ac
     ['resolve_immediate_play', 'submit_penalty_sacrifice', 'skip_optional_action', 'submit_penalty_discard']
         .forEach(eventName => assert.match(serverSource, new RegExp(`socket\\.on\\('${eventName}'[\\s\\S]*?acknowledge`)));
 });
+
+test('every destructive card choice is inspect-first or uses a readable explicit picker action', () => {
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+
+    const bodyClickStart = appSource.indexOf("document.body.addEventListener('click'");
+    const bodyClickEnd = appSource.indexOf('function spawnExplosion', bodyClickStart);
+    assert.ok(bodyClickStart >= 0 && bodyClickEnd > bodyClickStart, 'Expected the shared card click controller');
+    const bodyClickController = appSource.slice(bodyClickStart, bodyClickEnd);
+    assert.match(bodyClickController, /findCardContextForElement\(cardEl, cardId\)[\s\S]*?inspectCard\(cardId, context\)/);
+    assert.doesNotMatch(bodyClickController, /handleTargetingClick\(/,
+        'A card surface may inspect, but may not directly execute a target action');
+
+    const inspectorLabel = appSource.match(/function inspectorSelectionLabel\(card\) \{[\s\S]*?\n\}/);
+    assert.ok(inspectorLabel, 'Expected one shared selection-label mapper');
+    [
+        'SELECT TO DESTROY', 'SELECT TO STEAL', 'SACRIFICE THIS HERO',
+        'SELECT TO DISCARD', 'SELECT TO RETURN ITEM', 'SELECT TO GIVE AWAY',
+        'EQUIP TO THIS HERO', 'SELECT THIS ITEM', 'SELECT THIS HERO'
+    ].forEach(label => assert.match(inspectorLabel[0], new RegExp(label)));
+
+    assert.match(appSource, /btn\.innerText = inspectorSelectionLabel\(card\)/);
+    assert.match(appSource, /selected-target/);
+    assert.match(appSource, /target-selection-badge/);
+    assert.match(appSource, /party-selection-progress/);
+
+    // Multi-player/global effects use their own chooser rather than the board
+    // inspector. Each option must expose its card identity/effect and a separate
+    // verb button, never make the art itself the destructive control.
+    const picker = appSource.match(/function pickerCardWrapHtml\(c, buttonHtml\) \{[\s\S]*?\n\}/);
+    assert.ok(picker, 'Expected the shared global-action card picker');
+    assert.match(picker[0], /peek-card-name/);
+    assert.match(picker[0], /peek-card-type/);
+    assert.match(picker[0], /peek-card-effect/);
+    assert.match(picker[0], /buttonHtml/);
+    ['Sacrifice Hero', 'Sacrifice Item', 'Destroy Hero', 'Destroy Item', 'Discard', 'Give']
+        .forEach(label => assert.match(appSource, new RegExp(label)));
+});

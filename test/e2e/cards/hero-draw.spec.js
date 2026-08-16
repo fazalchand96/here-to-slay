@@ -157,7 +157,7 @@ test('Quick Draw (card_043): an item played from the prompt equips to a hero', a
     await expect(heroTarget).toHaveClass(/valid-target/, { timeout: 5_000 });
     await heroTarget.click({ force: true });
     const confirmTarget = host.locator('#inspector-modal-actions button')
-        .filter({ hasText: /SELECT TARGET/i }).first();
+        .filter({ hasText: /EQUIP TO THIS HERO/i }).first();
     if (await confirmTarget.isVisible().catch(() => false)) await confirmTarget.click();
 
     // The item enters the challenge phase; let the opponent pass.

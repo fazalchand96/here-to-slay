@@ -3,9 +3,10 @@
 const path = require('path');
 const { test, expect } = require('../helpers/fixtures');
 const {
-    startGame, injectCard, playCardFromHand, passChallenge,
+    injectCard, playCardFromHand, passChallenge,
     rollDice, passModifiers, passOpponentModifiers, clickFirstValidTarget,
 } = require('../helpers/gameSetup');
+const { startMobileGame } = require('../mobile/mobileSetup');
 
 // e2e coverage for the three destroy-family hero fixes from the audit:
 //   - Serious Grey (card_044): "DESTROY a Hero AND DRAW a card" — draw is unconditional.
@@ -36,7 +37,7 @@ function p2PartyCount(p2) {
 
 test('Serious Grey: destroys an opponent hero AND draws a card', async ({ browser }) => {
     const errors = [];
-    const { host, p2, ctx1, ctx2 } = await startGame(browser);
+    const { host, p2, ctx1, ctx2 } = await startMobileGame(browser);
     host.on('pageerror', e => errors.push(e.message));
 
     await p2.evaluate((id) => window._socket.emit('debug_inject_to_party', { cardId: id }), PEANUT);
@@ -66,7 +67,7 @@ test('Serious Grey: destroys an opponent hero AND draws a card', async ({ browse
 
 test('Shurikitty: destroys a hero and takes its equipped item into hand', async ({ browser }) => {
     const errors = [];
-    const { host, p2, ctx1, ctx2 } = await startGame(browser);
+    const { host, p2, ctx1, ctx2 } = await startMobileGame(browser);
     host.on('pageerror', e => errors.push(e.message));
 
     // p2 gets a hero with a Really Big Ring equipped (debug_equip_item targets the
@@ -99,7 +100,7 @@ test('Shurikitty: destroys a hero and takes its equipped item into hand', async 
 
 test('Whiskers: steals one opponent hero AND destroys a second', async ({ browser }) => {
     const errors = [];
-    const { host, p2, ctx1, ctx2 } = await startGame(browser);
+    const { host, p2, ctx1, ctx2 } = await startMobileGame(browser);
     host.on('pageerror', e => errors.push(e.message));
 
     // p2 needs two heroes: one to be stolen, one to be destroyed.
@@ -115,20 +116,36 @@ test('Whiskers: steals one opponent hero AND destroys a second', async ({ browse
     await passModifiers(host);
     await passOpponentModifiers(p2);
 
-    // First target = the STEAL.
-    await clickFirstValidTarget(host);
+    // First target = the STEAL. The card surface only opens inspection.
+    await host.locator('#opponents-bar .opponent-chip').first().click();
+    const stealTarget = host.locator('#opponent-modal .valid-target').first();
+    await expect(stealTarget).toBeVisible();
+    await stealTarget.click({ force: true });
+    await expect(host.locator('#inspector-modal')).toBeVisible();
+    await expect(host.locator('#inspector-modal-actions button', { hasText: 'SELECT TO STEAL' })).toBeVisible();
+    await host.locator('#inspector-modal-actions button', { hasText: 'SELECT TO STEAL' }).click();
     await host.waitForTimeout(600);
     // Whiskers should now be waiting for the DESTROY half.
     expect(await host.evaluate(() => window.latestGameState.pendingAction && window.latestGameState.pendingAction.type))
         .toBe('DESTROY');
 
-    // Second target = the DESTROY.
-    await clickFirstValidTarget(host);
+    // Second target = the DESTROY, with its own explicit confirmation.
+    await host.locator('#opponents-bar .opponent-chip').first().click();
+    const destroyTarget = host.locator('#opponent-modal .valid-target').first();
+    await expect(destroyTarget).toBeVisible();
+    await destroyTarget.click({ force: true });
+    await expect(host.locator('#inspector-modal-actions button', { hasText: 'SELECT TO DESTROY' })).toBeVisible();
+    await host.locator('#inspector-modal-actions button', { hasText: 'SELECT TO DESTROY' }).click();
     await host.waitForTimeout(700);
 
     expect(await p2PartyCount(p2), 'both opponent heroes are gone (1 stolen, 1 destroyed)').toBe(0);
     // Host party = Whiskers itself + the one stolen hero.
     expect(await partyCount(host), 'host keeps Whiskers and the stolen hero').toBe(2);
+
+    // The resolved targeting flow may not keep intercepting later card taps.
+    await host.locator('#party-dock').click({ force: true });
+    await host.locator('#opponent-modal .card').first().click({ force: true });
+    await expect(host.locator('#inspector-modal')).toBeVisible();
 
     await host.screenshot({ path: path.join(SHOTS, 'whiskers.png'), fullPage: false });
     expect(errors).toEqual([]);

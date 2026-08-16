@@ -27,7 +27,7 @@ test('Lightning Labrys: three selected cards can be confirmed and discarded', as
 
     for (const cardId of ['card_020', 'card_030', 'card_040']) {
         await host.locator(`#player-hand [data-id="${cardId}"]`).click({ force: true });
-        const selectButton = host.locator('#inspector-modal-actions button').filter({ hasText: /SELECT TARGET/i }).first();
+        const selectButton = host.locator('#inspector-modal-actions button').filter({ hasText: /SELECT TO DISCARD/i }).first();
         await expect(selectButton).toBeVisible();
         await selectButton.click();
     }
@@ -137,7 +137,7 @@ test('Entangling Trap (card_111): discard then steal target flow', async ({ brow
     for (const cardId of ['card_020', 'card_040']) {
         await host.locator(`#player-hand [data-id="${cardId}"]`).click({ force: true });
         const selectButton = host.locator('#inspector-modal-actions button')
-            .filter({ hasText: /SELECT TARGET/i })
+            .filter({ hasText: /SELECT TO DISCARD/i })
             .first();
         await expect(selectButton).toBeVisible();
         await selectButton.click();
@@ -161,14 +161,35 @@ test('Forced Exchange (card_113): two-step steal-then-give flow', async ({ brows
     host.on('pageerror', e => errors.push(e.message));
 
     await setupP2Hero(host, p2);
+    await host.evaluate(() => window._socket.emit('debug_inject_to_party', { cardId: 'card_016' }));
+    await host.waitForTimeout(300);
 
     await injectCard(host, 'card_113');
     await playCardFromHand(host, 'card_113');
     await passChallenge(p2);
 
-    await host.waitForTimeout(400);
-    const bannerVisible = await host.locator('#target-banner').evaluate(el => !el.classList.contains('hidden')).catch(() => false);
-    expect(bannerVisible).toBe(true);
+    await clickFirstValidTarget(host);
+    await expect.poll(() => host.evaluate(() => window.latestGameState?.pendingAction?.type))
+        .toBe('EXCHANGE_STEP_2');
+
+    await host.locator('#party-dock').click({ force: true });
+    const giveTarget = host.locator('#opponent-modal [data-id="card_016"].valid-target').first();
+    await expect(giveTarget).toBeVisible();
+    await giveTarget.click({ force: true });
+    const giveButton = host.locator('#inspector-modal-actions button')
+        .filter({ hasText: /SELECT TO GIVE AWAY/i }).first();
+    await expect(giveButton).toBeVisible();
+    await giveButton.click();
+
+    await expect.poll(() => host.evaluate(() => {
+        const state = window.latestGameState;
+        const me = state.players[window.myId];
+        const opponentId = state.playerOrder.find(playerId => playerId !== window.myId);
+        return {
+            hostHasStolen: me.party.some(card => card.id === 'card_030'),
+            opponentHasGift: state.players[opponentId].party.some(card => card.id === 'card_016'),
+        };
+    })).toEqual({ hostHasStolen: true, opponentHasGift: true });
     expect(errors).toEqual([]);
     await ctx1.close(); await ctx2.close();
 });
@@ -190,18 +211,40 @@ test('Call to the Fallen (card_104): opens discard search modal', async ({ brows
     await ctx1.close(); await ctx2.close();
 });
 
-test('Winds of Change (card_115): return-item flow initiates (or completes gracefully with no items)', async ({ browser }) => {
+test('Winds of Change (card_115): inspected Hero returns its equipped Item', async ({ browser }) => {
     const errors = [];
     const { host, p2, ctx1, ctx2 } = await startGame(browser);
     host.on('pageerror', e => errors.push(e.message));
+
+    await host.evaluate(() => window._socket.emit('debug_inject_to_party', { cardId: 'card_016' }));
+    await host.waitForTimeout(250);
+    await host.evaluate(() => window._socket.emit('debug_equip_item', {
+        heroId: 'card_016',
+        itemId: 'card_064',
+    }));
+    await host.waitForTimeout(300);
 
     await injectCard(host, 'card_115');
     await playCardFromHand(host, 'card_115');
     await passChallenge(p2);
 
-    await host.waitForTimeout(400);
-    // No items equipped, so effect should resolve gracefully (no crash)
-    await expect(host.locator('#app-container')).not.toHaveClass(/hidden/);
+    await host.locator('#party-dock').click({ force: true });
+    const heroTarget = host.locator('#opponent-modal [data-id="card_016"].valid-target').first();
+    await expect(heroTarget).toBeVisible();
+    await heroTarget.click({ force: true });
+    const returnButton = host.locator('#inspector-modal-actions button')
+        .filter({ hasText: /SELECT TO RETURN ITEM/i }).first();
+    await expect(returnButton).toBeVisible();
+    await returnButton.click();
+
+    await expect.poll(() => host.evaluate(() => {
+        const me = window.latestGameState.players[window.myId];
+        const hero = me.party.find(card => card.id === 'card_016');
+        return {
+            itemInHand: me.hand.some(card => card.id === 'card_064'),
+            heroHasNoItem: !hero?.equippedItem,
+        };
+    })).toEqual({ itemInHand: true, heroHasNoItem: true });
     expect(errors).toEqual([]);
     await ctx1.close(); await ctx2.close();
 });

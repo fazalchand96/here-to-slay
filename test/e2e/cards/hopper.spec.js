@@ -7,15 +7,16 @@
 // false), so this verifies the target can actually pick.
 const { test, expect } = require('../helpers/fixtures');
 const {
-    startGame, injectCard, playCardFromHand, passChallenge,
+    injectCard, playCardFromHand, passChallenge,
     rollDice, passModifiers, passOpponentModifiers,
 } = require('../helpers/gameSetup');
+const { startMobileGame } = require('../mobile/mobileSetup');
 
 const stateOf = (pg) => pg.evaluate(() => window.latestGameState && window.latestGameState.state);
 
 test('Hopper: the TARGET chooses which Hero to sacrifice', async ({ browser }) => {
     const errors = [];
-    const { host, p2 } = await startGame(browser);
+    const { host, p2 } = await startMobileGame(browser);
     host.on('pageerror', e => errors.push(e.message));
     p2.on('pageerror', e => errors.push(e.message));
 
@@ -53,8 +54,13 @@ test('Hopper: the TARGET chooses which Hero to sacrifice', async ({ browser }) =
     const sacTarget = p2.locator(`#opponent-modal [data-id="${heroToSacrifice}"]`).first();
     await expect(sacTarget).toHaveClass(/valid-target/, { timeout: 5_000 });
 
-    // One tap submits the sacrifice; no hidden second confirmation is required.
+    // A card tap is inspection only. Sacrifice requires the explicit, clearly
+    // labelled destructive action in the inspector.
     await sacTarget.click({ force: true });
+    await expect(p2.locator('#inspector-modal')).toBeVisible();
+    await expect.poll(async () => p2.evaluate(() =>
+        window.latestGameState.players[window.myId].party.length)).toBe(2);
+    await p2.locator('#inspector-modal-actions button', { hasText: 'SACRIFICE THIS HERO' }).click();
 
     // The CHOSEN hero is gone; the other one stays. Flow resumes to PLAYING.
     await expect.poll(async () => stateOf(p2)).toBe('PLAYING');

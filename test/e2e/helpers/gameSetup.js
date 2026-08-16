@@ -174,13 +174,15 @@ async function clickFirstValidTarget(page) {
     // valid-target cards run an infinite scale-pulse animation, so they never
     // satisfy Playwright's "stable" actionability check — force the click once
     // we know the element exists/visible.
-    // Clicking a valid-target card opens the inspector with a "SELECT TARGET"
+    // Clicking a valid-target card opens the inspector with an explicit action
     // button — that second click is what actually submits the target.
     const selectBtn = page.locator('#inspector-modal-actions button').filter({
-        hasText: /SELECT TARGET/i,
+        hasText: /SELECT TARGET|SELECT THIS|SELECT TO|SACRIFICE THIS|EQUIP TO/i,
     }).first();
 
-    const visibleTarget = page.locator('.valid-target:visible').first();
+    // Only a card can be submitted from the inspector. Container targets such as
+    // the Party dock merely open a board and must not be mistaken for the choice.
+    const visibleTarget = page.locator('.card.valid-target:visible').first();
     if (await visibleTarget.count() > 0) {
         await visibleTarget.click({ timeout: 8_000, force: true });
         await page.waitForTimeout(150);
@@ -197,8 +199,8 @@ async function clickFirstValidTarget(page) {
     const modalTarget = page.locator('#opponent-modal .valid-target').first();
     await expect(modalTarget).toBeVisible({ timeout: 8_000 });
 
-    // Current skill targets submit directly on the card tap. Older flows may
-    // still open the inspector, so retain that confirmation as a fallback.
+    // Every card target now opens the inspector first. The explicit action is
+    // the only control that may submit a destructive or ownership-changing pick.
     await modalTarget.click({ force: true });
     await page.waitForTimeout(150);
     if (await selectBtn.isVisible().catch(() => false)) await selectBtn.click();

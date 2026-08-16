@@ -28,7 +28,8 @@ test(`${name}: opponent hero is removed from party`, async ({ browser }) => {
     host.on('pageerror', e => errors.push(e.message));
 
     await setupP2Hero(host, p2);
-    const partyBefore = await p2.locator('#player-party .card').count();
+    const partyBefore = await p2.evaluate(() =>
+        window.latestGameState.players[window.myId].party.length);
 
     await injectCard(host, id);
     await playCardFromHand(host, id);
@@ -41,7 +42,8 @@ test(`${name}: opponent hero is removed from party`, async ({ browser }) => {
     await clickFirstValidTarget(host);
     await host.waitForTimeout(500);
 
-    const partyAfter = await p2.locator('#player-party .card').count();
+    const partyAfter = await p2.evaluate(() =>
+        window.latestGameState.players[window.myId].party.length);
     expect(partyAfter, `${id}: expected p2 party to shrink`).toBeLessThan(partyBefore);
     expect(errors).toEqual([]);
 
@@ -56,7 +58,8 @@ test('Fluffy (card_058): destroys up to 2 opponent heroes', async ({ browser }) 
 
     await setupP2Hero(host, p2);
 
-    const partyBefore = await p2.locator('#player-party .card').count();
+    const partyBefore = await p2.evaluate(() =>
+        window.latestGameState.players[window.myId].party.length);
 
     await injectCard(host, 'card_058');
     await playCardFromHand(host, 'card_058');
@@ -65,17 +68,22 @@ test('Fluffy (card_058): destroys up to 2 opponent heroes', async ({ browser }) 
     await passModifiers(host);
     await passOpponentModifiers(p2);
 
-    // Multi-target: clickFirstValidTarget selects the one hero (via the inspector's
-    // SELECT TARGET button). Then close the inspector/opponent modals so the target
-    // banner's "Submit Targets" button is clickable, and submit.
+    // Multi-target: inspect first, then select. The Party view must retain visible
+    // selection feedback and progress before the final confirmation.
     await clickFirstValidTarget(host);
+    await expect(host.locator('#opponent-modal .selected-target')).toBeVisible();
+    await expect(host.locator('#opponent-modal .target-selection-badge')).toContainText('1/2');
+    await expect(host.locator('#opponent-modal .party-selection-progress')).toContainText('1 / 2 selected');
+
+    // Close the Party view so the board-level confirmation becomes available.
     await host.evaluate(() => { window.closeInspectorModal?.(); window.closeOpponentModal?.(); });
     const submitBtn = host.locator('button').filter({ hasText: /Submit Targets/i }).first();
     await expect(submitBtn).toBeVisible({ timeout: 5_000 });
     await submitBtn.click();
     await host.waitForTimeout(500);
 
-    const partyAfter = await p2.locator('#player-party .card').count();
+    const partyAfter = await p2.evaluate(() =>
+        window.latestGameState.players[window.myId].party.length);
     expect(partyAfter).toBeLessThan(partyBefore);
     expect(errors).toEqual([]);
 

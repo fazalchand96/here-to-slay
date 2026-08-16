@@ -1192,6 +1192,12 @@ const PARTY_CLASS_ORDER = ['Fighter', 'Bard', 'Guardian', 'Ranger', 'Thief', 'Wi
 
 function buildClassPartyGrid(player, isOwn) {
     const isMyTurn = latestGameState?.activePlayerSocketId === myId;
+    const selectionProgress = isMultiTargeting
+        ? `<div class="party-selection-progress" role="status" aria-live="polite">
+                <strong>${multiTargetSelected.length} / ${multiTargetMax} selected</strong>
+                <span>Inspect a highlighted card, then use Select. Close Party to confirm.</span>
+            </div>`
+        : '';
     const columns = PARTY_CLASS_ORDER.map(className => {
         const heroes = (player.party || []).filter(hero => effectiveHeroClass(hero) === className);
         const leaderInClass = player.leader?.class === className;
@@ -1227,6 +1233,7 @@ function buildClassPartyGrid(player, isOwn) {
 
     return `
         <div class="party-board-layout party-classes-only">
+            ${selectionProgress}
             <section class="party-classes-zone">
                 <header class="party-board-zone-heading">
                     <span>Party Classes</span>
@@ -2000,6 +2007,16 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
         glowClass += ' attackable-monster valid-target';
     }
 
+    const selectedTargetIndex = isMultiTargeting
+        ? multiTargetSelected.indexOf(card.id)
+        : -1;
+    if (selectedTargetIndex !== -1) glowClass += ' selected-target';
+    const selectionBadge = selectedTargetIndex !== -1
+        ? `<span class="target-selection-badge" aria-label="Selected target ${selectedTargetIndex + 1} of ${multiTargetMax}">
+                <b>SELECTED</b><small>${selectedTargetIndex + 1}/${multiTargetMax}</small>
+            </span>`
+        : '';
+
 
 
     const isFullCardArt = !!card.fullCardArtUrl;
@@ -2111,6 +2128,7 @@ function renderCard(card, isMine = false, inHand = false, isMonster = false, isM
             ${monsterAttackBonus}
             ${boardCardName}
             ${equippedBadge}
+            ${selectionBadge}
             <div class="card-face">
                 <div class="card-type">${card.type}</div>
                 <div class="card-img${artClass(card)}" style="background-image: url('${cardArt(card)}')"></div>
@@ -2297,6 +2315,7 @@ function oppModalSignature(id) {
         h: latestGameState?.spectator ? (opp.hand || []).map(card => card.id) : [],
         v: document.getElementById('opponent-modal')?.dataset.section || 'classes',
         t: targetingActive,
+        selected: isMultiTargeting ? [...multiTargetSelected].sort() : [],
         s: latestGameState ? latestGameState.state : null,
     });
 }
@@ -3458,6 +3477,23 @@ function renderBoard(data) {
         'WAITING_FOR_MODIFIER_RETRIEVAL'
     ];
     isTargetMode = currentPendingAction !== null && !dedicatedStates.includes(data.state);
+
+    // The server state is the final source of truth. If a resolved target action
+    // returns to ordinary PLAYING without another pending step, clear local flags
+    // left behind by a late or lost acknowledgement. Pre-targeting a card from
+    // hand remains intact because those flows retain their pending card locally.
+    if (data.state === 'PLAYING' && !currentPendingAction
+        && !pendingHeroSkillCard && !localPendingEquipCard) {
+        isTargetMode = false;
+        myTargetMode = false;
+        isSkillTargeting = false;
+        isPlayerTargeting = false;
+        isSelfItemTargeting = false;
+        isMultiTargeting = false;
+        multiTargetSelected = [];
+        document.body?.classList.remove('target-mode-active');
+        targetBanner?.classList.add('hidden');
+    }
 
 
 
@@ -6897,7 +6933,23 @@ function selectTarget(id) {
     triggerHaptic(15);
 
     submitAuthoritativeSelection('target_selected', id, {
-        onAccepted: () => closeOpponentModal()
+        onAccepted: () => {
+            // Do not leave a completed authoritative action intercepting later
+            // card taps while the resulting game-state broadcast is in flight.
+            isTargetMode = false;
+            myTargetMode = false;
+            currentPendingAction = null;
+            isSkillTargeting = false;
+            isPlayerTargeting = false;
+            isSelfItemTargeting = false;
+            isMultiTargeting = false;
+            multiTargetSelected = [];
+            pendingHeroSkillCard = null;
+            document.body?.classList.remove('target-mode-active');
+            targetBanner?.classList.add('hidden');
+            closeInspectorModal();
+            closeOpponentModal();
+        }
     });
 
 }
@@ -7294,6 +7346,44 @@ function findCardContextForElement(cardEl, cardId) {
         if (card) return { card, location: 'monsters', owner: null };
     }
     return findCardContext(cardId);
+}
+
+function inspectorSelectionLabel(card) {
+    const type = currentPendingAction?.type;
+
+    if (isMultiTargeting) {
+        if (multiTargetSelected.includes(card.id)) return 'DESELECT THIS CARD';
+        if (window.latestGameState
+            && ['WAITING_FOR_DISCARD_PENALTY', 'WAITING_FOR_MULTIPLE_DISCARDS', 'WAITING_FOR_VARIABLE_DISCARD'].includes(window.latestGameState.state)) {
+            return 'SELECT TO DISCARD';
+        }
+        const multiAction = heroTargetAction(currentPendingAction || {
+            type: 'SKILL_TARGET_HERO',
+            skillId: pendingHeroSkillCard?.skill_id
+        });
+        if (multiAction === 'DESTROY') return 'SELECT TO DESTROY';
+        if (multiAction === 'STEAL') return 'SELECT TO STEAL';
+        return card.type === 'Hero Card' ? 'SELECT THIS HERO' : 'SELECT THIS CARD';
+    }
+
+    if (isLocalTargeting || currentPendingAction?.type === 'EQUIP') return 'EQUIP TO THIS HERO';
+    if (isSelfItemTargeting) return 'SELECT THIS ITEM';
+
+    if (['PENALTY', 'DRUID_SKILL_SACRIFICE', 'LIGHTNING_LABRYS_SACRIFICE',
+        'DRAGONS_BILE_SACRIFICE', 'ORACON_SACRIFICE'].includes(type)) {
+        return 'SACRIFICE THIS HERO';
+    }
+    if (type === 'DISCARD') return 'SELECT TO DISCARD';
+    if (type === 'RETURN_ITEM') return 'SELECT TO RETURN ITEM';
+    if (type === 'EXCHANGE_STEP_2') return 'SELECT TO GIVE AWAY';
+
+    const action = heroTargetAction(currentPendingAction || {
+        type: 'SKILL_TARGET_HERO',
+        skillId: pendingHeroSkillCard?.skill_id
+    });
+    if (action === 'DESTROY') return 'SELECT TO DESTROY';
+    if (action === 'STEAL') return 'SELECT TO STEAL';
+    return 'SELECT THIS CARD';
 }
 
 
@@ -7865,17 +7955,7 @@ window.inspectCard = function(cardId, scopedContext = null) {
 
 
 
-            if (isMultiTargeting) {
-
-                const isSelected = multiTargetSelected.includes(card.id);
-
-                btn.innerText = isSelected ? 'DESELECT TARGET' : 'SELECT TARGET';
-
-            } else {
-
-                btn.innerText = 'SELECT TARGET';
-
-            }
+            btn.innerText = inspectorSelectionLabel(card);
 
 
 
@@ -8429,15 +8509,13 @@ document.body.addEventListener('click', (e) => {
 
         const cardId = cardEl.dataset.id;
 
-        if (myTargetMode || isLocalTargeting || isSelfItemTargeting || isMultiTargeting || isSkillTargeting) {
-            handleTargetingClick(cardEl, cardId);
-            return;
-        }
-
         const context = findCardContextForElement(cardEl, cardId);
 
         if (context) {
 
+            // Targeting never executes from the card surface itself. A tap first
+            // opens the full card inspector; only its explicit action button may
+            // select, sacrifice, steal, destroy, discard, or equip the card.
             inspectCard(cardId, context);
 
         }
