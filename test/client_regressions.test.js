@@ -671,6 +671,7 @@ test('premium signature sounds are mastered, routed once, and used by their game
     const styleSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
     const manifestSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'audio_manifest.js'), 'utf8');
     const sfxDir = path.join(__dirname, '..', 'public', 'sounds', 'sfx');
+    const musicDir = path.join(__dirname, '..', 'public', 'sounds', 'music');
 
     ['card_drop.wav', 'roll.wav', 'success.wav', 'destroy.wav', 'steal.wav', 'sacrifice.wav']
         .forEach(file => {
@@ -680,11 +681,17 @@ test('premium signature sounds are mastered, routed once, and used by their game
             assert.ok(contents.length > 40_000, `${file} should contain a mastered effect`);
         });
 
-    assert.match(manifestSource, /version: 'audio-v12-fearless-flame-intro'/);
+    assert.match(manifestSource, /version: 'audio-v13-premium-close-fantasy-music'/);
     assert.match(manifestSource, /cardTap: \{ src: '\/sounds\/sfx\/card_tap\.mp3'/);
     assert.ok(fs.statSync(path.join(sfxDir, 'card_tap.mp3')).size > 8_000);
+    assert.match(manifestSource, /close: \{ src: '\/sounds\/sfx\/close\.mp3'/);
+    assert.ok(fs.statSync(path.join(sfxDir, 'close.mp3')).size > 10_000);
+    assert.match(manifestSource, /lobby: \{[\s\S]*?fantasy_rpg_exploration_v2\.mp3/);
+    assert.match(manifestSource, /game: \{[\s\S]*?fantasy_rpg_exploration_v2\.mp3/);
+    assert.ok(fs.statSync(path.join(musicDir, 'fantasy_rpg_exploration_v2.mp3')).size > 1_000_000);
     assert.match(appSource, /el\.matches\('\[data-lobby-leader-player-id\]'\)/);
-    assert.match(appSource, /playSound\(el\.dataset\.sound \|\| \(isCardInteraction \? 'cardTap' : 'tap'\)\)/);
+    assert.match(appSource, /const isCloseInteraction = Boolean\(/);
+    assert.match(appSource, /isCardInteraction \? 'cardTap' : \(isCloseInteraction \? 'close' : 'tap'\)/);
     assert.match(appSource, /id="roll-leader-btn" data-sound="cardTap"/);
     assert.match(appSource, /class="action-btn lobby-reroll-btn" data-sound="cardTap"/);
     assert.doesNotMatch(appSource, /function inspectCard\(id, contextOverride = null\)[\s\S]{0,700}?playSound\('open'\)/);

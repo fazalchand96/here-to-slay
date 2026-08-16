@@ -1,5 +1,5 @@
 window.HTS_AUDIO_MANIFEST = {
-    version: 'audio-v12-fearless-flame-intro',
+    version: 'audio-v13-premium-close-fantasy-music',
     volumes: {
         master: 0.82,
         sfx: 0.74,
@@ -13,12 +13,12 @@ window.HTS_AUDIO_MANIFEST = {
     },
     music: {
         lobby: {
-            src: '/sounds/music/lobby_loop.mp3',
+            src: '/sounds/music/fantasy_rpg_exploration_v2.mp3',
             volume: 0.32,
             loop: true
         },
         game: {
-            src: '/sounds/music/game_loop.mp3',
+            src: '/sounds/music/fantasy_rpg_exploration_v2.mp3',
             volume: 0.28,
             loop: true
         }

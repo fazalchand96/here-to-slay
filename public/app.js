@@ -522,7 +522,16 @@ document.addEventListener('pointerdown', (e) => {
                 e.target.closest('.card')
                 || el.matches('[data-lobby-leader-player-id]')
             );
-            playSound(el.dataset.sound || (isCardInteraction ? 'cardTap' : 'tap'));
+            const buttonLabel = `${el.getAttribute('aria-label') || ''} ${el.textContent || ''}`
+                .trim()
+                .toLowerCase();
+            const isCloseInteraction = Boolean(
+                el.matches('.close-btn, .modal-secondary-action, .picker-close-action, .inspector-close-action')
+                || /(^|\s)(close|cancel)(\s|$)/.test(buttonLabel)
+            );
+            playSound(el.dataset.sound || (
+                isCardInteraction ? 'cardTap' : (isCloseInteraction ? 'close' : 'tap')
+            ));
         }
         triggerHaptic(8);
     }

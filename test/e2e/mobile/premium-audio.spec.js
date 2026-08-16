@@ -68,6 +68,42 @@ const DIVINE_ARROW_VOICES = [
     'monster_slayed_01',
 ];
 
+test('premium close sound and selected background music decode on mobile', async ({ page }) => {
+    await page.goto('/');
+
+    const decoded = await page.evaluate(async () => {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        const context = new AudioContextClass();
+        const assets = {
+            close: '/sounds/sfx/close.mp3',
+            music: '/sounds/music/fantasy_rpg_exploration_v2.mp3',
+        };
+        const results = {};
+        for (const [name, url] of Object.entries(assets)) {
+            const response = await fetch(url);
+            const audioBuffer = await context.decodeAudioData(await response.arrayBuffer());
+            results[name] = {
+                ok: response.ok,
+                type: response.headers.get('content-type'),
+                duration: audioBuffer.duration,
+                channels: audioBuffer.numberOfChannels,
+            };
+        }
+        await context.close();
+        return results;
+    });
+
+    expect(decoded.close.ok).toBe(true);
+    expect(decoded.close.type).toContain('audio/mpeg');
+    expect(decoded.close.duration).toBeGreaterThanOrEqual(0.4);
+    expect(decoded.close.duration).toBeLessThanOrEqual(0.7);
+    expect(decoded.music.ok).toBe(true);
+    expect(decoded.music.type).toContain('audio/mpeg');
+    expect(decoded.music.duration).toBeGreaterThan(195);
+    expect(decoded.music.duration).toBeLessThan(210);
+    expect(decoded.music.channels).toBeGreaterThanOrEqual(1);
+});
+
 test('The Fearless Flame approved intro decodes correctly in the mobile browser', async ({ page }) => {
     await page.goto('/');
 
