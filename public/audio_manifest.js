@@ -1,5 +1,5 @@
 window.HTS_AUDIO_MANIFEST = {
-    version: 'audio-v2',
+    version: 'audio-v3-premium-signature',
     volumes: {
         master: 0.82,
         sfx: 0.74,
@@ -28,10 +28,11 @@ window.HTS_AUDIO_MANIFEST = {
         open: { src: '/sounds/sfx/open.mp3', volume: 0.42 },
         close: { src: '/sounds/sfx/close.mp3', volume: 0.34 },
         confirm: { src: '/sounds/sfx/confirm.mp3', volume: 0.5 },
-        cardDrop: { src: '/sounds/sfx/card_drop.mp3', volume: 0.58 },
+        cardDrop: { src: '/sounds/sfx/card_drop.wav', volume: 0.72 },
         draw: { src: '/sounds/sfx/draw.mp3', volume: 0.48 },
-        dice: { src: '/sounds/sfx/roll.mp3', volume: 0.62 },
-        roll: { src: '/sounds/sfx/roll.mp3', volume: 0.62 },
+        dice: { src: '/sounds/sfx/roll.wav', volume: 0.72 },
+        roll: { src: '/sounds/sfx/roll.wav', volume: 0.72 },
+        success: { src: '/sounds/sfx/success.wav', volume: 0.48 },
         attack: { src: '/sounds/sfx/attack.mp3', volume: 0.66 },
         slash: { src: '/sounds/sfx/attack.mp3', volume: 0.66 },
         skill: { src: '/sounds/sfx/skill.mp3', volume: 0.54 },
@@ -41,9 +42,9 @@ window.HTS_AUDIO_MANIFEST = {
         target: { src: '/sounds/sfx/target.mp3', volume: 0.36 },
         coin: { src: '/sounds/sfx/monster_slay.mp3', volume: 0.72 },
         monsterSlay: { src: '/sounds/sfx/monster_slay.mp3', volume: 0.72 },
-        steal: { src: '/sounds/sfx/steal.mp3', volume: 0.58 },
-        destroy: { src: '/sounds/sfx/destroy.mp3', volume: 0.66 },
-        sacrifice: { src: '/sounds/sfx/sacrifice.mp3', volume: 0.58 },
+        steal: { src: '/sounds/sfx/steal.wav', volume: 0.78, cooldownMs: 300 },
+        destroy: { src: '/sounds/sfx/destroy.wav', volume: 0.66, cooldownMs: 300 },
+        sacrifice: { src: '/sounds/sfx/sacrifice.wav', volume: 0.54, cooldownMs: 300 },
         equip: { src: '/sounds/sfx/equip.mp3', volume: 0.52 },
         timerWarning: { src: '/sounds/sfx/timer_warning.mp3', volume: 0.48 },
         timerUrgent: { src: '/sounds/sfx/timer_urgent.mp3', volume: 0.56 },
@@ -57,7 +58,7 @@ window.HTS_AUDIO_MANIFEST = {
         card_132: {
             className: 'Bard',
             name: 'The Charismatic Song',
-            casting: 'charming theatrical warm lightly musical voice, playful stage confidence',
+            casting: 'anthropomorphic squirrel bard, warm velvet tenor, quick woodland energy, playful cartoon timing',
             introText: 'I am the Bard. Let the song of battle begin!',
             voice: {
                 intro: ['/sounds/voices/card_132/intro_01.mp3'],
@@ -71,7 +72,7 @@ window.HTS_AUDIO_MANIFEST = {
         card_133: {
             className: 'Fighter',
             name: 'The Fist of Reason',
-            casting: 'confident dry direct sturdy brawler voice, blunt but not angry',
+            casting: 'anthropomorphic bear fighter, grounded low alto, warm bearish weight, dry cartoon confidence',
             introText: 'I am the Fighter. Strength settles every argument.',
             voice: {
                 intro: ['/sounds/voices/card_133/intro_01.mp3'],
@@ -85,7 +86,7 @@ window.HTS_AUDIO_MANIFEST = {
         card_134: {
             className: 'Guardian',
             name: 'The Protecting Horn',
-            casting: 'calm noble protective deep reliable voice, gentle authority',
+            casting: 'anthropomorphic unicorn guardian, luminous baritone, gentle magical authority, animated warmth',
             introText: 'I am the Guardian. None shall pass my watch.',
             voice: {
                 intro: ['/sounds/voices/card_134/intro_01.mp3'],
@@ -99,7 +100,7 @@ window.HTS_AUDIO_MANIFEST = {
         card_135: {
             className: 'Ranger',
             name: 'The Divine Arrow',
-            casting: 'focused precise calm scout voice, quiet confidence and sharp aim',
+            casting: 'anthropomorphic fox ranger, cool focused mezzo, quick vulpine precision, quiet cartoon confidence',
             introText: 'I am the Ranger. My aim never wavers.',
             voice: {
                 intro: ['/sounds/voices/card_135/intro_01.mp3'],
@@ -113,7 +114,7 @@ window.HTS_AUDIO_MANIFEST = {
         card_136: {
             className: 'Thief',
             name: 'The Shadow Claw',
-            casting: 'sly whispering playful arrogant rogue voice, quick and sneaky',
+            casting: 'anthropomorphic black cat thief, smooth low-mid voice, subtle feline purr, sly cartoon timing',
             introText: "I am the Thief. What's yours is already mine.",
             voice: {
                 intro: ['/sounds/voices/card_136/intro_01.mp3'],
@@ -127,7 +128,7 @@ window.HTS_AUDIO_MANIFEST = {
         card_137: {
             className: 'Wizard',
             name: 'The Cloaked Sage',
-            casting: 'mysterious wise slightly eccentric mage voice, bright magical curiosity',
+            casting: 'anthropomorphic rabbit wizard, bright older tenor, alert springy rhythm, eccentric curiosity',
             introText: 'I am the Wizard. Power beyond your reckoning.',
             voice: {
                 intro: ['/sounds/voices/card_137/intro_01.mp3'],
@@ -141,7 +142,7 @@ window.HTS_AUDIO_MANIFEST = {
         card_171: {
             className: 'Druid',
             name: 'The Noble Shaman',
-            casting: 'soft spiritual nature-wise voice, old soul with warm restraint',
+            casting: 'anthropomorphic stag druid, soft grounded contralto, woodland resonance, old-soul restraint',
             introText: 'I am the Druid. Balance bends every fate.',
             voice: {
                 intro: ['/sounds/voices/card_171/intro_01.mp3'],
@@ -155,7 +156,7 @@ window.HTS_AUDIO_MANIFEST = {
         card_172: {
             className: 'Warrior',
             name: 'The Piercing Howl',
-            casting: 'loud brave battle-cry voice, heroic momentum and steel confidence',
+            casting: 'anthropomorphic wolf warrior, smoky mezzo, controlled lupine edge, loyal heroic momentum',
             introText: 'I am the Warrior. Arm me well and watch them fall.',
             voice: {
                 intro: ['/sounds/voices/card_172/intro_01.mp3'],
@@ -169,7 +170,7 @@ window.HTS_AUDIO_MANIFEST = {
         card_173: {
             className: 'Necromancer',
             name: 'The Gnawing Dread',
-            casting: 'dark dry sinister but playful voice, theatrical shadow magic without horror',
+            casting: 'anthropomorphic fox necromancer, silky low voice, vulpine wit, playful macabre cartoon timing',
             introText: 'I am the Necromancer. Nothing useful stays buried.',
             voice: {
                 intro: ['/sounds/voices/card_173/intro_01.mp3'],
@@ -183,7 +184,7 @@ window.HTS_AUDIO_MANIFEST = {
         card_174: {
             className: 'Berserker',
             name: 'The Raging Manticore',
-            casting: 'wild excited explosive tiny powerhouse voice, joyful chaos and big hits',
+            casting: 'anthropomorphic lion berserker, bright feline rasp, restrained roar resonance, joyful chaos',
             introText: 'I am the Berserker. Point me at trouble.',
             voice: {
                 intro: ['/sounds/voices/card_174/intro_01.mp3'],
@@ -197,7 +198,7 @@ window.HTS_AUDIO_MANIFEST = {
         card_221: {
             className: 'Sorcerer',
             name: 'The Fearless Flame',
-            casting: 'fiery dramatic impulsive magical voice, bright arrogance and risky confidence',
+            casting: 'anthropomorphic dragon sorcerer, luminous tenor, smoky reptilian texture, fiery comic confidence',
             introText: 'I am the Sorcerer. A little fire fixes everything.',
             voice: {
                 intro: ['/sounds/voices/card_221/intro_01.mp3'],
@@ -217,7 +218,7 @@ window.HTS_AUDIO_MANIFEST = {
         challenge_started: { sfx: 'challenge', voiceEvent: 'challenge', chance: 0.28, priority: 48 },
         modifier_played: { sfx: 'modifier', voiceEvent: 'modifier', chance: 0.18, priority: 36 },
         roll_started: { sfx: 'roll', voiceEvent: 'attack', chance: 0.12, priority: 28 },
-        roll_success: { voiceEvent: 'success', chance: 0.22, priority: 40 },
+        roll_success: { sfx: 'success', voiceEvent: 'success', chance: 0.22, priority: 40 },
         roll_failed: { voiceEvent: 'failure', chance: 0.2, priority: 38 },
         monster_slayed: { sfx: 'monsterSlay', voiceEvent: 'monster_slayed', chance: 0.58, priority: 72 },
         hero_stolen: { sfx: 'steal', voiceEvent: 'steal', victimVoiceEvent: 'victim', chance: 0.48, victimChance: 0.24, priority: 70 },
@@ -232,6 +233,6 @@ window.HTS_AUDIO_MANIFEST = {
     productionNotes: {
         musicPrompt: 'whimsical hand-crafted fantasy animation score, warm orchestral chibi adventure, gentle woodwinds, soft strings, light percussion, magical playful mood, seamless loop',
         sfxDirection: 'premium tactile board-game fantasy sounds, short, crisp, soft transients, no cheap synth bleeps',
-        voiceDirection: 'short English one-liners, 1 to 2 seconds, expressive but not loud, characterful chibi fantasy leaders'
+        voiceDirection: 'short English one-liners, 1 to 2 seconds, 60 percent talking-cartoon-animal character and 40 percent human clarity for new leaders; species is immediately audible without childish mascot voices or constant literal animal noises'
     }
 };

@@ -1,0 +1,76 @@
+'use strict';
+
+const { test, expect } = require('../helpers/fixtures');
+
+const SIGNATURE_SOUNDS = {
+    card_drop: [0.45, 0.75],
+    roll: [0.7, 1.0],
+    success: [0.85, 1.15],
+    destroy: [0.85, 1.15],
+    steal: [1.25, 1.65],
+    sacrifice: [0.85, 1.15],
+};
+
+const SHADOW_CLAW_VOICES = ['intro_01', 'steal_01', 'failure_01'];
+
+test('premium signature WAVs decode correctly in the mobile browser', async ({ page }) => {
+    await page.goto('/');
+
+    const decoded = await page.evaluate(async names => {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        const context = new AudioContextClass();
+        const results = {};
+        for (const name of names) {
+            const response = await fetch(`/sounds/sfx/${name}.wav`);
+            const audioBuffer = await context.decodeAudioData(await response.arrayBuffer());
+            results[name] = {
+                ok: response.ok,
+                type: response.headers.get('content-type'),
+                duration: audioBuffer.duration,
+                sampleRate: audioBuffer.sampleRate,
+                channels: audioBuffer.numberOfChannels,
+            };
+        }
+        await context.close();
+        return results;
+    }, Object.keys(SIGNATURE_SOUNDS));
+
+    for (const [name, [minimum, maximum]] of Object.entries(SIGNATURE_SOUNDS)) {
+        expect(decoded[name].ok, `${name} should load`).toBe(true);
+        expect(decoded[name].type).toContain('audio/wav');
+        expect(decoded[name].sampleRate).toBe(48_000);
+        expect(decoded[name].channels).toBe(2);
+        expect(decoded[name].duration).toBeGreaterThanOrEqual(minimum);
+        expect(decoded[name].duration).toBeLessThanOrEqual(maximum);
+    }
+});
+
+test('The Shadow Claw voice pilot decodes correctly in the mobile browser', async ({ page }) => {
+    await page.goto('/');
+
+    const decoded = await page.evaluate(async names => {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        const context = new AudioContextClass();
+        const results = {};
+        for (const name of names) {
+            const response = await fetch(`/sounds/voices/card_136/${name}.mp3`);
+            const audioBuffer = await context.decodeAudioData(await response.arrayBuffer());
+            results[name] = {
+                ok: response.ok,
+                type: response.headers.get('content-type'),
+                duration: audioBuffer.duration,
+                channels: audioBuffer.numberOfChannels,
+            };
+        }
+        await context.close();
+        return results;
+    }, SHADOW_CLAW_VOICES);
+
+    for (const name of SHADOW_CLAW_VOICES) {
+        expect(decoded[name].ok, `${name} should load`).toBe(true);
+        expect(decoded[name].type).toContain('audio/mpeg');
+        expect(decoded[name].channels).toBeGreaterThanOrEqual(1);
+        expect(decoded[name].duration).toBeGreaterThan(0.5);
+        expect(decoded[name].duration).toBeLessThan(5);
+    }
+});

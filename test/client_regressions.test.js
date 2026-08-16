@@ -647,3 +647,28 @@ test('every destructive card choice is inspect-first or uses a readable explicit
     ['Sacrifice Hero', 'Sacrifice Item', 'Destroy Hero', 'Destroy Item', 'Discard', 'Give']
         .forEach(label => assert.match(appSource, new RegExp(label)));
 });
+
+test('premium signature sounds are mastered, routed once, and used by their game events', () => {
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const manifestSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'audio_manifest.js'), 'utf8');
+    const sfxDir = path.join(__dirname, '..', 'public', 'sounds', 'sfx');
+
+    ['card_drop.wav', 'roll.wav', 'success.wav', 'destroy.wav', 'steal.wav', 'sacrifice.wav']
+        .forEach(file => {
+            const contents = fs.readFileSync(path.join(sfxDir, file));
+            assert.equal(contents.subarray(0, 4).toString('ascii'), 'RIFF', `${file} should be a WAV`);
+            assert.equal(contents.subarray(8, 12).toString('ascii'), 'WAVE', `${file} should be a WAV`);
+            assert.ok(contents.length > 40_000, `${file} should contain a mastered effect`);
+        });
+
+    assert.match(manifestSource, /version: 'audio-v3-premium-signature'/);
+    ['card_drop', 'roll', 'success', 'destroy', 'steal', 'sacrifice']
+        .forEach(file => assert.match(manifestSource, new RegExp(`/sounds/sfx/${file}\\.wav`)));
+    assert.match(manifestSource, /roll_success: \{ sfx: 'success'/);
+    assert.match(appSource, /PremiumAudio\.playEvent\('roll_success'/);
+    assert.match(appSource, /const lastSfxAt = new Map\(\)/);
+    assert.doesNotMatch(appSource, /function executeManualRoll\(\) \{[\s\S]*?playSound\('dice'\)/,
+        'the authoritative roll event owns the dice sound, so a click may not double-trigger it');
+    assert.doesNotMatch(appSource, /function detectRemoval\(/,
+        'party removal alone cannot distinguish destroy, steal, and sacrifice sounds');
+});

@@ -209,6 +209,7 @@ const PremiumAudio = (() => {
     };
     const cache = new Map();
     const missing = new Set();
+    const lastSfxAt = new Map();
     const lastLeaderVoiceAt = new Map();
     let unlocked = false;
     let currentMusicKey = '';
@@ -261,6 +262,10 @@ const PremiumAudio = (() => {
     function playSfx(key) {
         const spec = specFrom(manifest.sfx?.[key]);
         if (!spec) return null;
+        const now = Date.now();
+        const cooldownMs = spec.cooldownMs ?? 70;
+        if (now - (lastSfxAt.get(key) || 0) < cooldownMs) return null;
+        lastSfxAt.set(key, now);
         return playFile(spec.src, 'sfx', spec);
     }
     function pick(list) {
@@ -350,13 +355,6 @@ const PremiumAudio = (() => {
     function countPartyCards(player) {
         return (player?.party || []).length;
     }
-    function detectRemoval(priorPlayer, nextPlayer) {
-        const beforeIds = new Set((priorPlayer?.party || []).map(card => card.id));
-        const afterIds = new Set((nextPlayer?.party || []).map(card => card.id));
-        let removed = 0;
-        beforeIds.forEach(id => { if (!afterIds.has(id)) removed += 1; });
-        return removed;
-    }
     function handleStateUpdate(prev, next, perspectiveId) {
         if (!next) return;
         const isLobby = next.state === 'LOBBY';
@@ -380,10 +378,6 @@ const PremiumAudio = (() => {
             const nextSlain = nextPlayer?.slainMonsters?.length || 0;
             if (nextSlain > priorSlain) {
                 playEvent('monster_slayed', { actorId: playerId, state: next });
-            }
-            const removed = detectRemoval(prevPlayer, nextPlayer);
-            if (removed > 0) {
-                playEvent('sacrifice', { actorId: playerId, state: next, chance: Math.min(0.55, 0.25 + removed * 0.1) });
             }
             const priorCards = countPartyCards(prevPlayer);
             const nextCards = countPartyCards(nextPlayer);
@@ -5111,6 +5105,15 @@ socket.on('rollResult', (data) => {
 
         showNotification(data.message);
 
+        const rollMessage = String(data.message || '');
+        if (/\b(success|succeeds|successful|slew|slain)\b/i.test(rollMessage)
+            && !/\b(fail|fails|failed)\b/i.test(rollMessage)) {
+            PremiumAudio.playEvent('roll_success', {
+                actorId: data.player || null,
+                state: latestGameState
+            });
+        }
+
         const diceOverlay = document.getElementById('dice-overlay');
 
         if (diceOverlay) diceOverlay?.classList.add('hidden');
@@ -7181,7 +7184,6 @@ function executeManualRoll() {
     const die2 = document.getElementById('die2');
     die1?.classList.add('rolling');
     die2?.classList.add('rolling');
-    playSound('dice'); // <-- ADD THIS
     triggerHaptic(50);
     document.getElementById('manual-roll-btn').style.display = 'none';
     socket.emit('execute_roll');
