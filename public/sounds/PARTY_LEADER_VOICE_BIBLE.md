@@ -71,9 +71,9 @@ Voice Design prompt: `Highly expressive female anthropomorphic unicorn fantasy g
 
 ## card_135 - The Divine Arrow (Ranger)
 
-Voice identity: alert anthropomorphic fox; clear cool mezzo, focused and economical, with quick vulpine precision. Quiet confidence and alert breath control; never aloof.
+Voice identity: sophisticated female red fox with the poise of an anime elven ranger; youthful adult mezzo-soprano, cool silvery tone, aristocratic precision and effortless superiority. Subtle vulpine cunning and a knowing smile keep the controlled coldness alive rather than emotionless.
 
-Voice Design prompt: `Anthropomorphic red fox fantasy ranger, focused female mezzo with human-level clarity, a lightly pointed fox-like resonance and quick precise consonants. Observant, quietly confident and subtly cartoony, with controlled breathing and economical delivery. Never yipping, squeaky, icy, robotic, breathy, or action-hero loud. Perfect close-mic audio.`
+Voice Design prompt: `Highly expressive female anthropomorphic red fox fantasy ranger. Voice balance is 55 percent elegant anime elf ranger and 45 percent sophisticated talking fox: a youthful adult feminine mezzo-soprano with a cool silvery tone, refined aristocratic diction, controlled breath and razor-precise consonants. Measured, unhurried and effortlessly superior, with subtle vulpine cunning and a faint knowing smile—as if she saw the target long before anyone else. Premium English-dub character acting, chic, poised, observant, slightly cold and lightly arrogant without becoming cruel. Never witchy, evil, sultry, breathy ASMR, emotionless, robotic, militaristic, action-hero loud, yipping, squeaky, childish or melodramatic. Perfect close-mic studio quality.`
 
 | File | Line |
 | --- | --- |

@@ -1,5 +1,5 @@
 window.HTS_AUDIO_MANIFEST = {
-    version: 'audio-v4-protecting-horn',
+    version: 'audio-v5-divine-arrow',
     volumes: {
         master: 0.82,
         sfx: 0.74,
@@ -100,7 +100,7 @@ window.HTS_AUDIO_MANIFEST = {
         card_135: {
             className: 'Ranger',
             name: 'The Divine Arrow',
-            casting: 'anthropomorphic fox ranger, cool focused mezzo, quick vulpine precision, quiet cartoon confidence',
+            casting: 'female red-fox ranger, cool silvery anime mezzo, elven elegance, precise aristocratic confidence',
             introText: 'I am the Ranger. My aim never wavers.',
             voice: {
                 intro: ['/sounds/voices/card_135/intro_01.mp3'],

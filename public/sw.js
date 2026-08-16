@@ -1,10 +1,10 @@
 // Service Worker for Here To Slay Mobile PWA
 // App code changes often, while card and board art rarely changes. Keeping those
 // caches separate prevents every code deployment from downloading all art again.
-const SHELL_CACHE = 'hts-shell-v209-protecting-horn-voice';
+const SHELL_CACHE = 'hts-shell-v210-divine-arrow-voice';
 // Keep this stable across code-only deploys. Bump it only when an existing
 // image/audio URL is replaced with different content.
-const MEDIA_CACHE = 'hts-media-v6';
+const MEDIA_CACHE = 'hts-media-v7';
 
 const PRECACHE_ASSETS = [
   '/',

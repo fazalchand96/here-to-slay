@@ -56,6 +56,17 @@ const PROTECTING_HORN_VOICES = [
     'modifier_01',
     'victim_01',
 ];
+const DIVINE_ARROW_VOICES = [
+    'intro_01',
+    'card_played_01',
+    'card_played_02',
+    'success_01',
+    'success_02',
+    'failure_01',
+    'failure_02',
+    'attack_01',
+    'monster_slayed_01',
+];
 
 test('premium signature WAVs decode correctly in the mobile browser', async ({ page }) => {
     await page.goto('/');
@@ -201,6 +212,36 @@ test('The Protecting Horn complete voice set decodes correctly in the mobile bro
     }, PROTECTING_HORN_VOICES);
 
     for (const name of PROTECTING_HORN_VOICES) {
+        expect(decoded[name].ok, `${name} should load`).toBe(true);
+        expect(decoded[name].type).toContain('audio/mpeg');
+        expect(decoded[name].channels).toBeGreaterThanOrEqual(1);
+        expect(decoded[name].duration).toBeGreaterThan(0.5);
+        expect(decoded[name].duration).toBeLessThan(6);
+    }
+});
+
+test('The Divine Arrow complete voice set decodes correctly in the mobile browser', async ({ page }) => {
+    await page.goto('/');
+
+    const decoded = await page.evaluate(async names => {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        const context = new AudioContextClass();
+        const results = {};
+        for (const name of names) {
+            const response = await fetch(`/sounds/voices/card_135/${name}.mp3`);
+            const audioBuffer = await context.decodeAudioData(await response.arrayBuffer());
+            results[name] = {
+                ok: response.ok,
+                type: response.headers.get('content-type'),
+                duration: audioBuffer.duration,
+                channels: audioBuffer.numberOfChannels,
+            };
+        }
+        await context.close();
+        return results;
+    }, DIVINE_ARROW_VOICES);
+
+    for (const name of DIVINE_ARROW_VOICES) {
         expect(decoded[name].ok, `${name} should load`).toBe(true);
         expect(decoded[name].type).toContain('audio/mpeg');
         expect(decoded[name].channels).toBeGreaterThanOrEqual(1);
