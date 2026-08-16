@@ -1,5 +1,5 @@
 window.HTS_AUDIO_MANIFEST = {
-    version: 'audio-v11-card-plop-2',
+    version: 'audio-v12-fearless-flame-intro',
     volumes: {
         master: 0.82,
         sfx: 0.74,
@@ -202,12 +202,7 @@ window.HTS_AUDIO_MANIFEST = {
             casting: 'anthropomorphic dragon sorcerer, luminous tenor, smoky reptilian texture, fiery comic confidence',
             introText: 'I am the Sorcerer. A little fire fixes everything.',
             voice: {
-                intro: ['/sounds/voices/card_221/intro_01.mp3'],
-                card_played: ['/sounds/voices/card_221/card_played_01.mp3', '/sounds/voices/card_221/card_played_02.mp3'],
-                success: ['/sounds/voices/card_221/success_01.mp3', '/sounds/voices/card_221/success_02.mp3'],
-                failure: ['/sounds/voices/card_221/failure_01.mp3', '/sounds/voices/card_221/failure_02.mp3'],
-                discard: ['/sounds/voices/card_221/discard_01.mp3'],
-                modifier: ['/sounds/voices/card_221/modifier_01.mp3']
+                intro: ['/sounds/voices/card_221/intro_01.mp3']
             }
         }
     },

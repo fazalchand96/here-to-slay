@@ -68,6 +68,30 @@ const DIVINE_ARROW_VOICES = [
     'monster_slayed_01',
 ];
 
+test('The Fearless Flame approved intro decodes correctly in the mobile browser', async ({ page }) => {
+    await page.goto('/');
+
+    const decoded = await page.evaluate(async () => {
+        const response = await fetch('/sounds/voices/card_221/intro_01.mp3');
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        const context = new AudioContextClass();
+        const audioBuffer = await context.decodeAudioData(await response.arrayBuffer());
+        await context.close();
+        return {
+            ok: response.ok,
+            type: response.headers.get('content-type'),
+            duration: audioBuffer.duration,
+            channels: audioBuffer.numberOfChannels,
+        };
+    });
+
+    expect(decoded.ok).toBe(true);
+    expect(decoded.type).toContain('audio/mpeg');
+    expect(decoded.channels).toBeGreaterThanOrEqual(1);
+    expect(decoded.duration).toBeGreaterThan(1);
+    expect(decoded.duration).toBeLessThan(8);
+});
+
 test('premium signature WAVs decode correctly in the mobile browser', async ({ page }) => {
     await page.goto('/');
 

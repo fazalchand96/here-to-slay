@@ -680,7 +680,7 @@ test('premium signature sounds are mastered, routed once, and used by their game
             assert.ok(contents.length > 40_000, `${file} should contain a mastered effect`);
         });
 
-    assert.match(manifestSource, /version: 'audio-v11-card-plop-2'/);
+    assert.match(manifestSource, /version: 'audio-v12-fearless-flame-intro'/);
     assert.match(manifestSource, /cardTap: \{ src: '\/sounds\/sfx\/card_tap\.mp3'/);
     assert.ok(fs.statSync(path.join(sfxDir, 'card_tap.mp3')).size > 8_000);
     assert.match(appSource, /el\.matches\('\[data-lobby-leader-player-id\]'\)/);
@@ -703,6 +703,9 @@ test('premium signature sounds are mastered, routed once, and used by their game
     assert.match(manifestSource, /introText: 'Stawbbewwy Icecweam\.'/);
     assert.match(manifestSource, /intro: \['\/sounds\/voices\/card_133\/intro_02\.mp3'\]/);
     assert.ok(fs.statSync(path.join(__dirname, '..', 'public', 'sounds', 'voices', 'card_133', 'intro_02.mp3')).size > 40_000);
+    assert.match(manifestSource, /card_221:[\s\S]*?intro: \['\/sounds\/voices\/card_221\/intro_01\.mp3'\]/);
+    assert.doesNotMatch(manifestSource, /card_221\/(?:card_played|success|failure|discard|modifier)_/);
+    assert.ok(fs.statSync(path.join(__dirname, '..', 'public', 'sounds', 'voices', 'card_221', 'intro_01.mp3')).size > 60_000);
     ['card_drop', 'roll', 'success', 'destroy', 'steal', 'sacrifice']
         .forEach(file => assert.match(manifestSource, new RegExp(`/sounds/sfx/${file}\\.wav`)));
     assert.match(manifestSource, /roll_success: \{ sfx: 'success'/);
