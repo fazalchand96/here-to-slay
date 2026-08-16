@@ -661,7 +661,16 @@ test('premium signature sounds are mastered, routed once, and used by their game
             assert.ok(contents.length > 40_000, `${file} should contain a mastered effect`);
         });
 
-    assert.match(manifestSource, /version: 'audio-v5-divine-arrow'/);
+    assert.match(manifestSource, /version: 'audio-v9-fighter-polished-lines'/);
+    ['card_played_03.mp3', 'challenge_02.mp3'].forEach(file => {
+        assert.match(manifestSource, new RegExp(`/sounds/voices/card_133/${file.replace('.', '\\.')}`));
+        const contents = fs.readFileSync(path.join(__dirname, '..', 'public', 'sounds', 'voices', 'card_133', file));
+        assert.ok(contents.length > 40_000, `${file} should contain a mastered voice line`);
+    });
+    assert.match(manifestSource, /challenge: \[[\s\S]*?challenge_02\.mp3[\s\S]*?\]/);
+    assert.match(manifestSource, /introText: 'Stawbbewwy Icecweam\.'/);
+    assert.match(manifestSource, /intro: \['\/sounds\/voices\/card_133\/intro_02\.mp3'\]/);
+    assert.ok(fs.statSync(path.join(__dirname, '..', 'public', 'sounds', 'voices', 'card_133', 'intro_02.mp3')).size > 40_000);
     ['card_drop', 'roll', 'success', 'destroy', 'steal', 'sacrifice']
         .forEach(file => assert.match(manifestSource, new RegExp(`/sounds/sfx/${file}\\.wav`)));
     assert.match(manifestSource, /roll_success: \{ sfx: 'success'/);

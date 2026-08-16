@@ -1,5 +1,5 @@
 window.HTS_AUDIO_MANIFEST = {
-    version: 'audio-v5-divine-arrow',
+    version: 'audio-v9-fighter-polished-lines',
     volumes: {
         master: 0.82,
         sfx: 0.74,
@@ -73,13 +73,20 @@ window.HTS_AUDIO_MANIFEST = {
             className: 'Fighter',
             name: 'The Fist of Reason',
             casting: 'anthropomorphic bear fighter, grounded low alto, warm bearish weight, dry cartoon confidence',
-            introText: 'I am the Fighter. Strength settles every argument.',
+            introText: 'Stawbbewwy Icecweam.',
             voice: {
-                intro: ['/sounds/voices/card_133/intro_01.mp3'],
-                card_played: ['/sounds/voices/card_133/card_played_01.mp3', '/sounds/voices/card_133/card_played_02.mp3'],
+                intro: ['/sounds/voices/card_133/intro_02.mp3'],
+                card_played: [
+                    '/sounds/voices/card_133/card_played_01.mp3',
+                    '/sounds/voices/card_133/card_played_02.mp3',
+                    '/sounds/voices/card_133/card_played_03.mp3'
+                ],
                 success: ['/sounds/voices/card_133/success_01.mp3', '/sounds/voices/card_133/success_02.mp3'],
                 failure: ['/sounds/voices/card_133/failure_01.mp3', '/sounds/voices/card_133/failure_02.mp3'],
-                challenge: ['/sounds/voices/card_133/challenge_01.mp3'],
+                challenge: [
+                    '/sounds/voices/card_133/challenge_01.mp3',
+                    '/sounds/voices/card_133/challenge_02.mp3'
+                ],
                 destroy: ['/sounds/voices/card_133/destroy_01.mp3']
             }
         },
