@@ -53,9 +53,9 @@ Final acting direction: Eleven v3 at Creative stability. Warm breaths, grounded 
 
 ## card_134 - The Protecting Horn (Guardian)
 
-Voice identity: noble anthropomorphic unicorn; luminous mature baritone, gentle authority and a faint magical brightness. Protective without sounding solemn or royal.
+Voice identity: female anthropomorphic unicorn; youthful adult anime-inspired mezzo-soprano with a magical shimmer, confident warmth and protective courage. Clearly feminine and expressive without becoming childlike, sugary or squeaky.
 
-Voice Design prompt: `Anthropomorphic unicorn fantasy guardian, luminous mature baritone with human-level clarity, warm protective depth and a faint bright magical resonance. Calm, patient, reassuring and gently cartoony, with elegant animated timing. Never neighing, pompous, elderly, priestly, sugary, ominous, or booming. Perfect close-mic studio quality.`
+Voice Design prompt: `Highly expressive female anthropomorphic unicorn fantasy guardian. Voice balance is 60 percent modern anime heroine and 40 percent elegant talking unicorn: a youthful adult feminine mezzo-soprano, bright and crystal-clear, with a soft magical shimmer, graceful upward inflections, confident warmth, protective courage and playful animated sparkle. Premium English-dub character acting with distinct emotional reactions, precise diction and polished fantasy-cartoon timing. Clearly feminine and youthful, but never childlike, babyish, squeaky, helium-high, breathy ASMR, sugary princess-like, timid, flat, elderly or masculine. No neighing. Perfect close-mic studio quality.`
 
 | File | Line |
 | --- | --- |

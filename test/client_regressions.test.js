@@ -661,7 +661,7 @@ test('premium signature sounds are mastered, routed once, and used by their game
             assert.ok(contents.length > 40_000, `${file} should contain a mastered effect`);
         });
 
-    assert.match(manifestSource, /version: 'audio-v3-premium-signature'/);
+    assert.match(manifestSource, /version: 'audio-v4-protecting-horn'/);
     ['card_drop', 'roll', 'success', 'destroy', 'steal', 'sacrifice']
         .forEach(file => assert.match(manifestSource, new RegExp(`/sounds/sfx/${file}\\.wav`)));
     assert.match(manifestSource, /roll_success: \{ sfx: 'success'/);

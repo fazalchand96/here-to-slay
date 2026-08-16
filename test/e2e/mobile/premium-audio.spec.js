@@ -45,6 +45,17 @@ const FIST_OF_REASON_VOICES = [
     'challenge_01',
     'destroy_01',
 ];
+const PROTECTING_HORN_VOICES = [
+    'intro_01',
+    'card_played_01',
+    'card_played_02',
+    'success_01',
+    'success_02',
+    'failure_01',
+    'failure_02',
+    'modifier_01',
+    'victim_01',
+];
 
 test('premium signature WAVs decode correctly in the mobile browser', async ({ page }) => {
     await page.goto('/');
@@ -165,5 +176,35 @@ test('The Fist of Reason complete voice set decodes correctly in the mobile brow
         expect(decoded[name].channels).toBeGreaterThanOrEqual(1);
         expect(decoded[name].duration).toBeGreaterThan(0.5);
         expect(decoded[name].duration).toBeLessThan(5);
+    }
+});
+
+test('The Protecting Horn complete voice set decodes correctly in the mobile browser', async ({ page }) => {
+    await page.goto('/');
+
+    const decoded = await page.evaluate(async names => {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        const context = new AudioContextClass();
+        const results = {};
+        for (const name of names) {
+            const response = await fetch(`/sounds/voices/card_134/${name}.mp3`);
+            const audioBuffer = await context.decodeAudioData(await response.arrayBuffer());
+            results[name] = {
+                ok: response.ok,
+                type: response.headers.get('content-type'),
+                duration: audioBuffer.duration,
+                channels: audioBuffer.numberOfChannels,
+            };
+        }
+        await context.close();
+        return results;
+    }, PROTECTING_HORN_VOICES);
+
+    for (const name of PROTECTING_HORN_VOICES) {
+        expect(decoded[name].ok, `${name} should load`).toBe(true);
+        expect(decoded[name].type).toContain('audio/mpeg');
+        expect(decoded[name].channels).toBeGreaterThanOrEqual(1);
+        expect(decoded[name].duration).toBeGreaterThan(0.5);
+        expect(decoded[name].duration).toBeLessThan(6);
     }
 });

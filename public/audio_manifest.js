@@ -1,5 +1,5 @@
 window.HTS_AUDIO_MANIFEST = {
-    version: 'audio-v3-premium-signature',
+    version: 'audio-v4-protecting-horn',
     volumes: {
         master: 0.82,
         sfx: 0.74,
@@ -86,7 +86,7 @@ window.HTS_AUDIO_MANIFEST = {
         card_134: {
             className: 'Guardian',
             name: 'The Protecting Horn',
-            casting: 'anthropomorphic unicorn guardian, luminous baritone, gentle magical authority, animated warmth',
+            casting: 'female anthropomorphic unicorn guardian, youthful anime mezzo-soprano, magical shimmer, protective cartoon warmth',
             introText: 'I am the Guardian. None shall pass my watch.',
             voice: {
                 intro: ['/sounds/voices/card_134/intro_01.mp3'],
