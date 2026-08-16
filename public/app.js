@@ -218,6 +218,8 @@ const PremiumAudio = (() => {
     let lastGlobalVoiceAt = 0;
     let lastTimerCueSecond = null;
     let lastLocalHandCount = null;
+    let pendingVoiceCue = null;
+    const playedCueIds = new Set();
 
     function isMuted() {
         return Sound.isMuted();
@@ -268,26 +270,56 @@ const PremiumAudio = (() => {
         lastSfxAt.set(key, now);
         return playFile(spec.src, 'sfx', spec);
     }
-    function pick(list) {
+    function hashSeed(value) {
+        let hash = 2166136261;
+        const text = String(value || '');
+        for (let i = 0; i < text.length; i += 1) {
+            hash ^= text.charCodeAt(i);
+            hash = Math.imul(hash, 16777619);
+        }
+        return hash >>> 0;
+    }
+    function seededUnit(seed, salt = '') {
+        return hashSeed(`${seed}:${salt}`) / 4294967296;
+    }
+    function voiceSeed(eventKey, context = {}) {
+        if (context.variantSeed) return String(context.variantSeed);
+        const state = context.state || latestGameState;
+        const pendingRoll = state?.pendingRoll || {};
+        return [
+            eventKey,
+            context.actorId || '',
+            context.targetId || '',
+            context.leader?.id || '',
+            state?.actionPointTurnId || 0,
+            pendingRoll.type || '',
+            pendingRoll.heroId || pendingRoll.monsterId || pendingRoll.cardInDispute?.id || '',
+            pendingRoll.currentRoll ?? ''
+        ].join(':');
+    }
+    function pick(list, seed = '') {
         if (!Array.isArray(list) || !list.length) return '';
         const available = list.filter(src => src && !missing.has(src));
         if (!available.length) return '';
-        return available[Math.floor(Math.random() * available.length)];
+        return available[Math.floor(seededUnit(seed, 'variant') * available.length)];
     }
     function leaderForPlayer(state, playerId) {
         return state?.players?.[playerId]?.leader || null;
     }
     function playVoiceForLeader(leader, voiceEvent, eventSpec = {}, options = {}) {
         if (isMuted() || !leader || !voiceEvent) return false;
-        const src = pick(manifest.leaders?.[leader.id]?.voice?.[voiceEvent]);
+        const src = pick(manifest.leaders?.[leader.id]?.voice?.[voiceEvent], options.variantSeed);
         if (!src) return false;
         const now = Date.now();
         const globalCooldown = options.globalCooldownMs ?? eventSpec.globalCooldownMs ?? defaults.globalVoiceCooldownMs ?? 4200;
         const leaderCooldown = options.leaderCooldownMs ?? eventSpec.leaderCooldownMs ?? defaults.leaderVoiceCooldownMs ?? 10000;
-        if (!options.force) {
+        if (!options.force && !options.ignoreCooldown) {
             if (now - lastGlobalVoiceAt < globalCooldown) return false;
             if (now - (lastLeaderVoiceAt.get(leader.id) || 0) < leaderCooldown) return false;
             if (activeVoice && !activeVoice.paused && !activeVoice.ended) return false;
+        }
+        if ((options.force || options.ignoreCooldown) && activeVoice && !activeVoice.paused && !activeVoice.ended) {
+            try { activeVoice.pause(); activeVoice.currentTime = 0; } catch (e) {}
         }
         const audio = playFile(src, 'voice', eventSpec);
         if (!audio) return false;
@@ -299,24 +331,53 @@ const PremiumAudio = (() => {
     function maybePlayVoice(eventKey, context = {}) {
         const eventSpec = manifest.events?.[eventKey] || {};
         const chance = context.chance ?? eventSpec.chance ?? defaults.voiceChance ?? 0.18;
-        if (!context.force && Math.random() > chance) return false;
+        const seed = voiceSeed(eventKey, context);
+        const chanceRoll = Number.isFinite(context.chanceRoll)
+            ? context.chanceRoll
+            : seededUnit(seed, 'chance');
+        if (!context.force && chanceRoll > chance) return false;
         const state = context.state || latestGameState;
         const actorLeader = context.leader || leaderForPlayer(state, context.actorId);
         const played = playVoiceForLeader(
             actorLeader,
             context.voiceEvent || eventSpec.voiceEvent,
             eventSpec,
-            context
+            { ...context, variantSeed: `${seed}:actor` }
         );
         if (played || !eventSpec.victimVoiceEvent || !context.targetId) return played;
         const victimChance = context.victimChance ?? eventSpec.victimChance ?? 0.22;
-        if (Math.random() > victimChance) return false;
+        const victimRoll = Number.isFinite(context.victimChanceRoll)
+            ? context.victimChanceRoll
+            : seededUnit(seed, 'victim-chance');
+        if (victimRoll > victimChance) return false;
         return playVoiceForLeader(
             leaderForPlayer(state, context.targetId),
             eventSpec.victimVoiceEvent,
             eventSpec,
-            context
+            { ...context, variantSeed: `${seed}:victim` }
         );
+    }
+    function playSynchronizedCue(cue) {
+        if (!cue?.id || !cue.eventKey || playedCueIds.has(cue.id)) return false;
+        if (!unlocked) {
+            pendingVoiceCue = { cue, expiresAt: Date.now() + 4000 };
+            return false;
+        }
+        playedCueIds.add(cue.id);
+        if (playedCueIds.size > 120) {
+            const oldest = playedCueIds.values().next().value;
+            playedCueIds.delete(oldest);
+        }
+        return maybePlayVoice(cue.eventKey, {
+            actorId: cue.actorId,
+            targetId: cue.targetId,
+            leader: cue.leaderId ? { id: cue.leaderId } : null,
+            voiceEvent: cue.voiceEvent || undefined,
+            force: cue.force === true,
+            ignoreCooldown: true,
+            variantSeed: cue.id,
+            state: latestGameState
+        });
     }
     function playEvent(eventKey, context = {}) {
         const eventSpec = manifest.events?.[eventKey] || {};
@@ -351,9 +412,9 @@ const PremiumAudio = (() => {
     function unlock() {
         unlocked = true;
         syncMute();
-    }
-    function countPartyCards(player) {
-        return (player?.party || []).length;
+        const queued = pendingVoiceCue;
+        pendingVoiceCue = null;
+        if (queued && queued.expiresAt >= Date.now()) playSynchronizedCue(queued.cue);
     }
     function handleStateUpdate(prev, next, perspectiveId) {
         if (!next) return;
@@ -379,11 +440,7 @@ const PremiumAudio = (() => {
             if (nextSlain > priorSlain) {
                 playEvent('monster_slayed', { actorId: playerId, state: next });
             }
-            const priorCards = countPartyCards(prevPlayer);
-            const nextCards = countPartyCards(nextPlayer);
-            if (nextCards > priorCards && nextPlayer?.leader?.effect_id === 'LEADER_NECROMANCER') {
-                maybePlayVoice('card_played', { actorId: playerId, state: next, voiceEvent: 'success', chance: 0.24 });
-            }
+            // Card-play voices are emitted once by the authoritative server.
         });
     }
     function timerCue(seconds) {
@@ -426,6 +483,7 @@ const PremiumAudio = (() => {
         playEvent,
         maybePlayVoice,
         playVoiceForLeader,
+        playSynchronizedCue,
         playMusic,
         handleStateUpdate,
         handleMessage,
@@ -434,6 +492,7 @@ const PremiumAudio = (() => {
     };
 })();
 window.PremiumAudio = PremiumAudio;
+socket.on('premium_audio_cue', cue => PremiumAudio.playSynchronizedCue(cue));
 
 function triggerHaptic(pattern) {
     if (Sound.isMuted()) return; // one "silence" switch covers sound + vibration
@@ -458,7 +517,9 @@ document.addEventListener('pointerdown', (e) => {
         'button, .card, .action-btn, .opponent-chip, .tavern-leader-card, [onclick], .clickable'
     );
     if (el && !el.disabled && !el.classList.contains('disabled')) {
-        playSound('tap');
+        if (!el.matches('[data-sound-toggle]')) {
+            playSound(e.target.closest('.card') ? 'cardTap' : 'tap');
+        }
         triggerHaptic(8);
     }
 }, { capture: true, passive: true });
@@ -488,7 +549,6 @@ function announceLeader(leader) {
     const key = leader.id || leader.name;
     if (window._lastLeaderAnnounced === key) return;
     window._lastLeaderAnnounced = key;
-    PremiumAudio.playEvent('leader_selected', { leader, force: true });
     triggerHaptic([20, 30, 20]);
 }
 
@@ -3054,12 +3114,6 @@ socket.on('game_over', (data) => {
     const myName = getPlayerName(socket.id);
     const iWon = data.winnerName && myName && data.winnerName === myName;
     playSound(iWon ? 'win' : 'lose');
-    PremiumAudio.maybePlayVoice(iWon ? 'win' : 'lose', {
-        actorId: iWon ? myId : latestGameState?.winner,
-        targetId: iWon ? null : myId,
-        state: latestGameState,
-        force: true
-    });
     triggerHaptic(iWon ? [60, 50, 60, 50, 120] : [120, 60, 120]);
 
     // Hide game board and show victory modal
@@ -5172,7 +5226,6 @@ function renderChallengePrompt(data, announce = false) {
     if (!challengeModalElement) return;
 
     if (announce) {
-        PremiumAudio.playEvent('challenge_started', { actorId: pending.rollerId, state: data });
         triggerHaptic([20, 40, 20]);
     }
 
@@ -6146,7 +6199,7 @@ window.toggleMute = function() {
     const muted = Sound.toggleMute();
     PremiumAudio.syncMute();
     syncMuteBtn();
-    if (!muted) { Sound.unlock(); PremiumAudio.unlock(); playSound('tap'); } // confirm we're back on
+    if (!muted) { Sound.unlock(); PremiumAudio.unlock(); playSound('cardTap'); } // audible confirmation
 };
 function syncMuteBtn() {
     const btn = document.getElementById('mute-btn');
@@ -6155,6 +6208,14 @@ function syncMuteBtn() {
     btn.classList.toggle('is-muted', muted);
     btn.innerHTML = muted ? '&#128263;' : '&#128266;'; // 🔇 / 🔊
     btn.setAttribute('aria-pressed', String(muted));
+    btn.setAttribute('aria-label', muted ? 'Turn sound on' : 'Turn sound off');
+    document.querySelectorAll('.preflight-sound-btn').forEach(preflightBtn => {
+        preflightBtn.classList.toggle('is-muted', muted);
+        preflightBtn.setAttribute('aria-pressed', String(muted));
+        preflightBtn.setAttribute('aria-label', muted ? 'Turn sound on' : 'Turn sound off');
+        const label = preflightBtn.querySelector('[data-sound-label]');
+        if (label) label.textContent = muted ? 'SOUND OFF' : 'SOUND ON';
+    });
 }
 syncMuteBtn();
 
@@ -6231,7 +6292,6 @@ window.skipOptionalAction = function() {
 
 function playCard(id) {
     triggerHaptic([20, 30, 20]);
-    playSound('cardDrop');
     if (latestGameState && latestGameState.state === 'WAITING_FOR_HAND_SELECTION') {
 
         const selected = latestGameState.players?.[myId]?.hand?.find(card => card.id === id);
@@ -6249,13 +6309,6 @@ function playCard(id) {
     }
 
     const context = findCardContext(id);
-
-    if (context?.card) {
-        const audioEvent = context.card.type === 'Magic Card'
-            ? 'magic_played'
-            : (context.card.type === 'Item Card' || context.card.type === 'Cursed Item Card' ? 'item_equipped' : 'card_played');
-        PremiumAudio.maybePlayVoice(audioEvent, { actorId: myId, state: latestGameState });
-    }
 
     if (context?.card?.type === 'Magic Card') {
         window.pendingMagicResolution = { ...context.card };

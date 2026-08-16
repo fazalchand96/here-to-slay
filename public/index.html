@@ -26,6 +26,11 @@
     <!-- Room Gate -->
     <div id="room-modal" class="overlay">
         <div class="glass-panel room-panel">
+            <button id="room-sound-btn" class="preflight-sound-btn" type="button" data-sound-toggle
+                aria-label="Turn sound off" aria-pressed="false" onclick="toggleMute()">
+                <span class="preflight-sound-icon" aria-hidden="true"></span>
+                <span data-sound-label>SOUND ON</span>
+            </button>
             <h1 class="tavern-title">Choose Your Table</h1>
             <p class="tavern-subtitle">Create a private lobby or join friends with their four-character code. If their game is already running, you automatically join as a spectator.</p>
             <button id="create-room-btn" class="action-btn room-primary-action" type="button">CREATE LOBBY</button>
@@ -43,6 +48,11 @@
     <!-- Lobby Screen -->
     <div id="lobby-modal" class="overlay hidden">
         <div class="glass-panel lobby-panel">
+            <button id="lobby-sound-btn" class="preflight-sound-btn" type="button" data-sound-toggle
+                aria-label="Turn sound off" aria-pressed="false" onclick="toggleMute()">
+                <span class="preflight-sound-icon" aria-hidden="true"></span>
+                <span data-sound-label>SOUND ON</span>
+            </button>
             <div class="lobby-col lobby-col-left">
                 <h1 class="tavern-title">The Prancing Pony</h1>
                 <p class="tavern-subtitle">Take a seat, grab an ale, and prepare to slay.</p>
@@ -179,7 +189,7 @@
             <div id="player-win-tracker"></div>
         </div>
         <!-- Floating menu toggle (both orientations): show/hide the game log -->
-        <button id="mute-btn" type="button" aria-label="Toggle sound" onclick="toggleMute()">&#128266;</button>
+        <button id="mute-btn" type="button" data-sound-toggle aria-label="Turn sound off" aria-pressed="false" onclick="toggleMute()">&#128266;</button>
         <button id="game-menu-btn" type="button" aria-label="Toggle game log" onclick="toggleGameMenu()">&#9776;</button>
 
         <!-- The visible draw pile is baked into the stage background. This node

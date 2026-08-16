@@ -583,6 +583,23 @@ test('Druid skill rolls show low-roll labels and Majestelk reaches its dedicated
     assert.match(htmlSource, /onclick="chooseMajestelkModifier\(-5\)"/);
 });
 
+test('party leader voices use one authoritative room cue on every device', () => {
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const serverSource = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+    const audioSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'audio_manifest.js'), 'utf8');
+
+    assert.match(serverSource, /function emitPremiumAudioCue\(eventKey, options = \{\}\)/);
+    assert.match(serverSource, /io\.emit\('premium_audio_cue', cue\)/);
+    assert.match(serverSource, /emitPremiumAudioCue\('challenge_started',[\s\S]*?actorId: gameState\.pendingChallenge\.rollerId/);
+    assert.match(serverSource, /emitPremiumAudioCue\(card\.type === 'Magic Card' \? 'magic_played' : 'card_played'/);
+    assert.match(appSource, /socket\.on\('premium_audio_cue', cue => PremiumAudio\.playSynchronizedCue\(cue\)\)/);
+    assert.match(appSource, /function seededUnit\(seed, salt = ''\)/);
+    assert.match(appSource, /pendingVoiceCue = \{ cue, expiresAt: Date\.now\(\) \+ 4000 \}/);
+    assert.doesNotMatch(appSource, /PremiumAudio\.playEvent\('challenge_started'/);
+    assert.match(audioSource, /card_played: \['\/sounds\/voices\/card_133\/card_played_03\.mp3'\]/);
+    assert.match(audioSource, /challenge: \['\/sounds\/voices\/card_133\/challenge_02\.mp3'\]/);
+});
+
 test('every authoritative mobile choice clears the dice overlay and waits for acknowledgement', () => {
     const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
     const serverSource = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
@@ -650,6 +667,8 @@ test('every destructive card choice is inspect-first or uses a readable explicit
 
 test('premium signature sounds are mastered, routed once, and used by their game events', () => {
     const appSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+    const styleSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
     const manifestSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'audio_manifest.js'), 'utf8');
     const sfxDir = path.join(__dirname, '..', 'public', 'sounds', 'sfx');
 
@@ -661,7 +680,16 @@ test('premium signature sounds are mastered, routed once, and used by their game
             assert.ok(contents.length > 40_000, `${file} should contain a mastered effect`);
         });
 
-    assert.match(manifestSource, /version: 'audio-v9-fighter-polished-lines'/);
+    assert.match(manifestSource, /version: 'audio-v11-card-plop-2'/);
+    assert.match(manifestSource, /cardTap: \{ src: '\/sounds\/sfx\/card_tap\.mp3'/);
+    assert.ok(fs.statSync(path.join(sfxDir, 'card_tap.mp3')).size > 8_000);
+    assert.match(appSource, /playSound\(e\.target\.closest\('\.card'\) \? 'cardTap' : 'tap'\)/);
+    assert.doesNotMatch(appSource, /function playCard\(id\) \{[\s\S]{0,140}?playSound\('cardDrop'\)/);
+    assert.match(htmlSource, /id="room-sound-btn"[\s\S]*?data-sound-toggle/);
+    assert.match(htmlSource, /id="lobby-sound-btn"[\s\S]*?data-sound-toggle/);
+    assert.match(styleSource, /\.preflight-sound-btn \{[\s\S]*?lobby-field-v169\.webp/);
+    assert.match(appSource, /label\.textContent = muted \? 'SOUND OFF' : 'SOUND ON'/);
+    assert.match(appSource, /if \(!muted\) \{ Sound\.unlock\(\); PremiumAudio\.unlock\(\); playSound\('cardTap'\); \}/);
     ['card_played_03.mp3', 'challenge_02.mp3'].forEach(file => {
         assert.match(manifestSource, new RegExp(`/sounds/voices/card_133/${file.replace('.', '\\.')}`));
         const contents = fs.readFileSync(path.join(__dirname, '..', 'public', 'sounds', 'voices', 'card_133', file));

@@ -1,5 +1,5 @@
 window.HTS_AUDIO_MANIFEST = {
-    version: 'audio-v9-fighter-polished-lines',
+    version: 'audio-v11-card-plop-2',
     volumes: {
         master: 0.82,
         sfx: 0.74,
@@ -25,6 +25,7 @@ window.HTS_AUDIO_MANIFEST = {
     },
     sfx: {
         tap: { src: '/sounds/sfx/tap.mp3', volume: 0.26 },
+        cardTap: { src: '/sounds/sfx/card_tap.mp3', volume: 0.46, cooldownMs: 70 },
         open: { src: '/sounds/sfx/open.mp3', volume: 0.42 },
         close: { src: '/sounds/sfx/close.mp3', volume: 0.34 },
         confirm: { src: '/sounds/sfx/confirm.mp3', volume: 0.5 },
@@ -76,17 +77,10 @@ window.HTS_AUDIO_MANIFEST = {
             introText: 'Stawbbewwy Icecweam.',
             voice: {
                 intro: ['/sounds/voices/card_133/intro_02.mp3'],
-                card_played: [
-                    '/sounds/voices/card_133/card_played_01.mp3',
-                    '/sounds/voices/card_133/card_played_02.mp3',
-                    '/sounds/voices/card_133/card_played_03.mp3'
-                ],
+                card_played: ['/sounds/voices/card_133/card_played_03.mp3'],
                 success: ['/sounds/voices/card_133/success_01.mp3', '/sounds/voices/card_133/success_02.mp3'],
                 failure: ['/sounds/voices/card_133/failure_01.mp3', '/sounds/voices/card_133/failure_02.mp3'],
-                challenge: [
-                    '/sounds/voices/card_133/challenge_01.mp3',
-                    '/sounds/voices/card_133/challenge_02.mp3'
-                ],
+                challenge: ['/sounds/voices/card_133/challenge_02.mp3'],
                 destroy: ['/sounds/voices/card_133/destroy_01.mp3']
             }
         },

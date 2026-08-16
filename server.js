@@ -80,6 +80,7 @@ const rootSession = {
     actionPointTimerRemainingMs: 45_000,
     actionPointTimerStartedAt: null,
     debugForcedRoll: null,
+    audioCueSequence: 0,
     reconnectManager: null,
 };
 
@@ -117,6 +118,25 @@ const io = {
         return ioServer.to(target);
     },
 };
+
+function emitPremiumAudioCue(eventKey, options = {}) {
+    if (!eventKey) return null;
+    const session = currentSession();
+    session.audioCueSequence = (session.audioCueSequence || 0) + 1;
+    const actorId = options.actorId || null;
+    const cue = {
+        id: `${session.roomCode || 'root'}:${session.audioCueSequence}`,
+        eventKey,
+        actorId,
+        targetId: options.targetId || null,
+        leaderId: options.leaderId || gameState.players?.[actorId]?.leader?.id || null,
+        voiceEvent: options.voiceEvent || null,
+        force: options.force === true,
+        createdAt: Date.now()
+    };
+    io.emit('premium_audio_cue', cue);
+    return cue;
+}
 
 function emitPublicCardEffect(card, ownerId, message, effectLabel, durationMs = 3600) {
     if (!card || !['Monster Card', 'Party Leader'].includes(card.type)) return;
@@ -759,6 +779,7 @@ function handleGameOver(winResult) {
     gameState.winner = winResult.winnerId;
     
     const winnerName = gameState.players[winResult.winnerId] ? getPlayerName(gameState, winResult.winnerId) : 'Unknown';
+    emitPremiumAudioCue('win', { actorId: winResult.winnerId, force: true });
     io.emit('game_over', { winnerName, reason: winResult.reason });
 
     console.log(`\n[SIMULATION PROGRESS] Unique cards tested so far: ${trackedCardsPlayed.length} out of ${trackableCardTotal}.`);
@@ -2588,6 +2609,7 @@ function createRoomSession(roomCode) {
         actionPointTimerRemainingMs: ACTION_POINT_TIMEOUT_MS,
         actionPointTimerStartedAt: null,
         debugForcedRoll: null,
+        audioCueSequence: 0,
         reconnectManager: null,
     };
     session.state.availableLeaders = [...PARTY_LEADERS];
@@ -2793,6 +2815,11 @@ ioServer.on('connection', (socket) => {
             const chosenLeader = gameState.availableLeaders.splice(randomIndex, 1)[0];
             player.leader = chosenLeader;
             player.hasSelectedLeader = true;
+            emitPremiumAudioCue('leader_selected', {
+                actorId: socket.id,
+                leaderId: chosenLeader.id,
+                force: true
+            });
             broadcastState();
         }
     });
@@ -2826,6 +2853,11 @@ ioServer.on('connection', (socket) => {
         }
         player.leader = chosenLeader;
         player.hasRerolledLeader = true;
+        emitPremiumAudioCue('leader_selected', {
+            actorId: socket.id,
+            leaderId: chosenLeader.id,
+            force: true
+        });
         broadcastState();
     });
 
@@ -2992,6 +3024,7 @@ ioServer.on('connection', (socket) => {
         if (!isFree) player.ap -= 1;
         player.hand.splice(cardIndex, 1);
         triggerPlayedCardMonsterPassives(socket.id, card);
+        emitPremiumAudioCue('item_equipped', { actorId: socket.id });
         
         const hasOwlbear = player.slainMonsters && player.slainMonsters.some(m => m.effect_id === 'MONSTER_WARWORN_OWLBEAR');
         // Owlbear skips challenges for items; Iron Resolve skips challenges for any
@@ -3104,6 +3137,9 @@ ioServer.on('connection', (socket) => {
                 if (!isFree) player.ap -= 1;
                 player.hand.splice(cardIndex, 1);
                 triggerPlayedCardMonsterPassives(socket.id, card);
+                emitPremiumAudioCue(card.type === 'Magic Card' ? 'magic_played' : 'card_played', {
+                    actorId: socket.id
+                });
                 
                 // Wizard passive check
                 if (card.type === 'Magic Card' && player.leader && player.leader.effect_id === 'LEADER_WIZARD') {
@@ -5212,6 +5248,11 @@ socket.on('resolve_immediate_play', (data, acknowledge) => {
         registerCardPlayed(challengeCard);
         gameState.discardPile.push(challengeCard);
         triggerPlayedCardMonsterPassives(socket.id, challengeCard);
+        emitPremiumAudioCue('challenge_started', {
+            actorId: gameState.pendingChallenge.rollerId,
+            targetId: socket.id,
+            force: true
+        });
 
         // Bloodwing: "Each time another player CHALLENGES you, that player must
         // DISCARD a card." The challenged player (the one who played the disputed

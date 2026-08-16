@@ -12918,6 +12918,95 @@ html body #waiting-overlay.tabletop-modal-b {
     box-shadow: none !important;
 }
 
+/* Preflight audio control: visible before a player rolls a Party Leader, so the
+   persisted mute state can never silently hide the leader intro. */
+#room-modal .room-panel,
+#lobby-modal .lobby-panel {
+    position: relative !important;
+}
+
+.preflight-sound-btn {
+    position: absolute !important;
+    top: clamp(13px, 2.8dvh, 22px) !important;
+    left: clamp(18px, 3.2vw, 34px) !important;
+    z-index: 5 !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 7px !important;
+    width: clamp(104px, 14vw, 132px) !important;
+    height: clamp(30px, 5.2dvh, 38px) !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 5px 13px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: url('assets/skin/lobby/lobby-field-v169.webp') center / 100% 100% no-repeat !important;
+    box-shadow: none !important;
+    color: #f7e7bd !important;
+    cursor: pointer !important;
+    font: 800 clamp(.58rem, 1.5dvh, .73rem)/1 var(--font-display) !important;
+    letter-spacing: .055em !important;
+    text-shadow: 0 2px 3px #000 !important;
+    transition: transform 140ms cubic-bezier(.23, 1, .32, 1), filter 140ms ease, color 140ms ease !important;
+    touch-action: manipulation;
+}
+
+.preflight-sound-icon {
+    position: relative;
+    flex: 0 0 auto;
+    width: clamp(16px, 2.8dvh, 21px);
+    aspect-ratio: 1;
+    background: url('assets/skin/icons/sound.webp') center / contain no-repeat;
+    filter: drop-shadow(0 1px 2px #000);
+}
+
+.preflight-sound-btn:active {
+    transform: scale(.97) !important;
+}
+
+.preflight-sound-btn.is-muted {
+    color: #c9aa91 !important;
+    filter: grayscale(.82) brightness(.78) !important;
+}
+
+.preflight-sound-btn.is-muted .preflight-sound-icon::after {
+    content: '';
+    position: absolute;
+    inset: 49% -2px auto;
+    border-top: 2px solid #e4b09e;
+    transform: rotate(-45deg);
+    transform-origin: center;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .preflight-sound-btn:hover:not(:disabled) {
+        filter: brightness(1.12) !important;
+    }
+
+    .preflight-sound-btn.is-muted:hover:not(:disabled) {
+        filter: grayscale(.82) brightness(.9) !important;
+    }
+}
+
+@media (max-height: 480px) and (orientation: landscape) {
+    .preflight-sound-btn {
+        top: 8px !important;
+        left: 15px !important;
+        width: 112px !important;
+        height: 36px !important;
+        padding: 5px 11px !important;
+        gap: 5px !important;
+        font-size: .59rem !important;
+    }
+
+    .preflight-sound-icon {
+        width: 17px;
+    }
+}
+
 html body #event-console :is(#skill-prompt-modal, #challenge-modal, #dice-overlay).tabletop-modal-b.tabletop-modal-b :is(.action-btn.action-btn, .close-btn.close-btn, button:not(.card)),
 html body :is(#inspector-modal, #opponent-modal, #majestelk-choice-modal, #gameover-screen, #victory-modal, #discard-search-modal, #discard-viewer-modal, #deck-peek-modal, #mandatory-discard-modal, #immediate-play-modal, #global-discard-pool) .tabletop-modal-b.tabletop-modal-b :is(.action-btn.action-btn, .close-btn.close-btn, button:not(.card)),
 html body :is(#target-banner, #reward-toast-inner).tabletop-modal-b.tabletop-modal-b button {
