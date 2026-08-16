@@ -71,4 +71,5 @@ test('Party Leader roll and inspection use only the selected card plop', async (
     expect(inspectSources.some(src => src.includes('/sounds/sfx/card_tap.mp3'))).toBe(true);
     expect(inspectSources.some(src => src.includes('/sounds/sfx/tap.mp3'))).toBe(false);
     expect(inspectSources.some(src => src.includes('/sounds/sfx/open.mp3'))).toBe(false);
+    expect(inspectSources.some(src => src.includes('/sounds/sfx/open.wav'))).toBe(false);
 });

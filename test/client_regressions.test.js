@@ -673,7 +673,14 @@ test('premium signature sounds are mastered, routed once, and used by their game
     const sfxDir = path.join(__dirname, '..', 'public', 'sounds', 'sfx');
     const musicDir = path.join(__dirname, '..', 'public', 'sounds', 'music');
 
-    ['card_drop.wav', 'roll.wav', 'success.wav', 'destroy.wav', 'steal.wav', 'sacrifice.wav']
+    const approvedWavFiles = [
+        'open.wav', 'confirm.wav', 'card_drop.wav', 'draw.wav', 'attack.wav',
+        'skill.wav', 'magic.wav', 'challenge.wav', 'modifier.wav', 'target.wav',
+        'equip.wav', 'timer_warning.wav', 'timer_urgent.wav', 'turn.wav',
+        'error.wav', 'join.wav', 'roll.wav', 'success.wav', 'destroy.wav',
+        'steal.wav', 'sacrifice.wav'
+    ];
+    approvedWavFiles
         .forEach(file => {
             const contents = fs.readFileSync(path.join(sfxDir, file));
             assert.equal(contents.subarray(0, 4).toString('ascii'), 'RIFF', `${file} should be a WAV`);
@@ -681,7 +688,7 @@ test('premium signature sounds are mastered, routed once, and used by their game
             assert.ok(contents.length > 40_000, `${file} should contain a mastered effect`);
         });
 
-    assert.match(manifestSource, /version: 'audio-v13-premium-close-fantasy-music'/);
+    assert.match(manifestSource, /version: 'audio-v14-approved-soft-sfx'/);
     assert.match(manifestSource, /cardTap: \{ src: '\/sounds\/sfx\/card_tap\.mp3'/);
     assert.ok(fs.statSync(path.join(sfxDir, 'card_tap.mp3')).size > 8_000);
     assert.match(manifestSource, /close: \{ src: '\/sounds\/sfx\/close\.mp3'/);
@@ -713,11 +720,18 @@ test('premium signature sounds are mastered, routed once, and used by their game
     assert.match(manifestSource, /card_221:[\s\S]*?intro: \['\/sounds\/voices\/card_221\/intro_01\.mp3'\]/);
     assert.doesNotMatch(manifestSource, /card_221\/(?:card_played|success|failure|discard|modifier)_/);
     assert.ok(fs.statSync(path.join(__dirname, '..', 'public', 'sounds', 'voices', 'card_221', 'intro_01.mp3')).size > 60_000);
-    ['card_drop', 'roll', 'success', 'destroy', 'steal', 'sacrifice']
+    [
+        'open', 'confirm', 'card_drop', 'draw', 'attack', 'skill', 'magic',
+        'challenge', 'modifier', 'target', 'equip', 'timer_warning',
+        'timer_urgent', 'turn', 'error', 'join', 'roll', 'success', 'destroy',
+        'steal', 'sacrifice'
+    ]
         .forEach(file => assert.match(manifestSource, new RegExp(`/sounds/sfx/${file}\\.wav`)));
     assert.match(manifestSource, /roll_success: \{ sfx: 'success'/);
     assert.match(appSource, /PremiumAudio\.playEvent\('roll_success'/);
     assert.match(appSource, /const lastSfxAt = new Map\(\)/);
+    assert.match(appSource, /some\(playerId => !previousPlayerIds\.has\(playerId\)\)[\s\S]*?playSfx\('join'\)/);
+    assert.match(appSource, /function attackMonster\(id\) \{[\s\S]{0,120}?playSound\('slash'\)/);
     assert.doesNotMatch(appSource, /function executeManualRoll\(\) \{[\s\S]*?playSound\('dice'\)/,
         'the authoritative roll event owns the dice sound, so a click may not double-trigger it');
     assert.doesNotMatch(appSource, /function detectRemoval\(/,

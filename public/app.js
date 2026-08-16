@@ -432,6 +432,10 @@ const PremiumAudio = (() => {
         }
 
         if (!prev?.players || !next.players) return;
+        const previousPlayerIds = new Set(Object.keys(prev.players));
+        if (Object.keys(next.players).some(playerId => !previousPlayerIds.has(playerId))) {
+            playSfx('join');
+        }
         Object.keys(next.players).forEach(playerId => {
             const prevPlayer = prev.players[playerId];
             const nextPlayer = next.players[playerId];
